@@ -1,5 +1,6 @@
 import React from "react";
-import { View, ScrollView, StyleSheet } from "react-native";
+import { View, ScrollView, StyleSheet, Pressable } from "react-native";
+import * as Haptics from "expo-haptics";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -7,12 +8,11 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/ThemedText";
-import { DurationChip } from "@/components/DurationChip";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { StatCard } from "@/components/StatCard";
 import { LiveCounter } from "@/components/LiveCounter";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing } from "@/constants/theme";
+import { Spacing, BorderRadius } from "@/constants/theme";
 import { useMeditation } from "@/context/MeditationContext";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -90,17 +90,37 @@ export default function TimerScreen() {
             Earn 10 grains of rice for every minute you meditate
           </ThemedText>
           
-          <View style={styles.chipGrid}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.durationRow}
+          >
             {DURATION_OPTIONS.map((option) => (
-              <DurationChip
+              <Pressable
                 key={option.seconds}
-                label={option.label}
-                durationSeconds={option.seconds}
-                isSelected={selectedDuration === option.seconds}
-                onPress={setSelectedDuration}
-              />
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSelectedDuration(option.seconds);
+                }}
+                style={[
+                  styles.durationChip,
+                  {
+                    backgroundColor: selectedDuration === option.seconds ? theme.primary : theme.backgroundDefault,
+                    borderColor: selectedDuration === option.seconds ? theme.primary : theme.border,
+                  },
+                ]}
+              >
+                <ThemedText
+                  style={[
+                    styles.durationChipLabel,
+                    { color: selectedDuration === option.seconds ? "#FFFFFF" : theme.text },
+                  ]}
+                >
+                  {option.label}
+                </ThemedText>
+              </Pressable>
             ))}
-          </View>
+          </ScrollView>
         </View>
       </ScrollView>
 
@@ -137,10 +157,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: Spacing.lg,
   },
-  chipGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginHorizontal: -Spacing.xs,
+  durationRow: {
+    paddingHorizontal: Spacing.md,
+    gap: Spacing.sm,
+  },
+  durationChip: {
+    height: 44,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  durationChipLabel: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   statsRow: {
     flexDirection: "row",
