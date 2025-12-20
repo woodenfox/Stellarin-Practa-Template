@@ -1,0 +1,91 @@
+# Meditation Audio Generator API
+
+Base URL: https://3d77cd5d-0f42-4969-9e97-483d81ea0de1-00-2r1phugtxs3kj.riker.replit.dev
+
+## Generate Meditation Audio
+
+**POST** `/api/orchestrate`
+
+Generate a personalized meditation audio from a natural language prompt. This endpoint handles the entire flow: recommending a suitable template based on duration, generating personalized content with GPT, allocating silence durations dynamically, and creating the final audio with optional background music.
+
+### Request Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| prompt | string | Yes | Description of the meditation you want. Can include duration (e.g., "A calming 5-minute meditation for stress relief") |
+| voice | string | No | Voice to use: nova (default), alloy, echo, fable, onyx, shimmer, coral, sage |
+| background_music_enabled | boolean | No | Include ambient background music (default: true) |
+| duration_seconds | integer | No | Explicit target duration in seconds. If omitted, duration is inferred from the prompt text. |
+
+### Example Request
+```json
+{
+  "prompt": "A calming 3-minute meditation to help me relax before bed",
+  "voice": "nova",
+  "background_music_enabled": true
+}
+```
+
+### Example cURL
+```bash
+curl -X POST https://3d77cd5d-0f42-4969-9e97-483d81ea0de1-00-2r1phugtxs3kj.riker.replit.dev/api/orchestrate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Help me focus for a busy workday",
+    "voice": "sage",
+    "background_music_enabled": true,
+    "duration_seconds": 300
+  }'
+```
+
+### Success Response
+```json
+{
+  "status": "success",
+  "url": "/api/audio/abc123-uuid",
+  "meditation_id": "12",
+  "duration_seconds": 180,
+  "json_data": {
+    "name": "Relaxation Meditation",
+    "description": "A calming meditation to help you unwind...",
+    "tags": [
+      "relaxation",
+      "calm",
+      "sleep"
+    ],
+    "prompts": [
+      {
+        "prompt": "Welcome to this meditation. Find a comfortable position...",
+        "min_silence": 3,
+        "max_silence": 10
+      },
+      {
+        "prompt": "Take a deep breath in...",
+        "min_silence": 5,
+        "max_silence": 30
+      }
+    ]
+  }
+}
+```
+
+### Error Response
+```json
+{
+  "error": "Audio generation failed",
+  "details": "Error message here"
+}
+```
+
+## Available Voices
+
+| Voice | Description |
+|-------|-------------|
+| nova | Female, warm and friendly (default) |
+| alloy | Neutral, balanced tone |
+| echo | Male, clear and articulate |
+| fable | Expressive, storytelling style |
+| onyx | Deep male, authoritative |
+| shimmer | Soft female, gentle |
+| coral | Warm, approachable |
+| sage | Calm, composed |

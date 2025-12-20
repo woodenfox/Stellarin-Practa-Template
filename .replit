@@ -55,4 +55,4 @@ ensurePreviewReachable = "/status"
 [userenv]
 
 [userenv.shared]
-EXPO_PUBLIC_STELLARIS_API_URL = "https://stellarin-meditation-backend.replit.app"
+EXPO_PUBLIC_STELLARIS_API_URL = "https://3d77cd5d-0f42-4969-9e97-483d81ea0de1-00-2r1phugtxs3kj.riker.replit.dev"
