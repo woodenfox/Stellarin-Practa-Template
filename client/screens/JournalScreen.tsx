@@ -33,6 +33,7 @@ interface AudioEntryPlayerProps {
 
 function AudioEntryPlayer({ entry, isPlaying, onPlay, onStop }: AudioEntryPlayerProps) {
   const { theme } = useTheme();
+  const [hasError, setHasError] = useState(false);
   const player = useAudioPlayer(entry.audioUri || "");
   
   useEffect(() => {
@@ -46,7 +47,11 @@ function AudioEntryPlayer({ entry, isPlaying, onPlay, onStop }: AudioEntryPlayer
     
     return () => {
       unsubscribe?.remove();
-      player.pause();
+      try {
+        player.pause();
+      } catch (e) {
+        // Ignore pause errors on cleanup
+      }
     };
   }, [player, onStop]);
 
@@ -54,13 +59,24 @@ function AudioEntryPlayer({ entry, isPlaying, onPlay, onStop }: AudioEntryPlayer
     if (!player) return;
     
     if (isPlaying) {
-      player.play();
+      try {
+        player.play();
+      } catch (e) {
+        console.error("Failed to play audio:", e);
+        setHasError(true);
+        onStop();
+      }
     } else {
-      player.pause();
+      try {
+        player.pause();
+      } catch (e) {
+        // Ignore pause errors
+      }
     }
-  }, [isPlaying, player]);
+  }, [isPlaying, player, onStop]);
   
   const togglePlay = () => {
+    if (hasError) return;
     if (isPlaying) {
       onStop();
     } else {

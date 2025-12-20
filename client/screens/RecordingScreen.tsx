@@ -185,22 +185,27 @@ export default function RecordingScreen() {
       const today = new Date().toISOString().split("T")[0];
       const entryId = Date.now().toString();
       
-      const audioDir = `${FileSystem.documentDirectory}audio/`;
-      const dirInfo = await FileSystem.getInfoAsync(audioDir);
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(audioDir, { intermediates: true });
-      }
-      
-      const permanentUri = `${audioDir}recording-${entryId}.m4a`;
-      await FileSystem.copyAsync({ from: tempUri, to: permanentUri });
-
+      let permanentUri = tempUri;
       let audioBase64: string | null = null;
+      
       try {
-        audioBase64 = await FileSystem.readAsStringAsync(permanentUri, {
+        audioBase64 = await FileSystem.readAsStringAsync(tempUri, {
           encoding: FileSystem.EncodingType.Base64,
         });
-      } catch (readError) {
-        console.error("Failed to read audio file:", readError);
+        
+        const audioDir = `${FileSystem.documentDirectory}audio/`;
+        const dirInfo = await FileSystem.getInfoAsync(audioDir);
+        if (!dirInfo.exists) {
+          await FileSystem.makeDirectoryAsync(audioDir, { intermediates: true });
+        }
+        
+        permanentUri = `${audioDir}recording-${entryId}.m4a`;
+        await FileSystem.writeAsStringAsync(permanentUri, audioBase64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+      } catch (fileError) {
+        console.error("Failed to save audio file:", fileError);
+        audioBase64 = null;
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
