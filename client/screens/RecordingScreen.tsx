@@ -176,15 +176,27 @@ export default function RecordingScreen() {
         allowsRecording: false,
       });
 
-      const uri = audioRecorder.uri;
-      if (!uri) {
+      const tempUri = audioRecorder.uri;
+      if (!tempUri) {
         navigation.goBack();
         return;
       }
 
+      const today = new Date().toISOString().split("T")[0];
+      const entryId = Date.now().toString();
+      
+      const audioDir = `${FileSystem.documentDirectory}audio/`;
+      const dirInfo = await FileSystem.getInfoAsync(audioDir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(audioDir, { intermediates: true });
+      }
+      
+      const permanentUri = `${audioDir}recording-${entryId}.m4a`;
+      await FileSystem.copyAsync({ from: tempUri, to: permanentUri });
+
       let audioBase64: string | null = null;
       try {
-        audioBase64 = await FileSystem.readAsStringAsync(uri, {
+        audioBase64 = await FileSystem.readAsStringAsync(permanentUri, {
           encoding: FileSystem.EncodingType.Base64,
         });
       } catch (readError) {
@@ -193,15 +205,13 @@ export default function RecordingScreen() {
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      const today = new Date().toISOString().split("T")[0];
-      const entryId = Date.now().toString();
       const entry: JournalEntry = {
         id: entryId,
         date: today,
         content: "",
         createdAt: new Date().toISOString(),
         type: "audio",
-        audioUri: uri,
+        audioUri: permanentUri,
         audioDuration: recordingDuration,
         transcription: audioBase64 ? "Transcribing..." : "",
       };
