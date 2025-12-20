@@ -7,7 +7,7 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useAudioPlayer } from "expo-audio";
+import { useAudioPlayer, setAudioModeAsync } from "expo-audio";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -59,13 +59,21 @@ function AudioEntryPlayer({ entry, isPlaying, onPlay, onStop }: AudioEntryPlayer
     if (!player) return;
     
     if (isPlaying) {
-      try {
-        player.play();
-      } catch (e) {
-        console.error("Failed to play audio:", e);
-        setHasError(true);
-        onStop();
-      }
+      const startPlayback = async () => {
+        try {
+          await setAudioModeAsync({
+            playsInSilentMode: true,
+            allowsRecording: false,
+          });
+          player.seekTo(0);
+          player.play();
+        } catch (e) {
+          console.error("Failed to play audio:", e);
+          setHasError(true);
+          onStop();
+        }
+      };
+      startPlayback();
     } else {
       try {
         player.pause();
