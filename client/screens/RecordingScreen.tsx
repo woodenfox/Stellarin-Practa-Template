@@ -5,7 +5,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useAudioRecorder, useAudioRecorderState, RecordingPresets, AudioModule } from "expo-audio";
+import { useAudioRecorder, useAudioRecorderState, RecordingPresets, AudioModule, setAudioModeAsync } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
 import Animated, {
   useSharedValue,
@@ -134,6 +134,11 @@ export default function RecordingScreen() {
 
   const startRecording = async () => {
     try {
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: true,
+      });
+
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setIsRecording(true);
       setRecordingDuration(0);
@@ -170,6 +175,10 @@ export default function RecordingScreen() {
       setIsRecording(false);
 
       await audioRecorder.stop();
+      
+      await setAudioModeAsync({
+        allowsRecording: false,
+      });
 
       const uri = audioRecorder.uri;
       if (!uri) {
