@@ -3,25 +3,33 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet } from "react-native";
-import HomeStackNavigator from "@/navigation/HomeStackNavigator";
-import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
+import TimerScreen from "@/screens/TimerScreen";
+import ProgressScreen from "@/screens/ProgressScreen";
+import CommunityScreen from "@/screens/CommunityScreen";
+import AboutScreen from "@/screens/AboutScreen";
 import { useTheme } from "@/hooks/useTheme";
+import { useScreenOptions } from "@/hooks/useScreenOptions";
+import { HeaderTitle } from "@/components/HeaderTitle";
 
 export type MainTabParamList = {
-  HomeTab: undefined;
-  ProfileTab: undefined;
+  TimerTab: undefined;
+  ProgressTab: undefined;
+  CommunityTab: undefined;
+  AboutTab: undefined;
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export default function MainTabNavigator() {
   const { theme, isDark } = useTheme();
+  const screenOptions = useScreenOptions();
 
   return (
     <Tab.Navigator
-      initialRouteName="HomeTab"
+      initialRouteName="TimerTab"
       screenOptions={{
-        tabBarActiveTintColor: theme.tabIconSelected,
+        ...screenOptions,
+        tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.tabIconDefault,
         tabBarStyle: {
           position: "absolute",
@@ -40,26 +48,49 @@ export default function MainTabNavigator() {
               style={StyleSheet.absoluteFill}
             />
           ) : null,
-        headerShown: false,
       }}
     >
       <Tab.Screen
-        name="HomeTab"
-        component={HomeStackNavigator}
+        name="TimerTab"
+        component={TimerScreen}
         options={{
-          title: "Home",
+          title: "Timer",
+          headerTitle: () => <HeaderTitle />,
           tabBarIcon: ({ color, size }) => (
-            <Feather name="home" size={size} color={color} />
+            <Feather name="clock" size={size} color={color} />
           ),
         }}
       />
       <Tab.Screen
-        name="ProfileTab"
-        component={ProfileStackNavigator}
+        name="ProgressTab"
+        component={ProgressScreen}
         options={{
-          title: "Profile",
+          title: "Progress",
+          headerTitle: "Your Progress",
           tabBarIcon: ({ color, size }) => (
-            <Feather name="user" size={size} color={color} />
+            <Feather name="trending-up" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="CommunityTab"
+        component={CommunityScreen}
+        options={{
+          title: "Community",
+          headerTitle: "Community",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="users" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="AboutTab"
+        component={AboutScreen}
+        options={{
+          title: "About",
+          headerTitle: "Our Mission",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="heart" size={size} color={color} />
           ),
         }}
       />
