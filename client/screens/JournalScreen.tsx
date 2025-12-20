@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, TextInput, StyleSheet, Pressable, Platform } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -7,8 +7,7 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useAudioRecorder, RecordingPresets, AudioModule, useAudioPlayer } from "expo-audio";
-import * as FileSystem from "expo-file-system";
+import { useAudioPlayer } from "expo-audio";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -115,22 +114,7 @@ export default function JournalScreen() {
   const [localDuration, setLocalDuration] = useState(300);
   const [riceEarned, setRiceEarned] = useState(0);
   const [entryMode, setEntryMode] = useState<"text" | "audio">("text");
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
   const [playingEntryId, setPlayingEntryId] = useState<string | null>(null);
-  
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-
-  useEffect(() => {
-    return () => {
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-        recordingTimerRef.current = null;
-      }
-      audioRecorder.stop();
-    };
-  }, [audioRecorder]);
 
   const handlePlayAudio = useCallback((id: string) => {
     setPlayingEntryId(id);
@@ -160,82 +144,9 @@ export default function JournalScreen() {
     setShowMeditationPrompt(true);
   };
 
-  const startRecording = async () => {
-    if (Platform.OS === "web") {
-      return;
-    }
-    
-    try {
-      const status = await AudioModule.requestRecordingPermissionsAsync();
-      if (!status.granted) {
-        return;
-      }
-
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      setIsRecording(true);
-      setRecordingDuration(0);
-      
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingDuration(prev => prev + 1);
-      }, 1000);
-
-      audioRecorder.record();
-    } catch (error) {
-      console.error("Failed to start recording:", error);
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-        recordingTimerRef.current = null;
-      }
-      setIsRecording(false);
-      setRecordingDuration(0);
-    }
-  };
-
-  const stopRecording = async () => {
-    if (!isRecording) return;
-
-    try {
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-        recordingTimerRef.current = null;
-      }
-
-      await audioRecorder.stop();
-      setIsRecording(false);
-
-      const uri = audioRecorder.uri;
-      if (!uri) return;
-
-      const permanentUri = `${FileSystem.documentDirectory}audio_${Date.now()}.m4a`;
-      await FileSystem.copyAsync({ from: uri, to: permanentUri });
-
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
-      const today = new Date().toISOString().split("T")[0];
-      const entry: JournalEntry = {
-        id: Date.now().toString(),
-        date: today,
-        content: "",
-        createdAt: new Date().toISOString(),
-        type: "audio",
-        audioUri: permanentUri,
-        audioDuration: recordingDuration,
-      };
-
-      const bonus = await addJournalEntry(entry);
-      setRiceEarned(bonus);
-      setRecordingDuration(0);
-      setShowMeditationPrompt(true);
-    } catch (error) {
-      console.error("Failed to stop recording:", error);
-      setIsRecording(false);
-    }
-  };
-
-  const formatRecordingTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  const handleOpenRecording = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    navigation.navigate("Recording");
   };
 
   const handleStartMeditation = () => {
@@ -502,44 +413,21 @@ export default function JournalScreen() {
               ) : (
                 <>
                   <View style={[styles.recordingArea, { backgroundColor: theme.backgroundDefault }]}>
-                    {isRecording ? (
-                      <>
-                        <View style={[styles.recordingIndicator, { backgroundColor: theme.error + "20" }]}>
-                          <View style={[styles.recordingDot, { backgroundColor: theme.error }]} />
-                          <ThemedText style={[styles.recordingText, { color: theme.error }]}>
-                            Recording
-                          </ThemedText>
-                        </View>
-                        <ThemedText type="h1" style={styles.recordingTimer}>
-                          {formatRecordingTime(recordingDuration)}
-                        </ThemedText>
-                      </>
-                    ) : (
-                      <>
-                        <Feather name="mic" size={48} color={theme.textSecondary} />
-                        <ThemedText style={[styles.recordingHint, { color: theme.textSecondary }]}>
-                          Tap the button below to start recording
-                        </ThemedText>
-                      </>
-                    )}
+                    <View style={[styles.micIconContainer, { backgroundColor: theme.primary + "20" }]}>
+                      <Feather name="mic" size={48} color={theme.primary} />
+                    </View>
+                    <ThemedText style={[styles.recordingHint, { color: theme.textSecondary }]}>
+                      Record your thoughts with an immersive voice experience
+                    </ThemedText>
                   </View>
 
                   <Pressable
-                    onPress={isRecording ? stopRecording : startRecording}
-                    style={[
-                      styles.recordButton,
-                      { 
-                        backgroundColor: isRecording ? theme.error : theme.primary,
-                      },
-                    ]}
+                    onPress={handleOpenRecording}
+                    style={[styles.recordButton, { backgroundColor: theme.primary }]}
                   >
-                    <Feather 
-                      name={isRecording ? "square" : "mic"} 
-                      size={24} 
-                      color="#FFFFFF" 
-                    />
+                    <Feather name="mic" size={24} color="#FFFFFF" />
                     <ThemedText style={styles.saveButtonText}>
-                      {isRecording ? "Stop Recording" : "Start Recording"}
+                      Start Recording
                     </ThemedText>
                   </Pressable>
                 </>
@@ -764,6 +652,13 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
     textAlign: "center",
     lineHeight: 22,
+  },
+  micIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: "center",
+    justifyContent: "center",
   },
   recordButton: {
     flexDirection: "row",
