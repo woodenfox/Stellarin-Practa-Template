@@ -5,6 +5,7 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useKeepAwake } from "expo-keep-awake";
 import Animated, {
   useSharedValue,
   withTiming,
@@ -27,6 +28,8 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function SessionScreen() {
+  useKeepAwake();
+  
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
