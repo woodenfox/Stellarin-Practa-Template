@@ -5,6 +5,7 @@ import { BlurView } from "expo-blur";
 import { Platform, StyleSheet } from "react-native";
 import TimerScreen from "@/screens/TimerScreen";
 import ProgressScreen from "@/screens/ProgressScreen";
+import JournalScreen from "@/screens/JournalScreen";
 import CommunityScreen from "@/screens/CommunityScreen";
 import AboutScreen from "@/screens/AboutScreen";
 import { useTheme } from "@/hooks/useTheme";
@@ -14,6 +15,7 @@ import { HeaderTitle } from "@/components/HeaderTitle";
 export type MainTabParamList = {
   TimerTab: undefined;
   ProgressTab: undefined;
+  JournalTab: undefined;
   CommunityTab: undefined;
   AboutTab: undefined;
 };
@@ -69,6 +71,17 @@ export default function MainTabNavigator() {
           headerTitle: "Your Progress",
           tabBarIcon: ({ color, size }) => (
             <Feather name="trending-up" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="JournalTab"
+        component={JournalScreen}
+        options={{
+          title: "Journal",
+          headerTitle: "Daily Journal",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="book-open" size={size} color={color} />
           ),
         }}
       />

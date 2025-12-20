@@ -9,18 +9,28 @@ export interface MeditationSession {
   completedAt: string;
 }
 
+export interface JournalEntry {
+  id: string;
+  date: string;
+  content: string;
+  createdAt: string;
+}
+
 interface MeditationState {
   totalRice: number;
   sessions: MeditationSession[];
   streakDays: string[];
   challengeProgress: number;
   selectedDuration: number;
+  journalEntries: JournalEntry[];
   isLoading: boolean;
 }
 
 interface MeditationContextType extends MeditationState {
   setSelectedDuration: (duration: number) => void;
   addSession: (session: MeditationSession) => Promise<void>;
+  addJournalEntry: (entry: JournalEntry) => Promise<void>;
+  getTodayJournalEntry: () => JournalEntry | undefined;
   getTodayStreak: () => boolean;
   getWeekStreaks: () => { day: string; completed: boolean; isToday: boolean }[];
 }
@@ -30,6 +40,7 @@ const STORAGE_KEYS = {
   SESSIONS: "@rice_meditation_sessions",
   STREAK_DAYS: "@rice_meditation_streak_days",
   CHALLENGE_PROGRESS: "@rice_meditation_challenge",
+  JOURNAL_ENTRIES: "@rice_meditation_journal",
 };
 
 const MeditationContext = createContext<MeditationContextType | undefined>(undefined);
@@ -41,6 +52,7 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
     streakDays: [],
     challengeProgress: 0,
     selectedDuration: 300,
+    journalEntries: [],
     isLoading: true,
   });
 
@@ -50,11 +62,12 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
 
   const loadData = async () => {
     try {
-      const [totalRice, sessions, streakDays, challengeProgress] = await Promise.all([
+      const [totalRice, sessions, streakDays, challengeProgress, journalEntries] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.TOTAL_RICE),
         AsyncStorage.getItem(STORAGE_KEYS.SESSIONS),
         AsyncStorage.getItem(STORAGE_KEYS.STREAK_DAYS),
         AsyncStorage.getItem(STORAGE_KEYS.CHALLENGE_PROGRESS),
+        AsyncStorage.getItem(STORAGE_KEYS.JOURNAL_ENTRIES),
       ]);
 
       setState((prev) => ({
@@ -63,6 +76,7 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
         sessions: sessions ? JSON.parse(sessions) : [],
         streakDays: streakDays ? JSON.parse(streakDays) : [],
         challengeProgress: challengeProgress ? parseInt(challengeProgress, 10) : 0,
+        journalEntries: journalEntries ? JSON.parse(journalEntries) : [],
         isLoading: false,
       }));
     } catch (error) {
@@ -106,6 +120,34 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
     }
   }, [state.totalRice, state.sessions, state.streakDays, state.challengeProgress]);
 
+  const addJournalEntry = useCallback(async (entry: JournalEntry) => {
+    try {
+      const existingIndex = state.journalEntries.findIndex(e => e.date === entry.date);
+      let newEntries: JournalEntry[];
+      
+      if (existingIndex >= 0) {
+        newEntries = [...state.journalEntries];
+        newEntries[existingIndex] = entry;
+      } else {
+        newEntries = [entry, ...state.journalEntries];
+      }
+
+      await AsyncStorage.setItem(STORAGE_KEYS.JOURNAL_ENTRIES, JSON.stringify(newEntries));
+
+      setState((prev) => ({
+        ...prev,
+        journalEntries: newEntries,
+      }));
+    } catch (error) {
+      console.error("Failed to save journal entry:", error);
+    }
+  }, [state.journalEntries]);
+
+  const getTodayJournalEntry = useCallback(() => {
+    const today = new Date().toISOString().split("T")[0];
+    return state.journalEntries.find(e => e.date === today);
+  }, [state.journalEntries]);
+
   const getTodayStreak = useCallback(() => {
     const today = new Date().toISOString().split("T")[0];
     return state.streakDays.includes(today);
@@ -137,6 +179,8 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
         ...state,
         setSelectedDuration,
         addSession,
+        addJournalEntry,
+        getTodayJournalEntry,
         getTodayStreak,
         getWeekStreaks,
       }}
