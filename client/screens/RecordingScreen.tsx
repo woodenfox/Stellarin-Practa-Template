@@ -32,12 +32,8 @@ const NUM_RINGS = 3;
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-async function transcribeAudio(audioUri: string): Promise<string | null> {
+async function transcribeAudioBase64(audioBase64: string): Promise<string | null> {
   try {
-    const audioBase64 = await FileSystem.readAsStringAsync(audioUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    
     const response = await apiRequest("POST", "/api/transcribe", {
       audioBase64,
       mimeType: "audio/m4a",
@@ -186,6 +182,15 @@ export default function RecordingScreen() {
         return;
       }
 
+      let audioBase64: string | null = null;
+      try {
+        audioBase64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+      } catch (readError) {
+        console.error("Failed to read audio file:", readError);
+      }
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       const today = new Date().toISOString().split("T")[0];
@@ -198,19 +203,21 @@ export default function RecordingScreen() {
         type: "audio",
         audioUri: uri,
         audioDuration: recordingDuration,
-        transcription: "Transcribing...",
+        transcription: audioBase64 ? "Transcribing..." : "",
       };
 
       await addJournalEntry(entry);
       navigation.goBack();
 
-      transcribeAudio(uri).then((transcription) => {
-        if (transcription) {
-          updateJournalEntry(entryId, { transcription });
-        } else {
-          updateJournalEntry(entryId, { transcription: "" });
-        }
-      });
+      if (audioBase64) {
+        transcribeAudioBase64(audioBase64).then((transcription) => {
+          if (transcription) {
+            updateJournalEntry(entryId, { transcription });
+          } else {
+            updateJournalEntry(entryId, { transcription: "" });
+          }
+        });
+      }
     } catch (error) {
       console.error("Failed to stop recording:", error);
       navigation.goBack();
