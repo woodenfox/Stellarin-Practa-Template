@@ -11,7 +11,6 @@ import { DurationChip } from "@/components/DurationChip";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { StatCard } from "@/components/StatCard";
 import { LiveCounter } from "@/components/LiveCounter";
-import { FooterIllustration } from "@/components/FooterIllustration";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing } from "@/constants/theme";
 import { useMeditation } from "@/context/MeditationContext";
@@ -103,8 +102,6 @@ export default function TimerScreen() {
         <View style={styles.liveSection}>
           <LiveCounter />
         </View>
-
-        <FooterIllustration />
       </ScrollView>
 
       <FloatingActionButton
