@@ -68,10 +68,10 @@
 ## Design System
 
 ### Color Palette
-- **Primary**: Earthy green (#4A7C59) - growth, meditation, nature
-- **Secondary**: Warm rice/wheat (#E8D5B7) - rice theme
-- **Accent**: Soft orange (#F4A261) - warmth, progress
-- **Background**: Off-white (#F8F6F1) - calm, organic
+- **Primary**: Vibrant orange (#FF801F) - energy, warmth, action
+- **Secondary**: Light peach (#FFE4CC) - soft rice/wheat tone
+- **Accent**: Deep orange (#FF6B00) - emphasis, progress
+- **Background**: Pure white (#FFFFFF) - clean, minimal
 - **Surface**: White (#FFFFFF)
 - **Text**: Dark charcoal (#2D3436), Light gray (#636E72)
 
