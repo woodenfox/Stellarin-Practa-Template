@@ -44,7 +44,6 @@ export default function SessionScreen() {
   
   const progress = useSharedValue(0);
   const pauseScale = useSharedValue(1);
-  const stopScale = useSharedValue(1);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastMinuteRef = useRef(0);
 
@@ -114,20 +113,12 @@ export default function SessionScreen() {
     setIsPaused(!isPaused);
   };
 
-  const handleStop = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    Alert.alert(
-      "End Session?",
-      "Are you sure you want to end this meditation session?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "End Session",
-          style: "destructive",
-          onPress: () => navigation.goBack(),
-        },
-      ]
-    );
+  const handleClose = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    navigation.goBack();
   };
 
   const handleDone = () => {
@@ -137,10 +128,6 @@ export default function SessionScreen() {
 
   const pauseAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pauseScale.value }],
-  }));
-
-  const stopAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: stopScale.value }],
   }));
 
   if (isComplete) {
@@ -208,7 +195,7 @@ export default function SessionScreen() {
         },
       ]}
     >
-      <Pressable style={styles.closeButton} onPress={handleStop}>
+      <Pressable style={styles.closeButton} onPress={handleClose}>
         <Feather name="x" size={24} color={theme.textSecondary} />
       </Pressable>
 
@@ -221,19 +208,6 @@ export default function SessionScreen() {
       </View>
 
       <View style={styles.controls}>
-        <AnimatedPressable
-          onPress={handleStop}
-          onPressIn={() => { stopScale.value = withSpring(0.9); }}
-          onPressOut={() => { stopScale.value = withSpring(1); }}
-          style={[
-            styles.controlButton,
-            { backgroundColor: theme.backgroundSecondary },
-            stopAnimatedStyle,
-          ]}
-        >
-          <Feather name="square" size={24} color={theme.error} />
-        </AnimatedPressable>
-
         <AnimatedPressable
           onPress={handlePause}
           onPressIn={() => { pauseScale.value = withSpring(0.9); }}
@@ -250,8 +224,6 @@ export default function SessionScreen() {
             color="#FFFFFF"
           />
         </AnimatedPressable>
-
-        <View style={styles.controlButton} />
       </View>
 
       {isPaused ? (
