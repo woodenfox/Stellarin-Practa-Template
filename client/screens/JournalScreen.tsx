@@ -68,21 +68,35 @@ function AudioEntryPlayer({ entry, isPlaying, onPlay, onStop }: AudioEntryPlayer
     }
   };
 
+  const hasTranscription = entry.transcription && entry.transcription !== "Transcribing...";
+  const isTranscribing = entry.transcription === "Transcribing...";
+
   return (
-    <Pressable
-      onPress={togglePlay}
-      style={[styles.audioPlayer, { backgroundColor: theme.backgroundSecondary }]}
-    >
-      <View style={[styles.audioPlayButton, { backgroundColor: theme.primary }]}>
-        <Feather name={isPlaying ? "pause" : "play"} size={16} color="#FFFFFF" />
-      </View>
-      <View style={styles.audioInfo}>
-        <ThemedText style={styles.audioLabel}>Voice Note</ThemedText>
-        <ThemedText style={[styles.audioDuration, { color: theme.textSecondary }]}>
-          {formatAudioDuration(entry.audioDuration || 0)}
+    <View>
+      <Pressable
+        onPress={togglePlay}
+        style={[styles.audioPlayer, { backgroundColor: theme.backgroundSecondary }]}
+      >
+        <View style={[styles.audioPlayButton, { backgroundColor: theme.primary }]}>
+          <Feather name={isPlaying ? "pause" : "play"} size={16} color="#FFFFFF" />
+        </View>
+        <View style={styles.audioInfo}>
+          <ThemedText style={styles.audioLabel}>Voice Note</ThemedText>
+          <ThemedText style={[styles.audioDuration, { color: theme.textSecondary }]}>
+            {formatAudioDuration(entry.audioDuration || 0)}
+          </ThemedText>
+        </View>
+      </Pressable>
+      {isTranscribing ? (
+        <ThemedText style={[styles.transcriptionText, { color: theme.textSecondary, fontStyle: "italic" }]}>
+          Transcribing...
         </ThemedText>
-      </View>
-    </Pressable>
+      ) : hasTranscription ? (
+        <ThemedText style={styles.transcriptionText}>
+          {entry.transcription}
+        </ThemedText>
+      ) : null}
+    </View>
   );
 }
 
@@ -696,5 +710,10 @@ const styles = StyleSheet.create({
   },
   audioDuration: {
     fontSize: Typography.small.fontSize,
+  },
+  transcriptionText: {
+    fontSize: Typography.body.fontSize,
+    lineHeight: 22,
+    marginTop: Spacing.sm,
   },
 });

@@ -24,6 +24,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { useMeditation, JournalEntry } from "@/context/MeditationContext";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { apiRequest } from "@/lib/query-client";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CIRCLE_SIZE = SCREEN_WIDTH * 0.6;
@@ -31,11 +32,30 @@ const NUM_RINGS = 3;
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+async function transcribeAudio(audioUri: string): Promise<string | null> {
+  try {
+    const audioBase64 = await FileSystem.readAsStringAsync(audioUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    
+    const response = await apiRequest("POST", "/api/transcribe", {
+      audioBase64,
+      mimeType: "audio/m4a",
+    });
+    
+    const data = await response.json();
+    return data.transcription || null;
+  } catch (error) {
+    console.error("Transcription failed:", error);
+    return null;
+  }
+}
+
 export default function RecordingScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
-  const { addJournalEntry } = useMeditation();
+  const { addJournalEntry, updateJournalEntry } = useMeditation();
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -163,18 +183,28 @@ export default function RecordingScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       const today = new Date().toISOString().split("T")[0];
+      const entryId = Date.now().toString();
       const entry: JournalEntry = {
-        id: Date.now().toString(),
+        id: entryId,
         date: today,
         content: "",
         createdAt: new Date().toISOString(),
         type: "audio",
         audioUri: permanentUri,
         audioDuration: recordingDuration,
+        transcription: "Transcribing...",
       };
 
       await addJournalEntry(entry);
       navigation.goBack();
+
+      transcribeAudio(permanentUri).then((transcription) => {
+        if (transcription) {
+          updateJournalEntry(entryId, { transcription });
+        } else {
+          updateJournalEntry(entryId, { transcription: "" });
+        }
+      });
     } catch (error) {
       console.error("Failed to stop recording:", error);
       navigation.goBack();
