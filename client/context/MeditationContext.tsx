@@ -30,7 +30,7 @@ interface MeditationContextType extends MeditationState {
   setSelectedDuration: (duration: number) => void;
   addSession: (session: MeditationSession) => Promise<void>;
   addJournalEntry: (entry: JournalEntry) => Promise<number>;
-  getTodayJournalEntry: () => JournalEntry | undefined;
+  hasJournaledToday: () => boolean;
   getTodayStreak: () => boolean;
   getWeekStreaks: () => { day: string; completed: boolean; isToday: boolean }[];
 }
@@ -122,18 +122,11 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
 
   const addJournalEntry = useCallback(async (entry: JournalEntry) => {
     try {
-      const existingIndex = state.journalEntries.findIndex(e => e.date === entry.date);
-      let newEntries: JournalEntry[];
-      let riceBonus = 0;
+      const today = new Date().toISOString().split("T")[0];
+      const hasEntryToday = state.journalEntries.some(e => e.date === today);
+      const riceBonus = hasEntryToday ? 0 : 10;
       
-      if (existingIndex >= 0) {
-        newEntries = [...state.journalEntries];
-        newEntries[existingIndex] = entry;
-      } else {
-        newEntries = [entry, ...state.journalEntries];
-        riceBonus = 10;
-      }
-
+      const newEntries = [entry, ...state.journalEntries];
       const newTotalRice = state.totalRice + riceBonus;
 
       await Promise.all([
@@ -154,9 +147,9 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
     }
   }, [state.journalEntries, state.totalRice]);
 
-  const getTodayJournalEntry = useCallback(() => {
+  const hasJournaledToday = useCallback(() => {
     const today = new Date().toISOString().split("T")[0];
-    return state.journalEntries.find(e => e.date === today);
+    return state.journalEntries.some(e => e.date === today);
   }, [state.journalEntries]);
 
   const getTodayStreak = useCallback(() => {
@@ -191,7 +184,7 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
         setSelectedDuration,
         addSession,
         addJournalEntry,
-        getTodayJournalEntry,
+        hasJournaledToday,
         getTodayStreak,
         getWeekStreaks,
       }}

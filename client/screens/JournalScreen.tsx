@@ -36,8 +36,7 @@ export default function JournalScreen() {
   const { 
     journalEntries, 
     addJournalEntry, 
-    getTodayJournalEntry,
-    selectedDuration,
+    hasJournaledToday,
     setSelectedDuration 
   } = useMeditation();
 
@@ -46,14 +45,6 @@ export default function JournalScreen() {
   const [localDuration, setLocalDuration] = useState(300);
   const [riceEarned, setRiceEarned] = useState(0);
 
-  const todayEntry = getTodayJournalEntry();
-
-  useEffect(() => {
-    if (todayEntry) {
-      setJournalText(todayEntry.content);
-    }
-  }, [todayEntry]);
-
   const handleSaveJournal = async () => {
     if (!journalText.trim()) return;
 
@@ -61,14 +52,15 @@ export default function JournalScreen() {
     
     const today = new Date().toISOString().split("T")[0];
     const entry: JournalEntry = {
-      id: todayEntry?.id || Date.now().toString(),
+      id: Date.now().toString(),
       date: today,
       content: journalText.trim(),
-      createdAt: todayEntry?.createdAt || new Date().toISOString(),
+      createdAt: new Date().toISOString(),
     };
 
     const bonus = await addJournalEntry(entry);
     setRiceEarned(bonus);
+    setJournalText("");
     setShowMeditationPrompt(true);
   };
 
@@ -99,18 +91,28 @@ export default function JournalScreen() {
     });
   };
 
-  const pastEntries = journalEntries.filter(
-    e => e.date !== new Date().toISOString().split("T")[0]
-  );
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString("en-US", { 
+      hour: "numeric", 
+      minute: "2-digit",
+      hour12: true 
+    });
+  };
 
-  const renderPastEntry = ({ item }: { item: JournalEntry }) => (
+  const renderEntry = ({ item }: { item: JournalEntry }) => (
     <ThemedView 
       style={[styles.historyCard, { backgroundColor: theme.backgroundDefault }]}
     >
-      <ThemedText style={[styles.historyDate, { color: theme.textSecondary }]}>
-        {formatDate(item.date)}
-      </ThemedText>
-      <ThemedText style={styles.historyContent} numberOfLines={3}>
+      <View style={styles.entryHeader}>
+        <ThemedText style={[styles.historyDate, { color: theme.textSecondary }]}>
+          {formatDate(item.date)}
+        </ThemedText>
+        <ThemedText style={[styles.entryTime, { color: theme.textSecondary }]}>
+          {formatTime(item.createdAt)}
+        </ThemedText>
+      </View>
+      <ThemedText style={styles.historyContent}>
         {item.content}
       </ThemedText>
     </ThemedView>
@@ -198,10 +200,13 @@ export default function JournalScreen() {
       >
         <View style={styles.section}>
           <ThemedText type="h3" style={styles.sectionTitle}>
-            {todayEntry ? "Today's Reflection" : "What's on your mind?"}
+            What's on your mind?
           </ThemedText>
           <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Take a moment to reflect on your day, your thoughts, or what's ahead
+            {hasJournaledToday() 
+              ? "Add another reflection to your journal"
+              : "Your first entry today earns +10 rice"
+            }
           </ThemedText>
 
           <TextInput
@@ -233,24 +238,24 @@ export default function JournalScreen() {
             ]}
           >
             <Feather 
-              name={todayEntry ? "check" : "save"} 
+              name="plus" 
               size={20} 
               color="#FFFFFF" 
             />
             <ThemedText style={styles.saveButtonText}>
-              {todayEntry ? "Update Entry" : "Save Entry"}
+              Add Entry
             </ThemedText>
           </Pressable>
         </View>
 
-        {pastEntries.length > 0 ? (
+        {journalEntries.length > 0 ? (
           <View style={styles.section}>
             <ThemedText type="h4" style={styles.sectionTitle}>
-              Past Entries
+              Your Reflections
             </ThemedText>
-            {pastEntries.slice(0, 10).map((entry) => (
+            {journalEntries.map((entry) => (
               <View key={entry.id}>
-                {renderPastEntry({ item: entry })}
+                {renderEntry({ item: entry })}
               </View>
             ))}
           </View>
@@ -308,10 +313,18 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     marginBottom: Spacing.md,
   },
+  entryHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.xs,
+  },
   historyDate: {
     fontSize: Typography.small.fontSize,
     fontWeight: "600",
-    marginBottom: Spacing.xs,
+  },
+  entryTime: {
+    fontSize: Typography.small.fontSize,
   },
   historyContent: {
     fontSize: Typography.body.fontSize,
