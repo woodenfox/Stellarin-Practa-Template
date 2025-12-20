@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useMemo } from "react";
-import { View, StyleSheet, Pressable, FlatList, Dimensions } from "react-native";
+import { View, StyleSheet, Pressable, FlatList } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 
@@ -27,11 +27,10 @@ interface DurationPickerProps {
   onSelect: (duration: number) => void;
 }
 
-const ITEM_WIDTH = 88;
+const ITEM_WIDTH = 82;
 const ITEM_MARGIN = 4;
 const TOTAL_ITEM_WIDTH = ITEM_WIDTH + ITEM_MARGIN * 2;
 const CIRCULAR_MULTIPLIER = 3;
-const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export function DurationPicker({ selectedDuration, onSelect }: DurationPickerProps) {
   const { theme, isDark } = useTheme();
@@ -48,12 +47,9 @@ export function DurationPicker({ selectedDuration, onSelect }: DurationPickerPro
     return data;
   }, [itemCount]);
 
-  const initialScrollOffset = useMemo(() => {
+  const initialIndex = useMemo(() => {
     const selectedIdx = DURATION_OPTIONS.findIndex(opt => opt.seconds === selectedDuration);
-    const indexInMiddleSet = itemCount + (selectedIdx >= 0 ? selectedIdx : 4);
-    const itemOffset = indexInMiddleSet * TOTAL_ITEM_WIDTH;
-    const centerOffset = itemOffset - (SCREEN_WIDTH / 2) + (TOTAL_ITEM_WIDTH / 2);
-    return Math.max(0, centerOffset);
+    return itemCount + (selectedIdx >= 0 ? selectedIdx : 4);
   }, [selectedDuration, itemCount]);
 
   const handleScrollEnd = useCallback((event: any) => {
@@ -113,7 +109,7 @@ export function DurationPicker({ selectedDuration, onSelect }: DurationPickerPro
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
-        contentOffset={{ x: initialScrollOffset, y: 0 }}
+        initialScrollIndex={initialIndex}
         getItemLayout={(_, index) => ({
           length: TOTAL_ITEM_WIDTH,
           offset: TOTAL_ITEM_WIDTH * index,
@@ -147,7 +143,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   chip: {
-    height: 52,
+    height: 44,
     width: ITEM_WIDTH,
     marginHorizontal: ITEM_MARGIN,
     borderRadius: BorderRadius.full,
@@ -156,7 +152,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   chipLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
   },
   fadeLeft: {
