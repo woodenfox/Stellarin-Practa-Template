@@ -186,9 +186,6 @@ export default function RecordingScreen() {
         return;
       }
 
-      const permanentUri = `${FileSystem.cacheDirectory}audio_${Date.now()}.m4a`;
-      await FileSystem.copyAsync({ from: uri, to: permanentUri });
-
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       const today = new Date().toISOString().split("T")[0];
@@ -199,7 +196,7 @@ export default function RecordingScreen() {
         content: "",
         createdAt: new Date().toISOString(),
         type: "audio",
-        audioUri: permanentUri,
+        audioUri: uri,
         audioDuration: recordingDuration,
         transcription: "Transcribing...",
       };
@@ -207,7 +204,7 @@ export default function RecordingScreen() {
       await addJournalEntry(entry);
       navigation.goBack();
 
-      transcribeAudio(permanentUri).then((transcription) => {
+      transcribeAudio(uri).then((transcription) => {
         if (transcription) {
           updateJournalEntry(entryId, { transcription });
         } else {
