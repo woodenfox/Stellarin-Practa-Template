@@ -186,7 +186,7 @@ export default function RecordingScreen() {
         return;
       }
 
-      const permanentUri = `${FileSystem.documentDirectory}audio_${Date.now()}.m4a`;
+      const permanentUri = `${FileSystem.cacheDirectory}audio_${Date.now()}.m4a`;
       await FileSystem.copyAsync({ from: uri, to: permanentUri });
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
