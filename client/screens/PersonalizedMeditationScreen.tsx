@@ -6,7 +6,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useKeepAwake } from "expo-keep-awake";
-import { useAudioPlayer, setAudioModeAsync } from "expo-audio";
+import { createAudioPlayer, setAudioModeAsync, AudioPlayer } from "expo-audio";
 import Animated, {
   useSharedValue,
   useDerivedValue,
@@ -75,8 +75,7 @@ export default function PersonalizedMeditationScreen() {
   const pauseScale = useSharedValue(1);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastMinuteRef = useRef(0);
-
-  const player = useAudioPlayer(generatedMeditation?.audioUrl || "");
+  const playerRef = useRef<AudioPlayer | null>(null);
 
   const totalDuration = useMemo(() => {
     return generatedMeditation?.duration || localDuration;
@@ -171,9 +170,13 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
         playsInSilentMode: true,
         allowsRecording: false,
       });
-      if (player) {
-        player.play();
+      
+      if (playerRef.current) {
+        playerRef.current.release();
       }
+      
+      playerRef.current = createAudioPlayer({ uri: audioUrl });
+      playerRef.current.play();
     } catch (err) {
       console.error("Failed to play audio:", err);
     }
@@ -186,9 +189,9 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setStage("complete");
 
-    if (player) {
+    if (playerRef.current) {
       try {
-        player.pause();
+        playerRef.current.pause();
       } catch (e) {}
     }
 
@@ -206,7 +209,18 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
     };
 
     await addSession(session);
-  }, [totalDuration, addSession, player, sessionCompleted]);
+  }, [totalDuration, addSession, sessionCompleted]);
+
+  useEffect(() => {
+    return () => {
+      if (playerRef.current) {
+        try {
+          playerRef.current.pause();
+          playerRef.current.release();
+        } catch (e) {}
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (stage !== "meditating" || sessionCompleted) return;
@@ -260,12 +274,12 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
     const newPausedState = !isPaused;
     setIsPaused(newPausedState);
 
-    if (player && meditationType === "personalized" && generatedMeditation) {
+    if (playerRef.current && meditationType === "personalized" && generatedMeditation) {
       try {
         if (newPausedState) {
-          player.pause();
+          playerRef.current.pause();
         } else {
-          player.play();
+          playerRef.current.play();
         }
       } catch (e) {}
     }
@@ -277,9 +291,10 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    if (player) {
+    if (playerRef.current) {
       try {
-        player.pause();
+        playerRef.current.pause();
+        playerRef.current.release();
       } catch (e) {}
     }
     navigation.goBack();
