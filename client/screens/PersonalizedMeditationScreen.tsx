@@ -534,7 +534,7 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
                 { color: meditationType === "personalized" ? "rgba(255,255,255,0.8)" : theme.textSecondary },
               ]}
             >
-              AI-generated audio
+              Just for you
             </ThemedText>
           </Pressable>
 
@@ -572,38 +572,6 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
           </Pressable>
         </View>
 
-        {meditationType === "personalized" ? (
-          <View style={styles.voiceSection}>
-            <ThemedText style={[styles.sectionLabel, { color: theme.textSecondary }]}>
-              Voice
-            </ThemedText>
-            <View style={styles.voiceRow}>
-              {VOICE_OPTIONS.map((voice) => (
-                <Pressable
-                  key={voice.value}
-                  onPress={() => setSelectedVoice(voice.value)}
-                  style={[
-                    styles.voiceChip,
-                    {
-                      backgroundColor: selectedVoice === voice.value ? theme.primary : theme.backgroundDefault,
-                      borderColor: selectedVoice === voice.value ? theme.primary : theme.border,
-                    },
-                  ]}
-                >
-                  <ThemedText
-                    style={[
-                      styles.voiceChipText,
-                      { color: selectedVoice === voice.value ? "#FFFFFF" : theme.text },
-                    ]}
-                  >
-                    {voice.label}
-                  </ThemedText>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        ) : null}
-
         <View style={styles.durationSection}>
           <ThemedText style={[styles.sectionLabel, { color: theme.textSecondary }]}>
             Duration
@@ -627,7 +595,7 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
         >
           <Feather name="play" size={20} color="#FFFFFF" />
           <ThemedText style={styles.startButtonText}>
-            {meditationType === "personalized" ? "Generate & Start" : "Start Meditation"}
+            Start Meditation
           </ThemedText>
         </Pressable>
 
