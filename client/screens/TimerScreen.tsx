@@ -57,25 +57,8 @@ export default function TimerScreen() {
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.section}>
-          <ThemedText type="h3" style={styles.sectionTitle}>
-            Select Duration
-          </ThemedText>
-          <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Earn 10 grains of rice for every minute you meditate
-          </ThemedText>
-          
-          <View style={styles.chipGrid}>
-            {DURATION_OPTIONS.map((option) => (
-              <DurationChip
-                key={option.seconds}
-                label={option.label}
-                durationSeconds={option.seconds}
-                isSelected={selectedDuration === option.seconds}
-                onPress={setSelectedDuration}
-              />
-            ))}
-          </View>
+        <View style={styles.liveSection}>
+          <LiveCounter />
         </View>
 
         <View style={styles.section}>
@@ -99,8 +82,25 @@ export default function TimerScreen() {
           </View>
         </View>
 
-        <View style={styles.liveSection}>
-          <LiveCounter />
+        <View style={styles.durationSection}>
+          <ThemedText type="h3" style={styles.sectionTitle}>
+            Select Duration
+          </ThemedText>
+          <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Earn 10 grains of rice for every minute you meditate
+          </ThemedText>
+          
+          <View style={styles.chipGrid}>
+            {DURATION_OPTIONS.map((option) => (
+              <DurationChip
+                key={option.seconds}
+                label={option.label}
+                durationSeconds={option.seconds}
+                isSelected={selectedDuration === option.seconds}
+                onPress={setSelectedDuration}
+              />
+            ))}
+          </View>
         </View>
       </ScrollView>
 
@@ -147,7 +147,10 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   liveSection: {
-    marginTop: Spacing.lg,
+    marginBottom: Spacing["2xl"],
     alignItems: "center",
+  },
+  durationSection: {
+    marginBottom: Spacing.lg,
   },
 });
