@@ -7,7 +7,6 @@ import TimerScreen from "@/screens/TimerScreen";
 import ProgressScreen from "@/screens/ProgressScreen";
 import JournalScreen from "@/screens/JournalScreen";
 import CommunityScreen from "@/screens/CommunityScreen";
-import AboutScreen from "@/screens/AboutScreen";
 import { useTheme } from "@/hooks/useTheme";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { HeaderTitle } from "@/components/HeaderTitle";
@@ -17,7 +16,6 @@ export type MainTabParamList = {
   ProgressTab: undefined;
   JournalTab: undefined;
   CommunityTab: undefined;
-  AboutTab: undefined;
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -90,18 +88,7 @@ export default function MainTabNavigator() {
         component={CommunityScreen}
         options={{
           title: "Community",
-          headerTitle: "Community",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="users" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="AboutTab"
-        component={AboutScreen}
-        options={{
-          title: "About",
-          headerTitle: "Our Mission",
+          headerTitle: "Community & Mission",
           tabBarIcon: ({ color, size }) => (
             <Feather name="heart" size={size} color={color} />
           ),
