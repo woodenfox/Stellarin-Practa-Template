@@ -1,6 +1,5 @@
 import React from "react";
-import { View, ScrollView, StyleSheet, Pressable } from "react-native";
-import * as Haptics from "expo-haptics";
+import { View, ScrollView, StyleSheet } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -11,21 +10,11 @@ import { ThemedText } from "@/components/ThemedText";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { StatCard } from "@/components/StatCard";
 import { LiveCounter } from "@/components/LiveCounter";
+import { DurationPicker } from "@/components/DurationPicker";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing } from "@/constants/theme";
 import { useMeditation } from "@/context/MeditationContext";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
-
-const DURATION_OPTIONS = [
-  { label: "6 sec", seconds: 6 },
-  { label: "1 min", seconds: 60 },
-  { label: "5 min", seconds: 300 },
-  { label: "10 min", seconds: 600 },
-  { label: "15 min", seconds: 900 },
-  { label: "25 min", seconds: 1500 },
-  { label: "45 min", seconds: 2700 },
-  { label: "60 min", seconds: 3600 },
-];
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -90,37 +79,10 @@ export default function TimerScreen() {
             Earn 10 grains of rice for every minute you meditate
           </ThemedText>
           
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.durationRow}
-          >
-            {DURATION_OPTIONS.map((option) => (
-              <Pressable
-                key={option.seconds}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setSelectedDuration(option.seconds);
-                }}
-                style={[
-                  styles.durationChip,
-                  {
-                    backgroundColor: selectedDuration === option.seconds ? theme.primary : theme.backgroundDefault,
-                    borderColor: selectedDuration === option.seconds ? theme.primary : theme.border,
-                  },
-                ]}
-              >
-                <ThemedText
-                  style={[
-                    styles.durationChipLabel,
-                    { color: selectedDuration === option.seconds ? "#FFFFFF" : theme.text },
-                  ]}
-                >
-                  {option.label}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </ScrollView>
+          <DurationPicker
+            selectedDuration={selectedDuration}
+            onSelect={setSelectedDuration}
+          />
         </View>
       </ScrollView>
 
@@ -156,22 +118,6 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     marginBottom: Spacing.lg,
-  },
-  durationRow: {
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.sm,
-  },
-  durationChip: {
-    height: 44,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  durationChipLabel: {
-    fontSize: 14,
-    fontWeight: "600",
   },
   statsRow: {
     flexDirection: "row",
