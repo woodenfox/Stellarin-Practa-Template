@@ -27,7 +27,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const STELLARIS_API_URL = process.env.EXPO_PUBLIC_STELLARIS_API_URL || "https://3d77cd5d-0f42-4969-9e97-483d81ea0de1-00-2r1phugtxs3kj.riker.replit.dev";
+const STELLARIS_API_URL = process.env.EXPO_PUBLIC_STELLARIS_API_URL || "https://stellarin-meditation-backend.replit.app";
 
 const DURATION_OPTIONS = [
   { label: "1 min", seconds: 60 },
