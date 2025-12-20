@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, useWindowDimensions } from "react-native";
+import { StyleSheet, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 
 import { Spacing } from "@/constants/theme";
@@ -11,20 +11,24 @@ export function FooterIllustration() {
   const imageHeight = width * 0.6;
 
   return (
-    <View style={styles.container}>
-      <Image
-        source={footerImage}
-        style={[styles.image, { width: width, height: imageHeight }]}
-        contentFit="cover"
-      />
-    </View>
+    <Image
+      source={footerImage}
+      style={[
+        styles.image,
+        {
+          width: width,
+          height: imageHeight,
+          marginBottom: -Spacing.xl,
+        },
+      ]}
+      contentFit="cover"
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  image: {
     marginTop: Spacing["3xl"],
     marginHorizontal: -Spacing.lg,
   },
-  image: {},
 });
