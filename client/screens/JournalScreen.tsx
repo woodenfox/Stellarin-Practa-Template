@@ -7,7 +7,7 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useAudioPlayer, setAudioModeAsync } from "expo-audio";
+import { useAudioPlayer, setAudioModeAsync, AudioModule } from "expo-audio";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { 
   useSharedValue, 
@@ -294,9 +294,17 @@ export default function JournalScreen() {
     });
   };
 
-  const handleOpenRecording = () => {
+  const handleOpenRecording = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate("Recording");
+    
+    try {
+      const status = await AudioModule.requestRecordingPermissionsAsync();
+      if (status.granted) {
+        navigation.navigate("Recording");
+      }
+    } catch (error) {
+      console.error("Failed to request microphone permission:", error);
+    }
   };
 
   const formatDate = (dateStr: string) => {

@@ -66,7 +66,7 @@ export default function RecordingScreen() {
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
+  const [permissionGranted, setPermissionGranted] = useState<boolean>(true);
 
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRecorder = useAudioRecorder({
@@ -85,7 +85,7 @@ export default function RecordingScreen() {
   const ring3Opacity = useSharedValue(0.1);
 
   useEffect(() => {
-    checkPermission();
+    startRecording();
     return () => {
       cleanup();
     };
