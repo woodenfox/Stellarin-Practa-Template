@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getOrCreateDeviceId } from "@/lib/device-id";
+import { getApiUrl, apiRequest } from "@/lib/query-client";
 
 export interface MeditationSession {
   id: string;
@@ -28,6 +30,8 @@ interface MeditationState {
   selectedDuration: number;
   journalEntries: JournalEntry[];
   isLoading: boolean;
+  globalRice: number;
+  globalMeditators: number;
 }
 
 interface MeditationContextType extends MeditationState {
@@ -39,6 +43,7 @@ interface MeditationContextType extends MeditationState {
   hasJournaledToday: () => boolean;
   getTodayStreak: () => boolean;
   getWeekStreaks: () => { day: string; completed: boolean; isToday: boolean }[];
+  refreshCommunityStats: () => Promise<void>;
 }
 
 const STORAGE_KEYS = {
@@ -51,6 +56,19 @@ const STORAGE_KEYS = {
 
 const MeditationContext = createContext<MeditationContextType | undefined>(undefined);
 
+async function syncRiceToServer(amount: number, source: "meditation" | "journal"): Promise<void> {
+  try {
+    const deviceId = await getOrCreateDeviceId();
+    await apiRequest("POST", "/api/rice/contribute", {
+      anonymousId: deviceId,
+      amount,
+      source,
+    });
+  } catch (error) {
+    console.error("Failed to sync rice to server:", error);
+  }
+}
+
 export function MeditationProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<MeditationState>({
     totalRice: 0,
@@ -60,10 +78,49 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
     selectedDuration: 300,
     journalEntries: [],
     isLoading: true,
+    globalRice: 0,
+    globalMeditators: 0,
   });
+  
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
-    loadData();
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      loadData();
+      initializeDevice();
+    }
+  }, []);
+
+  const initializeDevice = async () => {
+    try {
+      const deviceId = await getOrCreateDeviceId();
+      await apiRequest("POST", "/api/devices/register", { anonymousId: deviceId });
+      await fetchCommunityStats();
+    } catch (error) {
+      console.error("Failed to initialize device:", error);
+    }
+  };
+
+  const fetchCommunityStats = async () => {
+    try {
+      const url = new URL("/api/stats/community", getApiUrl());
+      const response = await fetch(url.toString());
+      if (response.ok) {
+        const data = await response.json();
+        setState((prev) => ({
+          ...prev,
+          globalRice: data.totalRice,
+          globalMeditators: data.totalMeditators,
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to fetch community stats:", error);
+    }
+  };
+
+  const refreshCommunityStats = useCallback(async () => {
+    await fetchCommunityStats();
   }, []);
 
   const loadData = async () => {
@@ -121,6 +178,8 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
         streakDays: newStreakDays,
         challengeProgress: newChallengeProgress,
       }));
+
+      syncRiceToServer(session.riceEarned, "meditation");
     } catch (error) {
       console.error("Failed to save session:", error);
     }
@@ -145,6 +204,10 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
         journalEntries: newEntries,
         totalRice: newTotalRice,
       }));
+      
+      if (riceBonus > 0) {
+        syncRiceToServer(riceBonus, "journal");
+      }
       
       return riceBonus;
     } catch (error) {
@@ -233,6 +296,7 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
         hasJournaledToday,
         getTodayStreak,
         getWeekStreaks,
+        refreshCommunityStats,
       }}
     >
       {children}

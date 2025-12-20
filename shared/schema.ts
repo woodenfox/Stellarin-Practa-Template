@@ -45,6 +45,9 @@ export const insertRiceContributionSchema = createInsertSchema(riceContributions
   anonymousId: true,
   amount: true,
   source: true,
+}).refine((data) => data.amount > 0 && data.amount <= 1000, {
+  message: "Amount must be between 1 and 1000",
+  path: ["amount"],
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

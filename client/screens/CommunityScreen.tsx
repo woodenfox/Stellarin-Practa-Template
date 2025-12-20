@@ -7,7 +7,6 @@ import { Feather } from "@expo/vector-icons";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withRepeat,
   withSequence,
   withTiming,
@@ -17,18 +16,23 @@ import { ThemedText } from "@/components/ThemedText";
 import { FooterIllustration } from "@/components/FooterIllustration";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { useMeditation } from "@/context/MeditationContext";
 
 export default function CommunityScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
+  const { globalRice, globalMeditators, refreshCommunityStats } = useMeditation();
   
   const [liveCount, setLiveCount] = useState(Math.floor(Math.random() * 100) + 150);
   const [totalToday, setTotalToday] = useState(Math.floor(Math.random() * 500) + 1200);
-  const [totalRiceDonated, setTotalRiceDonated] = useState(Math.floor(Math.random() * 50000) + 250000);
 
   const pulseScale = useSharedValue(1);
+
+  useEffect(() => {
+    refreshCommunityStats();
+  }, [refreshCommunityStats]);
 
   useEffect(() => {
     pulseScale.value = withRepeat(
@@ -43,7 +47,6 @@ export default function CommunityScreen() {
     const interval = setInterval(() => {
       setLiveCount((prev) => Math.max(50, prev + Math.floor(Math.random() * 11) - 5));
       setTotalToday((prev) => prev + Math.floor(Math.random() * 3));
-      setTotalRiceDonated((prev) => prev + Math.floor(Math.random() * 50));
     }, 3000);
 
     return () => clearInterval(interval);
@@ -52,6 +55,16 @@ export default function CommunityScreen() {
   const pulseAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulseScale.value }],
   }));
+
+  const formatRiceCount = (count: number) => {
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M`;
+    }
+    if (count >= 1000) {
+      return `${(count / 1000).toFixed(0)}K`;
+    }
+    return count.toString();
+  };
 
   return (
     <ScrollView
@@ -87,18 +100,18 @@ export default function CommunityScreen() {
 
       <View style={styles.statsRow}>
         <View style={[styles.statCard, { backgroundColor: theme.backgroundDefault }]}>
-          <Feather name="sun" size={24} color={theme.accent} />
+          <Feather name="users" size={24} color={theme.accent} />
           <ThemedText style={[styles.statNumber, { color: theme.text }]}>
-            {totalToday.toLocaleString()}
+            {globalMeditators > 0 ? globalMeditators.toLocaleString() : totalToday.toLocaleString()}
           </ThemedText>
           <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
-            Sessions Today
+            {globalMeditators > 0 ? "Total Meditators" : "Sessions Today"}
           </ThemedText>
         </View>
         <View style={[styles.statCard, { backgroundColor: theme.backgroundDefault }]}>
           <Feather name="droplet" size={24} color={theme.primary} />
           <ThemedText style={[styles.statNumber, { color: theme.text }]}>
-            {(totalRiceDonated / 1000).toFixed(0)}K
+            {formatRiceCount(globalRice)}
           </ThemedText>
           <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
             Rice Donated

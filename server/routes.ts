@@ -25,7 +25,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const parsed = insertRiceContributionSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid contribution data" });
+        return res.status(400).json({ 
+          error: "Invalid contribution data",
+          details: parsed.error.errors 
+        });
       }
       const contribution = await storage.addRiceContribution(parsed.data);
       res.json(contribution);
