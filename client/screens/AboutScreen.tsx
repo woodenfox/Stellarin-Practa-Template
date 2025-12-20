@@ -5,6 +5,7 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
+import { FooterIllustration } from "@/components/FooterIllustration";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
@@ -232,6 +233,8 @@ export default function AboutScreen() {
           </View>
         </View>
       </View>
+
+      <FooterIllustration />
     </ScrollView>
   );
 }

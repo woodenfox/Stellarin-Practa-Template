@@ -13,6 +13,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
+import { FooterIllustration } from "@/components/FooterIllustration";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
@@ -150,6 +151,8 @@ export default function CommunityScreen() {
           </View>
         </View>
       </View>
+
+      <FooterIllustration />
     </ScrollView>
   );
 }

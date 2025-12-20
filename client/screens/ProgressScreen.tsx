@@ -7,6 +7,7 @@ import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { StreakCalendar } from "@/components/StreakCalendar";
 import { ChallengeCard } from "@/components/ChallengeCard";
+import { FooterIllustration } from "@/components/FooterIllustration";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useMeditation } from "@/context/MeditationContext";
@@ -86,6 +87,8 @@ export default function ProgressScreen() {
           </View>
         </View>
       </View>
+
+      <FooterIllustration />
     </ScrollView>
   );
 }
