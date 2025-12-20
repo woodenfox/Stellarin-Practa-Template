@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { View, StyleSheet, Pressable, ActivityIndicator, Platform } from "react-native";
+import { View, StyleSheet, Pressable, ActivityIndicator, Platform, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -576,7 +576,11 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
           <ThemedText style={[styles.sectionLabel, { color: theme.textSecondary }]}>
             Duration
           </ThemedText>
-          <View style={styles.durationRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.durationRow}
+          >
             {DURATION_OPTIONS.map((option) => (
               <DurationChip
                 key={option.seconds}
@@ -586,7 +590,7 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
                 onPress={setLocalDuration}
               />
             ))}
-          </View>
+          </ScrollView>
         </View>
 
         <Pressable
@@ -711,9 +715,8 @@ const styles = StyleSheet.create({
   },
   durationRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
     gap: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
   },
   startButton: {
     flexDirection: "row",

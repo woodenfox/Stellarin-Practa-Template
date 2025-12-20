@@ -77,17 +77,15 @@ export function DurationChip({ label, durationSeconds, isSelected, onPress }: Du
 
 const styles = StyleSheet.create({
   chip: {
-    flex: 1,
-    minWidth: "45%",
-    height: 56,
-    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.full,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-    margin: Spacing.xs,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
   },
 });
