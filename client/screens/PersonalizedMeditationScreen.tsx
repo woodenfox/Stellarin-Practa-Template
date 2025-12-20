@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { View, StyleSheet, Pressable, ActivityIndicator, Platform, ScrollView } from "react-native";
+import { View, StyleSheet, Pressable, ActivityIndicator, Platform, ScrollView, FlatList, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -30,11 +30,21 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const STELLARIS_API_URL = process.env.EXPO_PUBLIC_STELLARIS_API_URL || "https://stellarin-meditation-backend.replit.app";
 
 const DURATION_OPTIONS = [
+  { label: "6 sec", seconds: 6 },
+  { label: "30 sec", seconds: 30 },
   { label: "1 min", seconds: 60 },
+  { label: "2 min", seconds: 120 },
   { label: "3 min", seconds: 180 },
   { label: "5 min", seconds: 300 },
   { label: "10 min", seconds: 600 },
+  { label: "15 min", seconds: 900 },
+  { label: "20 min", seconds: 1200 },
+  { label: "30 min", seconds: 1800 },
+  { label: "45 min", seconds: 2700 },
+  { label: "60 min", seconds: 3600 },
 ];
+
+const CIRCULAR_MULTIPLIER = 3;
 
 const VOICE_OPTIONS = [
   { value: "nova", label: "Nova" },
@@ -49,6 +59,116 @@ interface GeneratedMeditation {
   name: string;
   description: string;
 }
+
+interface CircularDurationPickerProps {
+  selectedDuration: number;
+  onSelect: (duration: number) => void;
+  theme: any;
+}
+
+function CircularDurationPicker({ selectedDuration, onSelect, theme }: CircularDurationPickerProps) {
+  const flatListRef = useRef<FlatList>(null);
+  const itemCount = DURATION_OPTIONS.length;
+  const circularData = useMemo(() => {
+    const data: Array<{ label: string; seconds: number; index: number }> = [];
+    for (let i = 0; i < CIRCULAR_MULTIPLIER; i++) {
+      DURATION_OPTIONS.forEach((option, idx) => {
+        data.push({ ...option, index: i * itemCount + idx });
+      });
+    }
+    return data;
+  }, []);
+
+  const initialIndex = useMemo(() => {
+    const selectedIdx = DURATION_OPTIONS.findIndex(opt => opt.seconds === selectedDuration);
+    return itemCount + (selectedIdx >= 0 ? selectedIdx : 4);
+  }, [selectedDuration]);
+
+  const handleScrollEnd = useCallback((event: any) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const itemWidth = 90;
+    const totalWidth = itemCount * itemWidth;
+    
+    if (offsetX < totalWidth * 0.3) {
+      flatListRef.current?.scrollToOffset({
+        offset: offsetX + totalWidth,
+        animated: false,
+      });
+    } else if (offsetX > totalWidth * 1.7) {
+      flatListRef.current?.scrollToOffset({
+        offset: offsetX - totalWidth,
+        animated: false,
+      });
+    }
+  }, [itemCount]);
+
+  const handleSelect = useCallback((seconds: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onSelect(seconds);
+  }, [onSelect]);
+
+  const renderItem = useCallback(({ item }: { item: { label: string; seconds: number; index: number } }) => (
+    <Pressable
+      onPress={() => handleSelect(item.seconds)}
+      style={[
+        circularStyles.chip,
+        {
+          backgroundColor: selectedDuration === item.seconds ? theme.primary : theme.backgroundDefault,
+          borderColor: selectedDuration === item.seconds ? theme.primary : theme.border,
+        },
+      ]}
+    >
+      <ThemedText
+        style={[
+          circularStyles.chipLabel,
+          { color: selectedDuration === item.seconds ? "#FFFFFF" : theme.text },
+        ]}
+      >
+        {item.label}
+      </ThemedText>
+    </Pressable>
+  ), [selectedDuration, theme, handleSelect]);
+
+  return (
+    <FlatList
+      ref={flatListRef}
+      data={circularData}
+      renderItem={renderItem}
+      keyExtractor={(item) => `${item.index}`}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={circularStyles.container}
+      initialScrollIndex={initialIndex}
+      getItemLayout={(_, index) => ({
+        length: 90,
+        offset: 90 * index,
+        index,
+      })}
+      onMomentumScrollEnd={handleScrollEnd}
+      snapToInterval={90}
+      decelerationRate="fast"
+    />
+  );
+}
+
+const circularStyles = StyleSheet.create({
+  container: {
+    paddingHorizontal: Spacing.md,
+  },
+  chip: {
+    height: 44,
+    width: 82,
+    marginHorizontal: 4,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chipLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+});
 
 export default function PersonalizedMeditationScreen() {
   useKeepAwake();
@@ -582,21 +702,11 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
           <ThemedText style={[styles.sectionLabel, { color: theme.textSecondary }]}>
             Duration
           </ThemedText>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.durationRow}
-          >
-            {DURATION_OPTIONS.map((option) => (
-              <DurationChip
-                key={option.seconds}
-                label={option.label}
-                durationSeconds={option.seconds}
-                isSelected={localDuration === option.seconds}
-                onPress={setLocalDuration}
-              />
-            ))}
-          </ScrollView>
+          <CircularDurationPicker
+            selectedDuration={localDuration}
+            onSelect={setLocalDuration}
+            theme={theme}
+          />
         </View>
 
         <Pressable
