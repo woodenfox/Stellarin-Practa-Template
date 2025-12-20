@@ -35,6 +35,7 @@ interface MeditationContextType extends MeditationState {
   addSession: (session: MeditationSession) => Promise<void>;
   addJournalEntry: (entry: JournalEntry) => Promise<number>;
   updateJournalEntry: (id: string, updates: Partial<JournalEntry>) => Promise<void>;
+  deleteJournalEntry: (id: string) => Promise<void>;
   hasJournaledToday: () => boolean;
   getTodayStreak: () => boolean;
   getWeekStreaks: () => { day: string; completed: boolean; isToday: boolean }[];
@@ -172,6 +173,24 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
     }
   }, []);
 
+  const deleteJournalEntry = useCallback(async (id: string) => {
+    try {
+      const storedEntries = await AsyncStorage.getItem(STORAGE_KEYS.JOURNAL_ENTRIES);
+      const currentEntries: JournalEntry[] = storedEntries ? JSON.parse(storedEntries) : [];
+      
+      const newEntries = currentEntries.filter(entry => entry.id !== id);
+
+      await AsyncStorage.setItem(STORAGE_KEYS.JOURNAL_ENTRIES, JSON.stringify(newEntries));
+
+      setState((prev) => ({
+        ...prev,
+        journalEntries: newEntries,
+      }));
+    } catch (error) {
+      console.error("Failed to delete journal entry:", error);
+    }
+  }, []);
+
   const hasJournaledToday = useCallback(() => {
     const today = new Date().toISOString().split("T")[0];
     return state.journalEntries.some(e => e.date === today);
@@ -210,6 +229,7 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
         addSession,
         addJournalEntry,
         updateJournalEntry,
+        deleteJournalEntry,
         hasJournaledToday,
         getTodayStreak,
         getWeekStreaks,

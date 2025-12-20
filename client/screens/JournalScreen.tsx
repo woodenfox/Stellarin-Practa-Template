@@ -8,6 +8,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useAudioPlayer, setAudioModeAsync } from "expo-audio";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring, 
+  runOnJS,
+  interpolate,
+  Extrapolation,
+} from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -124,6 +133,113 @@ function AudioEntryPlayer({ entry, isPlaying, onPlay, onStop }: AudioEntryPlayer
   );
 }
 
+const DELETE_THRESHOLD = -80;
+
+interface SwipeableJournalEntryProps {
+  entry: JournalEntry;
+  onDelete: (id: string) => void;
+  isPlaying: boolean;
+  onPlay: (id: string) => void;
+  onStop: () => void;
+  formatDate: (dateStr: string) => string;
+  formatTime: (dateStr: string) => string;
+}
+
+function SwipeableJournalEntry({ 
+  entry, 
+  onDelete, 
+  isPlaying, 
+  onPlay, 
+  onStop,
+  formatDate,
+  formatTime,
+}: SwipeableJournalEntryProps) {
+  const { theme } = useTheme();
+  const translateX = useSharedValue(0);
+
+  const triggerDelete = useCallback(() => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onDelete(entry.id);
+  }, [entry.id, onDelete]);
+
+  const panGesture = Gesture.Pan()
+    .activeOffsetX([-10, 10])
+    .onUpdate((event) => {
+      const translation = Math.min(0, event.translationX);
+      translateX.value = translation;
+    })
+    .onEnd((event) => {
+      if (translateX.value < DELETE_THRESHOLD) {
+        runOnJS(triggerDelete)();
+        translateX.value = withSpring(-300);
+      } else {
+        translateX.value = withSpring(0);
+      }
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  const deleteBackgroundStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      translateX.value,
+      [0, DELETE_THRESHOLD],
+      [0, 1],
+      Extrapolation.CLAMP
+    ),
+  }));
+
+  return (
+    <View style={styles.swipeableContainer}>
+      <Animated.View 
+        style={[
+          styles.deleteBackground, 
+          { backgroundColor: "#FF3B30" },
+          deleteBackgroundStyle,
+        ]}
+      >
+        <Feather name="trash-2" size={24} color="#FFFFFF" />
+      </Animated.View>
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={animatedStyle}>
+          <ThemedView 
+            style={[styles.historyCard, { backgroundColor: theme.backgroundDefault }]}
+          >
+            <View style={styles.entryHeader}>
+              <View style={styles.entryTypeIndicator}>
+                <Feather 
+                  name={entry.type === "audio" ? "mic" : "edit-3"} 
+                  size={14} 
+                  color={theme.textSecondary} 
+                />
+                <ThemedText style={[styles.historyDate, { color: theme.textSecondary }]}>
+                  {formatDate(entry.date)}
+                </ThemedText>
+              </View>
+              <ThemedText style={[styles.entryTime, { color: theme.textSecondary }]}>
+                {formatTime(entry.createdAt)}
+              </ThemedText>
+            </View>
+            {entry.type === "audio" ? (
+              <AudioEntryPlayer 
+                entry={entry} 
+                isPlaying={isPlaying}
+                onPlay={onPlay}
+                onStop={onStop}
+              />
+            ) : (
+              <ThemedText style={styles.historyContent}>
+                {entry.content}
+              </ThemedText>
+            )}
+          </ThemedView>
+        </Animated.View>
+      </GestureDetector>
+    </View>
+  );
+}
+
 const DURATION_OPTIONS = [
   { label: "1 min", seconds: 60 },
   { label: "5 min", seconds: 300 },
@@ -143,6 +259,7 @@ export default function JournalScreen() {
   const { 
     journalEntries, 
     addJournalEntry, 
+    deleteJournalEntry,
     hasJournaledToday,
     setSelectedDuration 
   } = useMeditation();
@@ -161,6 +278,10 @@ export default function JournalScreen() {
   const handleStopAudio = useCallback(() => {
     setPlayingEntryId(null);
   }, []);
+
+  const handleDeleteEntry = useCallback((id: string) => {
+    deleteJournalEntry(id);
+  }, [deleteJournalEntry]);
 
   const handleSaveJournal = async () => {
     if (!journalText.trim()) return;
@@ -224,37 +345,15 @@ export default function JournalScreen() {
   };
 
   const renderEntry = ({ item }: { item: JournalEntry }) => (
-    <ThemedView 
-      style={[styles.historyCard, { backgroundColor: theme.backgroundDefault }]}
-    >
-      <View style={styles.entryHeader}>
-        <View style={styles.entryTypeIndicator}>
-          <Feather 
-            name={item.type === "audio" ? "mic" : "edit-3"} 
-            size={14} 
-            color={theme.textSecondary} 
-          />
-          <ThemedText style={[styles.historyDate, { color: theme.textSecondary }]}>
-            {formatDate(item.date)}
-          </ThemedText>
-        </View>
-        <ThemedText style={[styles.entryTime, { color: theme.textSecondary }]}>
-          {formatTime(item.createdAt)}
-        </ThemedText>
-      </View>
-      {item.type === "audio" ? (
-        <AudioEntryPlayer 
-          entry={item} 
-          isPlaying={playingEntryId === item.id}
-          onPlay={handlePlayAudio}
-          onStop={handleStopAudio}
-        />
-      ) : (
-        <ThemedText style={styles.historyContent}>
-          {item.content}
-        </ThemedText>
-      )}
-    </ThemedView>
+    <SwipeableJournalEntry
+      entry={item}
+      onDelete={handleDeleteEntry}
+      isPlaying={playingEntryId === item.id}
+      onPlay={handlePlayAudio}
+      onStop={handleStopAudio}
+      formatDate={formatDate}
+      formatTime={formatTime}
+    />
   );
 
   if (showMeditationPrompt) {
@@ -537,7 +636,6 @@ const styles = StyleSheet.create({
   historyCard: {
     padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.md,
   },
   entryHeader: {
     flexDirection: "row",
@@ -739,5 +837,22 @@ const styles = StyleSheet.create({
     fontSize: Typography.body.fontSize,
     lineHeight: 22,
     marginTop: Spacing.sm,
+  },
+  swipeableContainer: {
+    marginBottom: Spacing.md,
+    position: "relative",
+    overflow: "hidden",
+    borderRadius: BorderRadius.lg,
+  },
+  deleteBackground: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 80,
+    alignItems: "center",
+    justifyContent: "center",
+    borderTopRightRadius: BorderRadius.lg,
+    borderBottomRightRadius: BorderRadius.lg,
   },
 });
