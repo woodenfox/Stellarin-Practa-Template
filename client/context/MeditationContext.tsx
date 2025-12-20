@@ -29,7 +29,7 @@ interface MeditationState {
 interface MeditationContextType extends MeditationState {
   setSelectedDuration: (duration: number) => void;
   addSession: (session: MeditationSession) => Promise<void>;
-  addJournalEntry: (entry: JournalEntry) => Promise<void>;
+  addJournalEntry: (entry: JournalEntry) => Promise<number>;
   getTodayJournalEntry: () => JournalEntry | undefined;
   getTodayStreak: () => boolean;
   getWeekStreaks: () => { day: string; completed: boolean; isToday: boolean }[];
@@ -124,24 +124,35 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
     try {
       const existingIndex = state.journalEntries.findIndex(e => e.date === entry.date);
       let newEntries: JournalEntry[];
+      let riceBonus = 0;
       
       if (existingIndex >= 0) {
         newEntries = [...state.journalEntries];
         newEntries[existingIndex] = entry;
       } else {
         newEntries = [entry, ...state.journalEntries];
+        riceBonus = 10;
       }
 
-      await AsyncStorage.setItem(STORAGE_KEYS.JOURNAL_ENTRIES, JSON.stringify(newEntries));
+      const newTotalRice = state.totalRice + riceBonus;
+
+      await Promise.all([
+        AsyncStorage.setItem(STORAGE_KEYS.JOURNAL_ENTRIES, JSON.stringify(newEntries)),
+        ...(riceBonus > 0 ? [AsyncStorage.setItem(STORAGE_KEYS.TOTAL_RICE, newTotalRice.toString())] : []),
+      ]);
 
       setState((prev) => ({
         ...prev,
         journalEntries: newEntries,
+        totalRice: newTotalRice,
       }));
+      
+      return riceBonus;
     } catch (error) {
       console.error("Failed to save journal entry:", error);
+      return 0;
     }
-  }, [state.journalEntries]);
+  }, [state.journalEntries, state.totalRice]);
 
   const getTodayJournalEntry = useCallback(() => {
     const today = new Date().toISOString().split("T")[0];

@@ -44,6 +44,7 @@ export default function JournalScreen() {
   const [journalText, setJournalText] = useState("");
   const [showMeditationPrompt, setShowMeditationPrompt] = useState(false);
   const [localDuration, setLocalDuration] = useState(300);
+  const [riceEarned, setRiceEarned] = useState(0);
 
   const todayEntry = getTodayJournalEntry();
 
@@ -66,7 +67,8 @@ export default function JournalScreen() {
       createdAt: todayEntry?.createdAt || new Date().toISOString(),
     };
 
-    await addJournalEntry(entry);
+    const bonus = await addJournalEntry(entry);
+    setRiceEarned(bonus);
     setShowMeditationPrompt(true);
   };
 
@@ -126,6 +128,14 @@ export default function JournalScreen() {
           <View style={[styles.promptIcon, { backgroundColor: theme.primary + "20" }]}>
             <Feather name="sun" size={48} color={theme.primary} />
           </View>
+
+          {riceEarned > 0 ? (
+            <View style={[styles.riceEarnedBadge, { backgroundColor: theme.accent + "20" }]}>
+              <ThemedText style={[styles.riceEarnedText, { color: theme.accent }]}>
+                +{riceEarned} rice earned for journaling today
+              </ThemedText>
+            </View>
+          ) : null}
           
           <ThemedText type="h2" style={styles.promptTitle}>
             Do you have a moment to meditate?
@@ -318,7 +328,17 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: Spacing.lg,
+  },
+  riceEarnedBadge: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.full,
     marginBottom: Spacing.xl,
+  },
+  riceEarnedText: {
+    fontWeight: "600",
+    fontSize: Typography.small.fontSize,
   },
   promptTitle: {
     textAlign: "center",
