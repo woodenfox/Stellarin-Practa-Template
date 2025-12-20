@@ -1,0 +1,85 @@
+# Meditation Audio Generator API
+
+Base URL: https://stellarin-meditation-backend.replit.app
+
+## Generate Meditation Audio
+
+**POST** `/api/orchestrate`
+
+Generate a personalized meditation audio from a natural language prompt. This endpoint handles the entire flow: recommending a template, generating personalized content, and creating the audio.
+
+### Request Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| prompt | string | Yes | Description of the meditation you want (e.g., "A calming 5-minute meditation for stress relief") |
+| voice | string | No | Voice to use: nova (default), alloy, echo, fable, onyx, shimmer, coral, sage |
+| background_music_enabled | boolean | No | Include ambient background music (default: true) |
+| duration_seconds | integer | No | Explicit duration in seconds. If omitted, duration is inferred from the prompt. |
+
+### Example Request
+```json
+{
+  "prompt": "A calming 3-minute meditation to help me relax before bed",
+  "voice": "nova",
+  "background_music_enabled": true,
+  "duration_seconds": 180
+}
+```
+
+### Example cURL
+```bash
+curl -X POST https://stellarin-meditation-backend.replit.app/api/orchestrate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Help me focus for a busy workday",
+    "voice": "sage",
+    "background_music_enabled": true
+  }'
+```
+
+### Success Response
+```json
+{
+  "status": "success",
+  "url": "/api/audio/abc123-uuid",
+  "meditation_id": "med_xyz789",
+  "duration_seconds": 180,
+  "json_data": {
+    "name": "Focus Meditation",
+    "description": "A meditation to sharpen your mind...",
+    "tags": [
+      "focus",
+      "clarity",
+      "productivity"
+    ],
+    "prompts": [
+      {
+        "prompt": "Welcome. Take a deep breath...",
+        "silence_after_seconds": 3
+      }
+    ]
+  }
+}
+```
+
+### Error Response
+```json
+{
+  "error": "Audio generation failed",
+  "details": "Error message here"
+}
+```
+
+## Available Voices
+
+| Voice | Description |
+|-------|-------------|
+| nova | Female, warm and friendly |
+| alloy | Neutral, balanced tone |
+| echo | Male, clear and articulate |
+| fable | Expressive, storytelling style |
+| onyx | Deep male, authoritative |
+| shimmer | Soft female, gentle |
+| coral | Warm, approachable |
+| sage | Calm, composed |

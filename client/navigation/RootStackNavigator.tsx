@@ -4,6 +4,7 @@ import MainTabNavigator from "@/navigation/MainTabNavigator";
 import SessionScreen from "@/screens/SessionScreen";
 import RecordingScreen from "@/screens/RecordingScreen";
 import FAQScreen from "@/screens/FAQScreen";
+import PersonalizedMeditationScreen from "@/screens/PersonalizedMeditationScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type RootStackParamList = {
@@ -11,6 +12,7 @@ export type RootStackParamList = {
   Session: { duration: number };
   Recording: undefined;
   FAQ: undefined;
+  PersonalizedMeditation: { journalContent: string; riceEarned: number };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -49,6 +51,15 @@ export default function RootStackNavigator() {
         options={{
           presentation: "modal",
           headerTitle: "Frequently Asked Questions",
+        }}
+      />
+      <Stack.Screen
+        name="PersonalizedMeditation"
+        component={PersonalizedMeditationScreen}
+        options={{
+          presentation: "fullScreenModal",
+          headerShown: false,
+          animation: "fade",
         }}
       />
     </Stack.Navigator>

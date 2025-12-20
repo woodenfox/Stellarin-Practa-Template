@@ -21,7 +21,6 @@ import Animated, {
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
-import { DurationChip } from "@/components/DurationChip";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { useMeditation, JournalEntry } from "@/context/MeditationContext";
@@ -240,13 +239,6 @@ function SwipeableJournalEntry({
   );
 }
 
-const DURATION_OPTIONS = [
-  { label: "1 min", seconds: 60 },
-  { label: "5 min", seconds: 300 },
-  { label: "10 min", seconds: 600 },
-  { label: "15 min", seconds: 900 },
-];
-
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function JournalScreen() {
@@ -260,14 +252,10 @@ export default function JournalScreen() {
     journalEntries, 
     addJournalEntry, 
     deleteJournalEntry,
-    hasJournaledToday,
-    setSelectedDuration 
+    hasJournaledToday
   } = useMeditation();
 
   const [journalText, setJournalText] = useState("");
-  const [showMeditationPrompt, setShowMeditationPrompt] = useState(false);
-  const [localDuration, setLocalDuration] = useState(300);
-  const [riceEarned, setRiceEarned] = useState(0);
   const [entryMode, setEntryMode] = useState<"text" | "audio">("text");
   const [playingEntryId, setPlayingEntryId] = useState<string | null>(null);
 
@@ -288,36 +276,27 @@ export default function JournalScreen() {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
+    const journalContent = journalText.trim();
     const today = new Date().toISOString().split("T")[0];
     const entry: JournalEntry = {
       id: Date.now().toString(),
       date: today,
-      content: journalText.trim(),
+      content: journalContent,
       createdAt: new Date().toISOString(),
       type: "text",
     };
 
     const bonus = await addJournalEntry(entry);
-    setRiceEarned(bonus);
     setJournalText("");
-    setShowMeditationPrompt(true);
+    navigation.navigate("PersonalizedMeditation", { 
+      journalContent, 
+      riceEarned: bonus 
+    });
   };
 
   const handleOpenRecording = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate("Recording");
-  };
-
-  const handleStartMeditation = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setSelectedDuration(localDuration);
-    setShowMeditationPrompt(false);
-    navigation.navigate("Session", { duration: localDuration });
-  };
-
-  const handleSkipMeditation = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowMeditationPrompt(false);
   };
 
   const formatDate = (dateStr: string) => {
@@ -355,72 +334,6 @@ export default function JournalScreen() {
       formatTime={formatTime}
     />
   );
-
-  if (showMeditationPrompt) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-        <View 
-          style={[
-            styles.promptContainer, 
-            { paddingTop: headerHeight + Spacing["3xl"] }
-          ]}
-        >
-          <View style={[styles.promptIcon, { backgroundColor: theme.primary + "20" }]}>
-            <Feather name="sun" size={48} color={theme.primary} />
-          </View>
-
-          {riceEarned > 0 ? (
-            <View style={[styles.riceEarnedBadge, { backgroundColor: theme.accent + "20" }]}>
-              <ThemedText style={[styles.riceEarnedText, { color: theme.accent }]}>
-                +{riceEarned} rice earned for journaling today
-              </ThemedText>
-            </View>
-          ) : null}
-          
-          <ThemedText type="h2" style={styles.promptTitle}>
-            Do you have a moment to meditate?
-          </ThemedText>
-          
-          <ThemedText style={[styles.promptSubtitle, { color: theme.textSecondary }]}>
-            A short meditation can help clear your mind
-          </ThemedText>
-
-          <View style={styles.durationSection}>
-            <ThemedText type="body" style={styles.durationLabel}>
-              Choose a duration
-            </ThemedText>
-            <View style={styles.durationRow}>
-              {DURATION_OPTIONS.map((option) => (
-                <DurationChip
-                  key={option.seconds}
-                  label={option.label}
-                  durationSeconds={option.seconds}
-                  isSelected={localDuration === option.seconds}
-                  onPress={setLocalDuration}
-                />
-              ))}
-            </View>
-          </View>
-
-          <Pressable
-            onPress={handleStartMeditation}
-            style={[styles.meditateButton, { backgroundColor: theme.primary }]}
-          >
-            <Feather name="play" size={20} color="#FFFFFF" />
-            <ThemedText style={styles.meditateButtonText}>
-              Start Meditation
-            </ThemedText>
-          </Pressable>
-
-          <Pressable onPress={handleSkipMeditation} style={styles.skipButton}>
-            <ThemedText style={[styles.skipButtonText, { color: theme.textSecondary }]}>
-              Maybe later
-            </ThemedText>
-          </Pressable>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>

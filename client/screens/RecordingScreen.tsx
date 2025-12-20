@@ -241,8 +241,7 @@ export default function RecordingScreen() {
         transcription: audioBase64 ? "Transcribing..." : "",
       };
 
-      await addJournalEntry(entry);
-      navigation.goBack();
+      const bonus = await addJournalEntry(entry);
 
       if (audioBase64) {
         transcribeAudioBase64(audioBase64).then((transcription) => {
@@ -253,6 +252,11 @@ export default function RecordingScreen() {
           }
         });
       }
+
+      navigation.navigate("PersonalizedMeditation", {
+        journalContent: "I recorded a voice journal entry reflecting on my thoughts and feelings.",
+        riceEarned: bonus,
+      });
     } catch (error) {
       console.error("Failed to stop recording:", error);
       navigation.goBack();
