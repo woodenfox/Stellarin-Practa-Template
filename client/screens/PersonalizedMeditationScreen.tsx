@@ -101,6 +101,9 @@ export default function PersonalizedMeditationScreen() {
     setStage("generating");
     setError(null);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
+
     try {
       const prompt = `Based on this journal reflection: "${journalContent.slice(0, 500)}"
 
@@ -117,7 +120,10 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
           background_music_enabled: true,
           duration_seconds: localDuration,
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error("Failed to generate meditation");
