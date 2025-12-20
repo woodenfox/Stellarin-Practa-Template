@@ -6,6 +6,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useKeepAwake } from "expo-keep-awake";
+import { createAudioPlayer, setAudioModeAsync, AudioPlayer } from "expo-audio";
 import Animated, {
   useSharedValue,
   withTiming,
@@ -27,6 +28,8 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+const GONG_SOUND_URL = "https://www.orangefreesounds.com/wp-content/uploads/2015/07/Gong-sound-effect.mp3";
+
 export default function SessionScreen() {
   useKeepAwake();
   
@@ -46,6 +49,25 @@ export default function SessionScreen() {
   const pauseScale = useSharedValue(1);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastMinuteRef = useRef(0);
+  const gongPlayerRef = useRef<AudioPlayer | null>(null);
+
+  const playGong = useCallback(async () => {
+    try {
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: false,
+      });
+      
+      if (gongPlayerRef.current) {
+        gongPlayerRef.current.release();
+      }
+      
+      gongPlayerRef.current = createAudioPlayer({ uri: GONG_SOUND_URL });
+      gongPlayerRef.current.play();
+    } catch (err) {
+      console.error("Failed to play gong:", err);
+    }
+  }, []);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -56,6 +78,7 @@ export default function SessionScreen() {
   const handleComplete = useCallback(async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsComplete(true);
+    playGong();
 
     const session = {
       id: Date.now().toString(),
@@ -66,7 +89,19 @@ export default function SessionScreen() {
     };
 
     await addSession(session);
-  }, [duration, addSession]);
+  }, [duration, addSession, playGong]);
+
+  useEffect(() => {
+    playGong();
+    
+    return () => {
+      if (gongPlayerRef.current) {
+        try {
+          gongPlayerRef.current.release();
+        } catch (e) {}
+      }
+    };
+  }, [playGong]);
 
   useEffect(() => {
     progress.value = withTiming(1, {
