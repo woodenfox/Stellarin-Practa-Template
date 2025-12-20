@@ -32,6 +32,17 @@ const NUM_RINGS = 3;
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+async function waitForFile(uri: string, maxAttempts = 10, delayMs = 100): Promise<boolean> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const info = await FileSystem.getInfoAsync(uri);
+    if (info.exists) {
+      return true;
+    }
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+  }
+  return false;
+}
+
 async function transcribeAudioBase64(audioBase64: string): Promise<string | null> {
   try {
     const response = await apiRequest("POST", "/api/transcribe", {
@@ -135,6 +146,8 @@ export default function RecordingScreen() {
         allowsRecording: true,
       });
 
+      await audioRecorder.prepareToRecordAsync();
+
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setIsRecording(true);
       setRecordingDuration(0);
@@ -178,6 +191,13 @@ export default function RecordingScreen() {
 
       const tempUri = audioRecorder.uri;
       if (!tempUri) {
+        navigation.goBack();
+        return;
+      }
+
+      const fileExists = await waitForFile(tempUri, 20, 100);
+      if (!fileExists) {
+        console.error("Recording file not found after waiting");
         navigation.goBack();
         return;
       }
