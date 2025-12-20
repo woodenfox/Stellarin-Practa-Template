@@ -30,17 +30,51 @@ interface DurationPickerProps {
 const ITEM_WIDTH = 82;
 const ITEM_MARGIN = 4;
 const TOTAL_ITEM_WIDTH = ITEM_WIDTH + ITEM_MARGIN * 2;
+const CIRCULAR_MULTIPLIER = 3;
 
 export function DurationPicker({ selectedDuration, onSelect }: DurationPickerProps) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const flatListRef = useRef<FlatList>(null);
+  const itemCount = DURATION_OPTIONS.length;
+
+  const circularData = useMemo(() => {
+    const data: Array<{ label: string; seconds: number; index: number }> = [];
+    for (let i = 0; i < CIRCULAR_MULTIPLIER; i++) {
+      DURATION_OPTIONS.forEach((option, idx) => {
+        data.push({ ...option, index: i * itemCount + idx });
+      });
+    }
+    return data;
+  }, [itemCount]);
+
+  const initialIndex = useMemo(() => {
+    const selectedIdx = DURATION_OPTIONS.findIndex(opt => opt.seconds === selectedDuration);
+    return itemCount + (selectedIdx >= 0 ? selectedIdx : 4);
+  }, [selectedDuration, itemCount]);
+
+  const handleScrollEnd = useCallback((event: any) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const totalWidth = itemCount * TOTAL_ITEM_WIDTH;
+    
+    if (offsetX < totalWidth * 0.3) {
+      flatListRef.current?.scrollToOffset({
+        offset: offsetX + totalWidth,
+        animated: false,
+      });
+    } else if (offsetX > totalWidth * 1.7) {
+      flatListRef.current?.scrollToOffset({
+        offset: offsetX - totalWidth,
+        animated: false,
+      });
+    }
+  }, [itemCount]);
 
   const handleSelect = useCallback((seconds: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onSelect(seconds);
   }, [onSelect]);
 
-  const renderItem = useCallback(({ item }: { item: { label: string; seconds: number } }) => (
+  const renderItem = useCallback(({ item }: { item: { label: string; seconds: number; index: number } }) => (
     <Pressable
       onPress={() => handleSelect(item.seconds)}
       style={[
@@ -62,37 +96,36 @@ export function DurationPicker({ selectedDuration, onSelect }: DurationPickerPro
     </Pressable>
   ), [selectedDuration, theme, handleSelect]);
 
-  const initialIndex = useMemo(() => {
-    const idx = DURATION_OPTIONS.findIndex(opt => opt.seconds === selectedDuration);
-    return Math.max(0, idx);
-  }, [selectedDuration]);
+  const fadeColorStart = isDark ? "rgba(0,0,0,1)" : "rgba(255,255,255,1)";
+  const fadeColorEnd = isDark ? "rgba(0,0,0,0)" : "rgba(255,255,255,0)";
 
   return (
     <View style={styles.container}>
       <FlatList
         ref={flatListRef}
-        data={DURATION_OPTIONS}
+        data={circularData}
         renderItem={renderItem}
-        keyExtractor={(item) => `${item.seconds}`}
+        keyExtractor={(item) => `${item.index}`}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
-        initialScrollIndex={initialIndex > 2 ? initialIndex - 2 : 0}
+        initialScrollIndex={initialIndex}
         getItemLayout={(_, index) => ({
           length: TOTAL_ITEM_WIDTH,
           offset: TOTAL_ITEM_WIDTH * index,
           index,
         })}
+        onMomentumScrollEnd={handleScrollEnd}
       />
       <LinearGradient
-        colors={[theme.backgroundRoot, "transparent"]}
+        colors={[fadeColorStart, fadeColorEnd]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.fadeLeft}
         pointerEvents="none"
       />
       <LinearGradient
-        colors={["transparent", theme.backgroundRoot]}
+        colors={[fadeColorEnd, fadeColorStart]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.fadeRight}
@@ -127,13 +160,13 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    width: 24,
+    width: 40,
   },
   fadeRight: {
     position: "absolute",
     right: 0,
     top: 0,
     bottom: 0,
-    width: 24,
+    width: 40,
   },
 });
