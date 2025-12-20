@@ -64,6 +64,7 @@ export default function PersonalizedMeditationScreen() {
   const [isPaused, setIsPaused] = useState(false);
   const [riceEarned, setRiceEarned] = useState(0);
   const [sessionCompleted, setSessionCompleted] = useState(false);
+  const [volume, setVolume] = useState(1.0);
 
   const pauseScale = useSharedValue(1);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -284,6 +285,28 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
     }
   };
 
+  const handleVolumeChange = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const volumeLevels = [1.0, 0.66, 0.33, 0];
+    const currentIndex = volumeLevels.findIndex(v => Math.abs(v - volume) < 0.1);
+    const nextIndex = (currentIndex + 1) % volumeLevels.length;
+    const newVolume = volumeLevels[nextIndex];
+    setVolume(newVolume);
+    
+    if (playerRef.current) {
+      try {
+        playerRef.current.volume = newVolume;
+      } catch (e) {}
+    }
+  };
+
+  const getVolumeIcon = (): "volume-2" | "volume-1" | "volume" | "volume-x" => {
+    if (volume === 0) return "volume-x";
+    if (volume <= 0.33) return "volume";
+    if (volume <= 0.66) return "volume-1";
+    return "volume-2";
+  };
+
   const handleClose = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (intervalRef.current) {
@@ -436,6 +459,17 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
         </View>
 
         <View style={styles.controls}>
+          <Pressable
+            onPress={handleVolumeChange}
+            style={[styles.volumeButton, { backgroundColor: theme.backgroundDefault }]}
+          >
+            <Feather
+              name={getVolumeIcon()}
+              size={24}
+              color={theme.text}
+            />
+          </Pressable>
+
           <AnimatedPressable
             onPress={handlePause}
             onPressIn={() => {
@@ -771,6 +805,13 @@ const styles = StyleSheet.create({
   mainControlButton: {
     width: 72,
     height: 72,
+    borderRadius: BorderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  volumeButton: {
+    width: 48,
+    height: 48,
     borderRadius: BorderRadius.full,
     alignItems: "center",
     justifyContent: "center",
