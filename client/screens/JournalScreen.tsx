@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { View, TextInput, StyleSheet, Pressable, FlatList } from "react-native";
+import React, { useState, useRef } from "react";
+import { View, TextInput, StyleSheet, Pressable, Platform } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -7,6 +7,8 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useAudioRecorder, RecordingPresets, AudioModule, useAudioPlayer } from "expo-audio";
+import * as FileSystem from "expo-file-system";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -44,6 +46,13 @@ export default function JournalScreen() {
   const [showMeditationPrompt, setShowMeditationPrompt] = useState(false);
   const [localDuration, setLocalDuration] = useState(300);
   const [riceEarned, setRiceEarned] = useState(0);
+  const [entryMode, setEntryMode] = useState<"text" | "audio">("text");
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [playingEntryId, setPlayingEntryId] = useState<string | null>(null);
+  
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   const handleSaveJournal = async () => {
     if (!journalText.trim()) return;
@@ -56,12 +65,86 @@ export default function JournalScreen() {
       date: today,
       content: journalText.trim(),
       createdAt: new Date().toISOString(),
+      type: "text",
     };
 
     const bonus = await addJournalEntry(entry);
     setRiceEarned(bonus);
     setJournalText("");
     setShowMeditationPrompt(true);
+  };
+
+  const startRecording = async () => {
+    if (Platform.OS === "web") {
+      return;
+    }
+    
+    try {
+      const status = await AudioModule.requestRecordingPermissionsAsync();
+      if (!status.granted) {
+        return;
+      }
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setIsRecording(true);
+      setRecordingDuration(0);
+      
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+
+      audioRecorder.record();
+    } catch (error) {
+      console.error("Failed to start recording:", error);
+      setIsRecording(false);
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!isRecording) return;
+
+    try {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+
+      await audioRecorder.stop();
+      setIsRecording(false);
+
+      const uri = audioRecorder.uri;
+      if (!uri) return;
+
+      const permanentUri = `${FileSystem.documentDirectory}audio_${Date.now()}.m4a`;
+      await FileSystem.copyAsync({ from: uri, to: permanentUri });
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      const today = new Date().toISOString().split("T")[0];
+      const entry: JournalEntry = {
+        id: Date.now().toString(),
+        date: today,
+        content: "",
+        createdAt: new Date().toISOString(),
+        type: "audio",
+        audioUri: permanentUri,
+        audioDuration: recordingDuration,
+      };
+
+      const bonus = await addJournalEntry(entry);
+      setRiceEarned(bonus);
+      setRecordingDuration(0);
+      setShowMeditationPrompt(true);
+    } catch (error) {
+      console.error("Failed to stop recording:", error);
+      setIsRecording(false);
+    }
+  };
+
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const handleStartMeditation = () => {
@@ -100,21 +183,64 @@ export default function JournalScreen() {
     });
   };
 
+  const AudioEntryPlayer = ({ entry }: { entry: JournalEntry }) => {
+    const player = useAudioPlayer(entry.audioUri || "");
+    const [isPlaying, setIsPlaying] = useState(false);
+    
+    const togglePlay = () => {
+      if (isPlaying) {
+        player.pause();
+        setIsPlaying(false);
+      } else {
+        player.play();
+        setIsPlaying(true);
+      }
+    };
+
+    return (
+      <Pressable
+        onPress={togglePlay}
+        style={[styles.audioPlayer, { backgroundColor: theme.backgroundSecondary }]}
+      >
+        <View style={[styles.audioPlayButton, { backgroundColor: theme.primary }]}>
+          <Feather name={isPlaying ? "pause" : "play"} size={16} color="#FFFFFF" />
+        </View>
+        <View style={styles.audioInfo}>
+          <ThemedText style={styles.audioLabel}>Voice Note</ThemedText>
+          <ThemedText style={[styles.audioDuration, { color: theme.textSecondary }]}>
+            {formatRecordingTime(entry.audioDuration || 0)}
+          </ThemedText>
+        </View>
+      </Pressable>
+    );
+  };
+
   const renderEntry = ({ item }: { item: JournalEntry }) => (
     <ThemedView 
       style={[styles.historyCard, { backgroundColor: theme.backgroundDefault }]}
     >
       <View style={styles.entryHeader}>
-        <ThemedText style={[styles.historyDate, { color: theme.textSecondary }]}>
-          {formatDate(item.date)}
-        </ThemedText>
+        <View style={styles.entryTypeIndicator}>
+          <Feather 
+            name={item.type === "audio" ? "mic" : "edit-3"} 
+            size={14} 
+            color={theme.textSecondary} 
+          />
+          <ThemedText style={[styles.historyDate, { color: theme.textSecondary }]}>
+            {formatDate(item.date)}
+          </ThemedText>
+        </View>
         <ThemedText style={[styles.entryTime, { color: theme.textSecondary }]}>
           {formatTime(item.createdAt)}
         </ThemedText>
       </View>
-      <ThemedText style={styles.historyContent}>
-        {item.content}
-      </ThemedText>
+      {item.type === "audio" ? (
+        <AudioEntryPlayer entry={item} />
+      ) : (
+        <ThemedText style={styles.historyContent}>
+          {item.content}
+        </ThemedText>
+      )}
     </ThemedView>
   );
 
@@ -209,43 +335,153 @@ export default function JournalScreen() {
             }
           </ThemedText>
 
-          <TextInput
-            style={[
-              styles.textInput,
-              {
-                backgroundColor: theme.backgroundDefault,
-                color: theme.text,
-                borderColor: theme.border,
-              },
-            ]}
-            placeholder="Write your thoughts here..."
-            placeholderTextColor={theme.textSecondary}
-            value={journalText}
-            onChangeText={setJournalText}
-            multiline
-            textAlignVertical="top"
-          />
+          <View style={styles.modeToggle}>
+            <Pressable
+              onPress={() => setEntryMode("text")}
+              style={[
+                styles.modeButton,
+                { 
+                  backgroundColor: entryMode === "text" ? theme.primary : theme.backgroundDefault,
+                  borderColor: entryMode === "text" ? theme.primary : theme.border,
+                },
+              ]}
+            >
+              <Feather 
+                name="edit-3" 
+                size={18} 
+                color={entryMode === "text" ? "#FFFFFF" : theme.textSecondary} 
+              />
+              <ThemedText 
+                style={[
+                  styles.modeButtonText, 
+                  { color: entryMode === "text" ? "#FFFFFF" : theme.textSecondary }
+                ]}
+              >
+                Text
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={() => setEntryMode("audio")}
+              style={[
+                styles.modeButton,
+                { 
+                  backgroundColor: entryMode === "audio" ? theme.primary : theme.backgroundDefault,
+                  borderColor: entryMode === "audio" ? theme.primary : theme.border,
+                },
+              ]}
+            >
+              <Feather 
+                name="mic" 
+                size={18} 
+                color={entryMode === "audio" ? "#FFFFFF" : theme.textSecondary} 
+              />
+              <ThemedText 
+                style={[
+                  styles.modeButtonText, 
+                  { color: entryMode === "audio" ? "#FFFFFF" : theme.textSecondary }
+                ]}
+              >
+                Voice
+              </ThemedText>
+            </Pressable>
+          </View>
 
-          <Pressable
-            onPress={handleSaveJournal}
-            disabled={!journalText.trim()}
-            style={[
-              styles.saveButton,
-              { 
-                backgroundColor: journalText.trim() ? theme.primary : theme.border,
-                opacity: journalText.trim() ? 1 : 0.5,
-              },
-            ]}
-          >
-            <Feather 
-              name="plus" 
-              size={20} 
-              color="#FFFFFF" 
-            />
-            <ThemedText style={styles.saveButtonText}>
-              Add Entry
-            </ThemedText>
-          </Pressable>
+          {entryMode === "text" ? (
+            <>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: theme.backgroundDefault,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  },
+                ]}
+                placeholder="Write your thoughts here..."
+                placeholderTextColor={theme.textSecondary}
+                value={journalText}
+                onChangeText={setJournalText}
+                multiline
+                textAlignVertical="top"
+              />
+
+              <Pressable
+                onPress={handleSaveJournal}
+                disabled={!journalText.trim()}
+                style={[
+                  styles.saveButton,
+                  { 
+                    backgroundColor: journalText.trim() ? theme.primary : theme.border,
+                    opacity: journalText.trim() ? 1 : 0.5,
+                  },
+                ]}
+              >
+                <Feather 
+                  name="plus" 
+                  size={20} 
+                  color="#FFFFFF" 
+                />
+                <ThemedText style={styles.saveButtonText}>
+                  Add Entry
+                </ThemedText>
+              </Pressable>
+            </>
+          ) : (
+            <View style={styles.audioSection}>
+              {Platform.OS === "web" ? (
+                <View style={[styles.webNotice, { backgroundColor: theme.backgroundDefault }]}>
+                  <Feather name="info" size={20} color={theme.textSecondary} />
+                  <ThemedText style={[styles.webNoticeText, { color: theme.textSecondary }]}>
+                    Voice recording is available in Expo Go. Open the app on your phone to record voice notes.
+                  </ThemedText>
+                </View>
+              ) : (
+                <>
+                  <View style={[styles.recordingArea, { backgroundColor: theme.backgroundDefault }]}>
+                    {isRecording ? (
+                      <>
+                        <View style={[styles.recordingIndicator, { backgroundColor: theme.error + "20" }]}>
+                          <View style={[styles.recordingDot, { backgroundColor: theme.error }]} />
+                          <ThemedText style={[styles.recordingText, { color: theme.error }]}>
+                            Recording
+                          </ThemedText>
+                        </View>
+                        <ThemedText type="h1" style={styles.recordingTimer}>
+                          {formatRecordingTime(recordingDuration)}
+                        </ThemedText>
+                      </>
+                    ) : (
+                      <>
+                        <Feather name="mic" size={48} color={theme.textSecondary} />
+                        <ThemedText style={[styles.recordingHint, { color: theme.textSecondary }]}>
+                          Tap the button below to start recording
+                        </ThemedText>
+                      </>
+                    )}
+                  </View>
+
+                  <Pressable
+                    onPress={isRecording ? stopRecording : startRecording}
+                    style={[
+                      styles.recordButton,
+                      { 
+                        backgroundColor: isRecording ? theme.error : theme.primary,
+                      },
+                    ]}
+                  >
+                    <Feather 
+                      name={isRecording ? "square" : "mic"} 
+                      size={24} 
+                      color="#FFFFFF" 
+                    />
+                    <ThemedText style={styles.saveButtonText}>
+                      {isRecording ? "Stop Recording" : "Start Recording"}
+                    </ThemedText>
+                  </Pressable>
+                </>
+              )}
+            </View>
+          )}
         </View>
 
         {journalEntries.length > 0 ? (
@@ -396,5 +632,110 @@ const styles = StyleSheet.create({
   },
   skipButtonText: {
     fontSize: Typography.body.fontSize,
+  },
+  modeToggle: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  modeButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    gap: Spacing.xs,
+  },
+  modeButtonText: {
+    fontWeight: "600",
+    fontSize: Typography.body.fontSize,
+  },
+  audioSection: {
+    marginBottom: Spacing.lg,
+  },
+  webNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.md,
+  },
+  webNoticeText: {
+    flex: 1,
+    fontSize: Typography.body.fontSize,
+    lineHeight: 22,
+  },
+  recordingArea: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing["3xl"],
+    borderRadius: BorderRadius.lg,
+    minHeight: 180,
+    marginBottom: Spacing.lg,
+  },
+  recordingIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.full,
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  recordingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  recordingText: {
+    fontWeight: "600",
+    fontSize: Typography.small.fontSize,
+  },
+  recordingTimer: {
+    textAlign: "center",
+  },
+  recordingHint: {
+    marginTop: Spacing.lg,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  recordButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.sm,
+  },
+  entryTypeIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  audioPlayer: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.md,
+  },
+  audioPlayButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  audioInfo: {
+    flex: 1,
+  },
+  audioLabel: {
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  audioDuration: {
+    fontSize: Typography.small.fontSize,
   },
 });

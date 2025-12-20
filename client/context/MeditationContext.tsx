@@ -14,6 +14,10 @@ export interface JournalEntry {
   date: string;
   content: string;
   createdAt: string;
+  type: "text" | "audio";
+  audioUri?: string;
+  audioDuration?: number;
+  transcription?: string;
 }
 
 interface MeditationState {
