@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { View, TextInput, StyleSheet, Pressable, Platform } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -18,6 +18,74 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { useMeditation, JournalEntry } from "@/context/MeditationContext";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+
+const formatAudioDuration = (seconds: number) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+};
+
+interface AudioEntryPlayerProps {
+  entry: JournalEntry;
+  isPlaying: boolean;
+  onPlay: (id: string) => void;
+  onStop: () => void;
+}
+
+function AudioEntryPlayer({ entry, isPlaying, onPlay, onStop }: AudioEntryPlayerProps) {
+  const { theme } = useTheme();
+  const player = useAudioPlayer(entry.audioUri || "");
+  
+  useEffect(() => {
+    if (!player) return;
+    
+    const unsubscribe = player.addListener("playbackStatusUpdate", (status) => {
+      if (status.didJustFinish) {
+        onStop();
+      }
+    });
+    
+    return () => {
+      unsubscribe?.remove();
+      player.pause();
+    };
+  }, [player, onStop]);
+
+  useEffect(() => {
+    if (!player) return;
+    
+    if (isPlaying) {
+      player.play();
+    } else {
+      player.pause();
+    }
+  }, [isPlaying, player]);
+  
+  const togglePlay = () => {
+    if (isPlaying) {
+      onStop();
+    } else {
+      onPlay(entry.id);
+    }
+  };
+
+  return (
+    <Pressable
+      onPress={togglePlay}
+      style={[styles.audioPlayer, { backgroundColor: theme.backgroundSecondary }]}
+    >
+      <View style={[styles.audioPlayButton, { backgroundColor: theme.primary }]}>
+        <Feather name={isPlaying ? "pause" : "play"} size={16} color="#FFFFFF" />
+      </View>
+      <View style={styles.audioInfo}>
+        <ThemedText style={styles.audioLabel}>Voice Note</ThemedText>
+        <ThemedText style={[styles.audioDuration, { color: theme.textSecondary }]}>
+          {formatAudioDuration(entry.audioDuration || 0)}
+        </ThemedText>
+      </View>
+    </Pressable>
+  );
+}
 
 const DURATION_OPTIONS = [
   { label: "1 min", seconds: 60 },
@@ -53,6 +121,24 @@ export default function JournalScreen() {
   
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      audioRecorder.stop();
+    };
+  }, [audioRecorder]);
+
+  const handlePlayAudio = useCallback((id: string) => {
+    setPlayingEntryId(id);
+  }, []);
+
+  const handleStopAudio = useCallback(() => {
+    setPlayingEntryId(null);
+  }, []);
 
   const handleSaveJournal = async () => {
     if (!journalText.trim()) return;
@@ -96,7 +182,12 @@ export default function JournalScreen() {
       audioRecorder.record();
     } catch (error) {
       console.error("Failed to start recording:", error);
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
       setIsRecording(false);
+      setRecordingDuration(0);
     }
   };
 
@@ -183,38 +274,6 @@ export default function JournalScreen() {
     });
   };
 
-  const AudioEntryPlayer = ({ entry }: { entry: JournalEntry }) => {
-    const player = useAudioPlayer(entry.audioUri || "");
-    const [isPlaying, setIsPlaying] = useState(false);
-    
-    const togglePlay = () => {
-      if (isPlaying) {
-        player.pause();
-        setIsPlaying(false);
-      } else {
-        player.play();
-        setIsPlaying(true);
-      }
-    };
-
-    return (
-      <Pressable
-        onPress={togglePlay}
-        style={[styles.audioPlayer, { backgroundColor: theme.backgroundSecondary }]}
-      >
-        <View style={[styles.audioPlayButton, { backgroundColor: theme.primary }]}>
-          <Feather name={isPlaying ? "pause" : "play"} size={16} color="#FFFFFF" />
-        </View>
-        <View style={styles.audioInfo}>
-          <ThemedText style={styles.audioLabel}>Voice Note</ThemedText>
-          <ThemedText style={[styles.audioDuration, { color: theme.textSecondary }]}>
-            {formatRecordingTime(entry.audioDuration || 0)}
-          </ThemedText>
-        </View>
-      </Pressable>
-    );
-  };
-
   const renderEntry = ({ item }: { item: JournalEntry }) => (
     <ThemedView 
       style={[styles.historyCard, { backgroundColor: theme.backgroundDefault }]}
@@ -235,7 +294,12 @@ export default function JournalScreen() {
         </ThemedText>
       </View>
       {item.type === "audio" ? (
-        <AudioEntryPlayer entry={item} />
+        <AudioEntryPlayer 
+          entry={item} 
+          isPlaying={playingEntryId === item.id}
+          onPlay={handlePlayAudio}
+          onStop={handleStopAudio}
+        />
       ) : (
         <ThemedText style={styles.historyContent}>
           {item.content}
