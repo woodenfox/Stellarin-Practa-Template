@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ScrollView, View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useHeaderHeight } from "@react-navigation/elements";
 import { Feather } from "@expo/vector-icons";
 import Animated, {
   useSharedValue,
@@ -20,6 +21,7 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 export default function CommunityScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   
   const [liveCount, setLiveCount] = useState(Math.floor(Math.random() * 100) + 150);
@@ -57,7 +59,7 @@ export default function CommunityScreen() {
       contentContainerStyle={[
         styles.content,
         {
-          paddingTop: Spacing.xl,
+          paddingTop: headerHeight + Spacing.xl,
           paddingBottom: tabBarHeight + Spacing.xl,
         },
       ]}

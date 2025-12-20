@@ -2,6 +2,7 @@ import React from "react";
 import { ScrollView, View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useHeaderHeight } from "@react-navigation/elements";
 import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -15,6 +16,7 @@ import { useMeditation } from "@/context/MeditationContext";
 export default function ProgressScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { totalRice, challengeProgress, getWeekStreaks, sessions } = useMeditation();
 
@@ -28,7 +30,7 @@ export default function ProgressScreen() {
       contentContainerStyle={[
         styles.content,
         {
-          paddingTop: Spacing.xl,
+          paddingTop: headerHeight + Spacing.xl,
           paddingBottom: tabBarHeight + Spacing.xl,
         },
       ]}

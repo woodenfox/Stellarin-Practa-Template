@@ -2,6 +2,7 @@ import React from "react";
 import { ScrollView, View, StyleSheet, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useHeaderHeight } from "@react-navigation/elements";
 import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -100,6 +101,7 @@ function FAQItem({ question, answer }: FAQItemProps) {
 export default function AboutScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
 
   return (
@@ -108,7 +110,7 @@ export default function AboutScreen() {
       contentContainerStyle={[
         styles.content,
         {
-          paddingTop: Spacing.xl,
+          paddingTop: headerHeight + Spacing.xl,
           paddingBottom: tabBarHeight + Spacing.xl,
         },
       ]}
