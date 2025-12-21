@@ -272,8 +272,8 @@ export function BreathingOrb({ totalRice, todaysMinutes, onPress }: BreathingOrb
         <LinearGradient
           colors={
             isDark
-              ? ["#33A8E0", "#006A9E"]
-              : ["#00A0E0", "#006A9E"]
+              ? ["#FF9933", "#D86A00"]
+              : ["#FC7D0F", "#D86A00"]
           }
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     height: ORB_SIZE,
     borderRadius: ORB_SIZE / 2,
     overflow: "hidden",
-    shadowColor: "#008ACA",
+    shadowColor: "#FC7D0F",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 24,
