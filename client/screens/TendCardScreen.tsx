@@ -36,6 +36,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { getOrCreateDeviceId } from "@/lib/device-id";
 import { getApiUrl } from "@/lib/query-client";
+import { useMeditation } from "@/context/MeditationContext";
 
 interface TendCard {
   id: string;
@@ -64,6 +65,7 @@ export default function TendCardScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
+  const { addTendCompletion } = useMeditation();
 
   const [status, setStatus] = useState<TendStatus>("loading");
   const [card, setCard] = useState<TendCard | null>(null);
@@ -177,6 +179,12 @@ export default function TendCardScreen() {
       const data = await response.json();
       setDailyTend(data.dailyTend);
       setStatus("completed");
+      
+      // Save tend completion locally for streak tracking
+      if (card) {
+        await addTendCompletion(card.id);
+      }
+      
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err) {
       console.error("Error completing card:", err);

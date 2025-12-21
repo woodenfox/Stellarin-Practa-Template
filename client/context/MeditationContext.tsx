@@ -22,6 +22,13 @@ export interface JournalEntry {
   transcription?: string;
 }
 
+export interface TendCompletion {
+  id: string;
+  date: string;
+  cardId: string;
+  completedAt: string;
+}
+
 interface MeditationState {
   totalRice: number;
   sessions: MeditationSession[];
@@ -29,6 +36,7 @@ interface MeditationState {
   challengeProgress: number;
   selectedDuration: number;
   journalEntries: JournalEntry[];
+  tendCompletions: TendCompletion[];
   isLoading: boolean;
   globalRice: number;
   globalMeditators: number;
@@ -40,6 +48,8 @@ interface MeditationContextType extends MeditationState {
   addJournalEntry: (entry: JournalEntry) => Promise<number>;
   updateJournalEntry: (id: string, updates: Partial<JournalEntry>) => Promise<void>;
   deleteJournalEntry: (id: string) => Promise<void>;
+  addTendCompletion: (cardId: string) => Promise<void>;
+  hasTendedToday: () => boolean;
   hasJournaledToday: () => boolean;
   getTodayStreak: () => boolean;
   getWeekStreaks: () => { day: string; completed: boolean; isToday: boolean }[];
@@ -52,6 +62,7 @@ const STORAGE_KEYS = {
   STREAK_DAYS: "@rice_meditation_streak_days",
   CHALLENGE_PROGRESS: "@rice_meditation_challenge",
   JOURNAL_ENTRIES: "@rice_meditation_journal",
+  TEND_COMPLETIONS: "@rice_meditation_tend_completions",
   SELECTED_DURATION: "@rice_meditation_selected_duration",
 };
 
@@ -78,6 +89,7 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
     challengeProgress: 0,
     selectedDuration: 300,
     journalEntries: [],
+    tendCompletions: [],
     isLoading: true,
     globalRice: 0,
     globalMeditators: 0,
@@ -126,12 +138,13 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
 
   const loadData = async () => {
     try {
-      const [totalRice, sessions, streakDays, challengeProgress, journalEntries, selectedDuration] = await Promise.all([
+      const [totalRice, sessions, streakDays, challengeProgress, journalEntries, tendCompletions, selectedDuration] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.TOTAL_RICE),
         AsyncStorage.getItem(STORAGE_KEYS.SESSIONS),
         AsyncStorage.getItem(STORAGE_KEYS.STREAK_DAYS),
         AsyncStorage.getItem(STORAGE_KEYS.CHALLENGE_PROGRESS),
         AsyncStorage.getItem(STORAGE_KEYS.JOURNAL_ENTRIES),
+        AsyncStorage.getItem(STORAGE_KEYS.TEND_COMPLETIONS),
         AsyncStorage.getItem(STORAGE_KEYS.SELECTED_DURATION),
       ]);
 
@@ -142,6 +155,7 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
         streakDays: streakDays ? JSON.parse(streakDays) : [],
         challengeProgress: challengeProgress ? parseInt(challengeProgress, 10) : 0,
         journalEntries: journalEntries ? JSON.parse(journalEntries) : [],
+        tendCompletions: tendCompletions ? JSON.parse(tendCompletions) : [],
         selectedDuration: selectedDuration ? parseInt(selectedDuration, 10) : 180,
         isLoading: false,
       }));
@@ -262,6 +276,33 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
     }
   }, []);
 
+  const addTendCompletion = useCallback(async (cardId: string) => {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const newCompletion: TendCompletion = {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        date: today,
+        cardId,
+        completedAt: new Date().toISOString(),
+      };
+
+      const newCompletions = [newCompletion, ...state.tendCompletions];
+      await AsyncStorage.setItem(STORAGE_KEYS.TEND_COMPLETIONS, JSON.stringify(newCompletions));
+
+      setState((prev) => ({
+        ...prev,
+        tendCompletions: newCompletions,
+      }));
+    } catch (error) {
+      console.error("Failed to save tend completion:", error);
+    }
+  }, [state.tendCompletions]);
+
+  const hasTendedToday = useCallback(() => {
+    const today = new Date().toISOString().split("T")[0];
+    return state.tendCompletions.some(c => c.date === today);
+  }, [state.tendCompletions]);
+
   const hasJournaledToday = useCallback(() => {
     const today = new Date().toISOString().split("T")[0];
     return state.journalEntries.some(e => e.date === today);
@@ -301,6 +342,8 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
         addJournalEntry,
         updateJournalEntry,
         deleteJournalEntry,
+        addTendCompletion,
+        hasTendedToday,
         hasJournaledToday,
         getTodayStreak,
         getWeekStreaks,

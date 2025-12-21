@@ -259,8 +259,10 @@ function WeeklyMomentum({ days, streak }: { days: any[]; streak: number }) {
   
   const meditationDays = days.filter(d => d.meditated).length;
   const journalDays = days.filter(d => d.journaled).length;
+  const tendDays = days.filter(d => d.tended).length;
   const meditationProgress = meditationDays / 7;
   const journalProgress = journalDays / 7;
+  const tendProgress = tendDays / 7;
 
   return (
     <Animated.View 
@@ -287,8 +289,11 @@ function WeeklyMomentum({ days, streak }: { days: any[]; streak: number }) {
 
           <View style={styles.momentumRingsRow}>
             <View style={styles.ringStack}>
-              <StreakRing progress={journalProgress} color={theme.jade} size={72} strokeWidth={6} />
+              <StreakRing progress={tendProgress} color={theme.secondary} size={92} strokeWidth={6} />
               <View style={styles.ringInner}>
+                <StreakRing progress={journalProgress} color={theme.jade} size={72} strokeWidth={6} />
+              </View>
+              <View style={styles.ringInnermost}>
                 <StreakRing progress={meditationProgress} color={theme.amber} size={52} strokeWidth={5} />
               </View>
             </View>
@@ -312,6 +317,15 @@ function WeeklyMomentum({ days, streak }: { days: any[]; streak: number }) {
                   {journalDays}/7
                 </ThemedText>
               </View>
+              <View style={styles.statRow}>
+                <View style={[styles.statDot, { backgroundColor: theme.secondary }]} />
+                <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
+                  Tend
+                </ThemedText>
+                <ThemedText style={[styles.statValue, { color: theme.text }]}>
+                  {tendDays}/7
+                </ThemedText>
+              </View>
             </View>
           </View>
 
@@ -332,7 +346,7 @@ export default function HomeScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
-  const { sessions, totalRice, journalEntries } = useMeditation();
+  const { sessions, totalRice, journalEntries, tendCompletions } = useMeditation();
 
   const sevenDayData = useMemo(() => {
     const today = new Date();
@@ -345,17 +359,19 @@ export default function HomeScreen() {
       const dateStr = date.toISOString().split("T")[0];
       const hasMeditation = sessions.some((s) => s.date === dateStr);
       const hasJournal = journalEntries.some((e) => e.date === dateStr);
+      const hasTend = tendCompletions.some((c) => c.date === dateStr);
 
       days.push({
         day: dayNames[date.getDay()],
         meditated: hasMeditation,
         journaled: hasJournal,
+        tended: hasTend,
         isToday: i === 0,
       });
     }
 
     return days;
-  }, [sessions, journalEntries]);
+  }, [sessions, journalEntries, tendCompletions]);
 
   const currentStreak = useMemo(() => {
     let streak = 0;
@@ -367,7 +383,8 @@ export default function HomeScreen() {
       const dateStr = date.toISOString().split("T")[0];
       const hasActivity =
         sessions.some((s) => s.date === dateStr) ||
-        journalEntries.some((e) => e.date === dateStr);
+        journalEntries.some((e) => e.date === dateStr) ||
+        tendCompletions.some((c) => c.date === dateStr);
 
       if (hasActivity) {
         streak++;
@@ -377,7 +394,7 @@ export default function HomeScreen() {
     }
 
     return streak;
-  }, [sessions, journalEntries]);
+  }, [sessions, journalEntries, tendCompletions]);
 
   const todaysMeditation = useMemo(() => {
     const today = new Date().toISOString().split("T")[0];
@@ -567,8 +584,8 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   ringStack: {
-    width: 72,
-    height: 72,
+    width: 92,
+    height: 92,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -582,6 +599,9 @@ const styles = StyleSheet.create({
     position: "absolute",
   },
   ringInner: {
+    position: "absolute",
+  },
+  ringInnermost: {
     position: "absolute",
   },
   momentumStats: {
