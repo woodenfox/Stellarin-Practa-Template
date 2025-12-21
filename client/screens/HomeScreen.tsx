@@ -264,7 +264,7 @@ function WeeklyMomentum({ days, streak }: { days: any[]; streak: number }) {
   return (
     <Animated.View 
       entering={FadeInDown.delay(400).duration(600).springify()}
-      style={[styles.momentumCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+      style={[styles.momentumCard, { backgroundColor: "#FFFFFF", borderColor: theme.border }]}
     >
       <View style={styles.momentumHeader}>
         <ThemedText style={[styles.momentumTitle, { color: theme.text }]}>
@@ -436,13 +436,10 @@ export default function HomeScreen() {
             onPress={handleStartJournal}
             delay={300}
           />
-        </View>
-
-        <View style={styles.tendRow}>
           <ActionCard
             icon="sun"
             title="Tend"
-            subtitle="Daily wellness card"
+            subtitle="Wellness card"
             colors={[theme.secondary, "#006699"]}
             onPress={handleStartTend}
             delay={400}
@@ -465,15 +462,13 @@ const styles = StyleSheet.create({
   },
   actionsRow: {
     flexDirection: "row",
-    gap: Spacing.md,
-    marginBottom: Spacing.md,
-  },
-  tendRow: {
+    gap: Spacing.sm,
     marginBottom: Spacing.lg,
+    justifyContent: "center",
   },
   actionCard: {
     flex: 1,
-    height: 110,
+    height: 100,
     borderRadius: 20,
     overflow: "hidden",
     shadowColor: "#000",
