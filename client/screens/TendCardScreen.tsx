@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,8 +24,12 @@ import Animated, {
   FadeIn,
   FadeInUp,
   FadeInDown,
+  interpolate,
+  runOnJS,
 } from "react-native-reanimated";
 import { Image } from "expo-image";
+
+const cardBackImage = require("@/assets/images/tend-card-back.png");
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -58,6 +63,7 @@ export default function TendCardScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
 
   const [status, setStatus] = useState<TendStatus>("loading");
   const [card, setCard] = useState<TendCard | null>(null);
@@ -65,10 +71,16 @@ export default function TendCardScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isFlipped, setIsFlipped] = useState(false);
 
   const cardScale = useSharedValue(0.9);
   const cardRotate = useSharedValue(0);
   const glowOpacity = useSharedValue(0.3);
+  const flipProgress = useSharedValue(0);
+
+  // Card dimensions - match 2:3 aspect ratio of the card back image
+  const cardWidth = Math.min(screenWidth - Spacing.xl * 2, 300);
+  const cardHeight = cardWidth * 1.5;
 
   useEffect(() => {
     checkTodayStatus();
@@ -190,6 +202,68 @@ export default function TendCardScreen() {
     opacity: glowOpacity.value,
   }));
 
+  // Flip animation styles
+  const cardBackAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { perspective: 1200 },
+      { rotateY: `${interpolate(flipProgress.value, [0, 1], [0, 180])}deg` },
+    ],
+    backfaceVisibility: "hidden" as const,
+    opacity: flipProgress.value > 0.5 ? 0 : 1,
+  }));
+
+  const cardFrontAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { perspective: 1200 },
+      { rotateY: `${interpolate(flipProgress.value, [0, 1], [180, 360])}deg` },
+    ],
+    backfaceVisibility: "hidden" as const,
+    opacity: flipProgress.value > 0.5 ? 1 : 0,
+  }));
+
+  const handleFlipAndDraw = async () => {
+    if (isDrawing || isFlipped) return;
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsDrawing(true);
+
+    // Start the flip animation
+    flipProgress.value = withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) });
+
+    try {
+      const userId = await getOrCreateDeviceId();
+      const url = new URL("/api/tend/draw", getApiUrl());
+      const response = await fetch(url.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to draw card");
+      }
+
+      const data = await response.json();
+      
+      // Wait for animation midpoint to set the card data
+      setTimeout(() => {
+        setCard(data.card);
+        setDailyTend(data.dailyTend);
+        setIsFlipped(true);
+        setStatus("drawn");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }, 400);
+    } catch (err) {
+      console.error("Error drawing card:", err);
+      // Reverse the flip on error
+      flipProgress.value = withTiming(0, { duration: 400 });
+      setError("Failed to draw card. Please try again.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setTimeout(() => setIsDrawing(false), 800);
+    }
+  };
+
   const renderContent = () => {
     if (status === "loading") {
       return (
@@ -223,40 +297,51 @@ export default function TendCardScreen() {
       return (
         <View style={styles.centerContent}>
           <Animated.View entering={FadeInUp.duration(600).springify()}>
-            <View style={[styles.drawCardContainer, { backgroundColor: theme.backgroundSecondary }]}>
-              <LinearGradient
-                colors={[theme.secondary, theme.jade]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.cardBackGradient}
-              >
-                <View style={styles.cardBackPattern}>
-                  <Feather name="sun" size={80} color="rgba(255,255,255,0.2)" />
-                </View>
-                <ThemedText style={styles.cardBackText}>Daily Tend</ThemedText>
-              </LinearGradient>
-            </View>
+            <ThemedText style={[styles.drawPrompt, { color: theme.text, marginBottom: Spacing.lg }]}>
+              Tap to reveal your daily wellness card
+            </ThemedText>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(200).duration(600).springify()}>
-            <ThemedText style={[styles.drawPrompt, { color: theme.text }]}>
-              Draw your wellness card for today
-            </ThemedText>
-            <Pressable
-              style={[styles.drawButton, { backgroundColor: theme.primary }]}
-              onPress={drawCard}
-              disabled={isDrawing}
-            >
-              {isDrawing ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <>
-                  <Feather name="shuffle" size={20} color="#FFFFFF" />
-                  <ThemedText style={styles.drawButtonText}>Draw Card</ThemedText>
-                </>
-              )}
-            </Pressable>
-          </Animated.View>
+          <Pressable onPress={handleFlipAndDraw} disabled={isDrawing}>
+            <View style={[styles.flipCardContainer, { width: cardWidth, height: cardHeight }]}>
+              {/* Card Back */}
+              <Animated.View style={[styles.flipCard, cardBackAnimatedStyle, { width: cardWidth, height: cardHeight }]}>
+                <Image
+                  source={cardBackImage}
+                  style={styles.cardBackImage}
+                  contentFit="cover"
+                />
+              </Animated.View>
+              
+              {/* Card Front (placeholder while loading) */}
+              <Animated.View 
+                style={[
+                  styles.flipCard, 
+                  styles.flipCardFront, 
+                  cardFrontAnimatedStyle, 
+                  { 
+                    width: cardWidth, 
+                    height: cardHeight,
+                    backgroundColor: theme.backgroundDefault,
+                    borderColor: theme.border,
+                  }
+                ]}
+              >
+                <ActivityIndicator size="large" color={theme.primary} />
+                <ThemedText style={[styles.loadingText, { color: theme.textSecondary, marginTop: Spacing.md }]}>
+                  Drawing your card...
+                </ThemedText>
+              </Animated.View>
+            </View>
+          </Pressable>
+
+          {isDrawing ? null : (
+            <Animated.View entering={FadeInDown.delay(300).duration(400)}>
+              <ThemedText style={[styles.tapHint, { color: theme.textSecondary }]}>
+                Tap the card to draw
+              </ThemedText>
+            </Animated.View>
+          )}
         </View>
       );
     }
@@ -486,6 +571,39 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "600",
+  },
+  flipCardContainer: {
+    position: "relative",
+  },
+  flipCard: {
+    position: "absolute",
+    borderRadius: BorderRadius.lg,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
+  },
+  flipCardFront: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  cardBackImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: BorderRadius.lg,
+  },
+  tapHint: {
+    fontSize: 14,
+    marginTop: Spacing.xl,
   },
   scrollView: {
     flex: 1,
