@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     height: ORB_SIZE,
     borderRadius: ORB_SIZE / 2,
     overflow: "hidden",
-    shadowColor: "#FF6B00",
+    shadowColor: "#1E88C7",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 24,
