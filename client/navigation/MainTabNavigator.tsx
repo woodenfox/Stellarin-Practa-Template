@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet } from "react-native";
+import HomeScreen from "@/screens/HomeScreen";
 import TimerScreen from "@/screens/TimerScreen";
 import ProgressScreen from "@/screens/ProgressScreen";
 import JournalScreen from "@/screens/JournalScreen";
@@ -12,6 +13,7 @@ import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { HeaderTitle } from "@/components/HeaderTitle";
 
 export type MainTabParamList = {
+  HomeTab: undefined;
   TimerTab: undefined;
   ProgressTab: undefined;
   JournalTab: undefined;
@@ -26,7 +28,7 @@ export default function MainTabNavigator() {
 
   return (
     <Tab.Navigator
-      initialRouteName="TimerTab"
+      initialRouteName="HomeTab"
       screenOptions={{
         ...screenOptions,
         tabBarActiveTintColor: theme.primary,
@@ -51,11 +53,22 @@ export default function MainTabNavigator() {
       }}
     >
       <Tab.Screen
+        name="HomeTab"
+        component={HomeScreen}
+        options={{
+          title: "Home",
+          headerTitle: () => <HeaderTitle />,
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
         name="TimerTab"
         component={TimerScreen}
         options={{
           title: "Timer",
-          headerTitle: () => <HeaderTitle />,
+          headerTitle: "Meditation Timer",
           tabBarIcon: ({ color, size }) => (
             <Feather name="clock" size={size} color={color} />
           ),
