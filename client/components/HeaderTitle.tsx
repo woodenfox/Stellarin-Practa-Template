@@ -12,7 +12,7 @@ export function HeaderTitle() {
         style={styles.icon}
         resizeMode="contain"
       />
-      <ThemedText style={styles.title}>Rice Meditation</ThemedText>
+      <ThemedText style={styles.title}>Stellarin</ThemedText>
     </View>
   );
 }

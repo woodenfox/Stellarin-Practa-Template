@@ -272,7 +272,7 @@ export default function CommunityScreen() {
               Help Us Grow
             </ThemedText>
             <ThemedText style={[styles.supportDescription, { color: theme.textSecondary }]}>
-              Share Rice Meditation with friends and family to spread mindfulness and help feed more people.
+              Share Stellarin with friends and family to spread mindfulness and help feed more people.
             </ThemedText>
           </View>
         </View>

@@ -1,8 +1,8 @@
-# Rice Meditation
+# Stellarin
 
 ## Overview
 
-Rice Meditation is a cross-platform meditation app built with Expo/React Native that gamifies mindfulness practice. Users complete meditation sessions to earn virtual "rice" that will be tracked and potentially donated to charity. The app features timed meditation sessions, streak tracking, progress challenges, and community statistics.
+Stellarin is a cross-platform meditation app built with Expo/React Native that gamifies mindfulness practice. Users complete meditation sessions to earn virtual "rice" that will be tracked and potentially donated to charity. The app features timed meditation sessions, streak tracking, progress challenges, and community statistics.
 
 The app follows a tab-based navigation pattern with four main screens (Timer, Progress, Community, About) and a modal session screen for active meditation.
 

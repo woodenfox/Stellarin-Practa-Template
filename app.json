@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Rice Meditation",
-    "slug": "rice-meditation",
+    "name": "Stellarin",
+    "slug": "stellarin",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "ricemeditation",
+    "scheme": "stellarin",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
