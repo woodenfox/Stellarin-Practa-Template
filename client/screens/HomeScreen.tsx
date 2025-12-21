@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Dimensions } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import Svg, { Circle, G } from "react-native-svg";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -15,16 +16,306 @@ import Animated, {
   withRepeat,
   withSequence,
   withTiming,
+  Easing,
+  FadeInUp,
+  FadeInDown,
 } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
-import { HarmonyHalo } from "@/components/HarmonyHalo";
+import { BreathingOrb } from "@/components/BreathingOrb";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useMeditation } from "@/context/MeditationContext";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const CARD_WIDTH = (SCREEN_WIDTH - Spacing.lg * 2 - Spacing.md) / 2;
+
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+function ActionCard({
+  icon,
+  title,
+  subtitle,
+  colors,
+  onPress,
+  delay = 0,
+}: {
+  icon: keyof typeof Feather.glyphMap;
+  title: string;
+  subtitle: string;
+  colors: string[];
+  onPress: () => void;
+  delay?: number;
+}) {
+  const pressScale = useSharedValue(1);
+  const floatY = useSharedValue(0);
+
+  useEffect(() => {
+    floatY.value = withRepeat(
+      withSequence(
+        withTiming(-4, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0, { duration: 2500, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: pressScale.value },
+      { translateY: floatY.value },
+    ],
+  }));
+
+  const handlePressIn = () => {
+    pressScale.value = withSpring(0.96, { damping: 15 });
+  };
+
+  const handlePressOut = () => {
+    pressScale.value = withSpring(1, { damping: 10 });
+  };
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onPress();
+  };
+
+  return (
+    <Animated.View entering={FadeInUp.delay(delay).duration(600).springify()}>
+      <Pressable
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={handlePress}
+      >
+        <Animated.View style={[styles.actionCard, animatedStyle]}>
+          <LinearGradient
+            colors={colors as [string, string, ...string[]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.actionGradient}
+          >
+            <View style={styles.actionIconWrap}>
+              <Feather name={icon} size={24} color="#FFFFFF" />
+            </View>
+            <View style={styles.actionTextWrap}>
+              <ThemedText style={styles.actionTitle}>{title}</ThemedText>
+              <ThemedText style={styles.actionSubtitle}>{subtitle}</ThemedText>
+            </View>
+            <View style={styles.actionShine} />
+          </LinearGradient>
+        </Animated.View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+const MINI_HALO_SIZE = 36;
+const MINI_STROKE = 2.5;
+const MINI_INNER_RADIUS = (MINI_HALO_SIZE - MINI_STROKE) / 2 - 4;
+const MINI_OUTER_RADIUS = (MINI_HALO_SIZE - MINI_STROKE) / 2;
+const MINI_INNER_CIRC = 2 * Math.PI * MINI_INNER_RADIUS;
+const MINI_OUTER_CIRC = 2 * Math.PI * MINI_OUTER_RADIUS;
+
+function DayMiniHalo({ day, theme }: { day: any; theme: any }) {
+  const pulseScale = useSharedValue(1);
+
+  useEffect(() => {
+    if (day.isToday && (!day.meditated || !day.journaled)) {
+      pulseScale.value = withRepeat(
+        withSequence(
+          withTiming(1.08, { duration: 1200 }),
+          withTiming(1, { duration: 1200 })
+        ),
+        -1,
+        true
+      );
+    } else {
+      pulseScale.value = withTiming(1, { duration: 200 });
+    }
+  }, [day.isToday, day.meditated, day.journaled]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+  }));
+
+  const bothComplete = day.meditated && day.journaled;
+  const neitherComplete = !day.meditated && !day.journaled;
+
+  return (
+    <View style={styles.dayDotColumn}>
+      <Animated.View style={[styles.miniHaloWrap, pulseStyle]}>
+        <Svg width={MINI_HALO_SIZE} height={MINI_HALO_SIZE}>
+          <G rotation="-90" origin={`${MINI_HALO_SIZE / 2}, ${MINI_HALO_SIZE / 2}`}>
+            <Circle
+              cx={MINI_HALO_SIZE / 2}
+              cy={MINI_HALO_SIZE / 2}
+              r={MINI_OUTER_RADIUS}
+              stroke={neitherComplete && !day.isToday ? theme.border : `${theme.jade}30`}
+              strokeWidth={MINI_STROKE}
+              fill="none"
+            />
+            <Circle
+              cx={MINI_HALO_SIZE / 2}
+              cy={MINI_HALO_SIZE / 2}
+              r={MINI_OUTER_RADIUS}
+              stroke={theme.jade}
+              strokeWidth={MINI_STROKE}
+              fill="none"
+              strokeDasharray={MINI_OUTER_CIRC}
+              strokeDashoffset={day.journaled ? 0 : MINI_OUTER_CIRC}
+              strokeLinecap="round"
+            />
+            <Circle
+              cx={MINI_HALO_SIZE / 2}
+              cy={MINI_HALO_SIZE / 2}
+              r={MINI_INNER_RADIUS}
+              stroke={neitherComplete && !day.isToday ? theme.border : `${theme.amber}30`}
+              strokeWidth={MINI_STROKE}
+              fill="none"
+            />
+            <Circle
+              cx={MINI_HALO_SIZE / 2}
+              cy={MINI_HALO_SIZE / 2}
+              r={MINI_INNER_RADIUS}
+              stroke={theme.amber}
+              strokeWidth={MINI_STROKE}
+              fill="none"
+              strokeDasharray={MINI_INNER_CIRC}
+              strokeDashoffset={day.meditated ? 0 : MINI_INNER_CIRC}
+              strokeLinecap="round"
+            />
+          </G>
+        </Svg>
+        {bothComplete ? (
+          <View style={styles.miniCheck}>
+            <Feather name="check" size={10} color={theme.amber} />
+          </View>
+        ) : null}
+      </Animated.View>
+      <ThemedText
+        style={[
+          styles.dayLabel,
+          {
+            color: day.isToday ? theme.primary : theme.textSecondary,
+            fontWeight: day.isToday ? "700" : "400",
+          },
+        ]}
+      >
+        {day.day.charAt(0)}
+      </ThemedText>
+    </View>
+  );
+}
+
+function StreakRing({ 
+  progress, 
+  color, 
+  size, 
+  strokeWidth 
+}: { 
+  progress: number; 
+  color: string; 
+  size: number; 
+  strokeWidth: number;
+}) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - Math.min(progress, 1));
+
+  return (
+    <View style={[styles.ringContainer, { width: size, height: size }]}>
+      <Svg width={size} height={size}>
+        <G rotation="-90" origin={`${size / 2}, ${size / 2}`}>
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={`${color}25`}
+            strokeWidth={strokeWidth}
+            fill="none"
+          />
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={color}
+            strokeWidth={strokeWidth}
+            fill="none"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+          />
+        </G>
+      </Svg>
+    </View>
+  );
+}
+
+function WeeklyMomentum({ days, streak }: { days: any[]; streak: number }) {
+  const { theme } = useTheme();
+  
+  const meditationDays = days.filter(d => d.meditated).length;
+  const journalDays = days.filter(d => d.journaled).length;
+  const meditationProgress = meditationDays / 7;
+  const journalProgress = journalDays / 7;
+
+  return (
+    <Animated.View 
+      entering={FadeInDown.delay(400).duration(600).springify()}
+      style={[styles.momentumCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+    >
+      <View style={styles.momentumHeader}>
+        <ThemedText style={[styles.momentumTitle, { color: theme.text }]}>
+          Weekly Momentum
+        </ThemedText>
+        <View style={[styles.streakPill, { backgroundColor: theme.amberMuted }]}>
+          <Feather name="zap" size={12} color={theme.amber} />
+          <ThemedText style={[styles.streakValue, { color: theme.amber }]}>
+            {streak}
+          </ThemedText>
+        </View>
+      </View>
+
+      <View style={styles.momentumContent}>
+        <View style={styles.ringStack}>
+          <StreakRing progress={journalProgress} color={theme.jade} size={72} strokeWidth={6} />
+          <View style={styles.ringInner}>
+            <StreakRing progress={meditationProgress} color={theme.amber} size={52} strokeWidth={5} />
+          </View>
+        </View>
+
+        <View style={styles.momentumStats}>
+          <View style={styles.statRow}>
+            <View style={[styles.statDot, { backgroundColor: theme.amber }]} />
+            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
+              Meditate
+            </ThemedText>
+            <ThemedText style={[styles.statValue, { color: theme.text }]}>
+              {meditationDays}/7
+            </ThemedText>
+          </View>
+          <View style={styles.statRow}>
+            <View style={[styles.statDot, { backgroundColor: theme.jade }]} />
+            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
+              Journal
+            </ThemedText>
+            <ThemedText style={[styles.statValue, { color: theme.text }]}>
+              {journalDays}/7
+            </ThemedText>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.dayDots}>
+        {days.map((day, i) => (
+          <DayMiniHalo key={i} day={day} theme={theme} />
+        ))}
+      </View>
+    </Animated.View>
+  );
+}
 
 export default function HomeScreen() {
   const { theme, isDark } = useTheme();
@@ -33,19 +324,6 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const { sessions, totalRice, journalEntries } = useMeditation();
-
-  const riceCounterScale = useSharedValue(1);
-
-  useEffect(() => {
-    riceCounterScale.value = withSpring(1.05, { damping: 8 });
-    setTimeout(() => {
-      riceCounterScale.value = withSpring(1);
-    }, 200);
-  }, [totalRice]);
-
-  const riceAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: riceCounterScale.value }],
-  }));
 
   const sevenDayData = useMemo(() => {
     const today = new Date();
@@ -104,13 +382,15 @@ export default function HomeScreen() {
   }, [todaysMeditation]);
 
   const handleStartMeditation = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate("QuickMeditation");
   };
 
   const handleStartJournal = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate("Recording");
+  };
+
+  const handleOrbPress = () => {
+    navigation.navigate("QuickMeditation");
   };
 
   return (
@@ -120,133 +400,39 @@ export default function HomeScreen() {
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: headerHeight + Spacing.lg,
+            paddingTop: headerHeight + Spacing.md,
             paddingBottom: tabBarHeight + Spacing.xl,
           },
         ]}
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.heroSection}>
-          <LinearGradient
-            colors={
-              isDark
-                ? ["rgba(255,148,66,0.15)", "rgba(255,107,0,0.05)"]
-                : ["rgba(255,128,31,0.12)", "rgba(255,107,0,0.04)"]
-            }
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.heroGradient, { borderColor: theme.border }]}
-          >
-            <View style={styles.heroContent}>
-              <View style={styles.heroLeft}>
-                <ThemedText
-                  style={[styles.heroLabel, { color: theme.textSecondary }]}
-                >
-                  Rice Harvested
-                </ThemedText>
-                <Animated.View style={riceAnimatedStyle}>
-                  <ThemedText style={[styles.heroValue, { color: theme.primary }]}>
-                    {totalRice.toLocaleString()}
-                  </ThemedText>
-                </Animated.View>
-                <ThemedText
-                  style={[styles.heroSubtext, { color: theme.textSecondary }]}
-                >
-                  grains donated
-                </ThemedText>
-              </View>
-              <View style={styles.heroRight}>
-                <View
-                  style={[
-                    styles.todayBadge,
-                    { backgroundColor: theme.backgroundDefault },
-                  ]}
-                >
-                  <Feather name="sun" size={16} color={theme.amber} />
-                  <ThemedText
-                    style={[styles.todayText, { color: theme.text }]}
-                  >
-                    {todaysMinutes} min today
-                  </ThemedText>
-                </View>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
-
-        <HarmonyHalo days={sevenDayData} currentStreak={currentStreak} />
+        <BreathingOrb
+          totalRice={totalRice}
+          todaysMinutes={todaysMinutes}
+          onPress={handleOrbPress}
+        />
 
         <View style={styles.actionsRow}>
-          <Pressable
+          <ActionCard
+            icon="play-circle"
+            title="Meditate"
+            subtitle="Start session"
+            colors={[theme.amber, theme.primary]}
             onPress={handleStartMeditation}
-            style={[styles.actionTile, styles.actionTileLarge]}
-          >
-            <LinearGradient
-              colors={[theme.amber, theme.primary]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.actionGradient}
-            >
-              <View style={styles.actionIconContainer}>
-                <Feather name="play-circle" size={32} color="#FFFFFF" />
-              </View>
-              <ThemedText style={styles.actionTitle}>Meditate</ThemedText>
-              <ThemedText style={styles.actionSubtitle}>
-                Start a session
-              </ThemedText>
-            </LinearGradient>
-          </Pressable>
-
-          <Pressable
+            delay={200}
+          />
+          <ActionCard
+            icon="mic"
+            title="Journal"
+            subtitle="Reflect today"
+            colors={[theme.jade, "#4A9B7F"]}
             onPress={handleStartJournal}
-            style={[styles.actionTile, styles.actionTileSmall]}
-          >
-            <LinearGradient
-              colors={isDark ? [theme.jade, "#4A9B7F"] : [theme.jade, "#4A9B7F"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.actionGradient}
-            >
-              <View style={styles.actionIconContainer}>
-                <Feather name="mic" size={28} color="#FFFFFF" />
-              </View>
-              <ThemedText style={styles.actionTitle}>Journal</ThemedText>
-              <ThemedText style={styles.actionSubtitle}>
-                Reflect today
-              </ThemedText>
-            </LinearGradient>
-          </Pressable>
+            delay={300}
+          />
         </View>
 
-        <View
-          style={[styles.insightCard, { backgroundColor: theme.backgroundDefault }]}
-        >
-          <View style={styles.insightHeader}>
-            <View
-              style={[
-                styles.insightIcon,
-                { backgroundColor: theme.jadeMuted },
-              ]}
-            >
-              <Feather name="trending-up" size={18} color={theme.jade} />
-            </View>
-            <ThemedText style={[styles.insightTitle, { color: theme.text }]}>
-              Your Progress
-            </ThemedText>
-          </View>
-          <ThemedText
-            style={[styles.insightText, { color: theme.textSecondary }]}
-          >
-            {currentStreak === 0
-              ? "Start your mindfulness journey today. Every minute counts!"
-              : currentStreak < 3
-              ? `Great start! You're on a ${currentStreak}-day streak. Keep the momentum going.`
-              : currentStreak < 7
-              ? `Amazing! ${currentStreak} days of mindfulness. You're building a powerful habit.`
-              : `Incredible ${currentStreak}-day streak! Your dedication is inspiring.`}
-          </ThemedText>
-        </View>
+        <WeeklyMomentum days={sevenDayData} streak={currentStreak} />
       </ScrollView>
     </View>
   );
@@ -261,113 +447,150 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Spacing.lg,
-    gap: Spacing.lg,
-  },
-  heroSection: {
-    marginBottom: Spacing.xs,
-  },
-  heroGradient: {
-    borderRadius: 24,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  heroContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: Spacing.xl,
-  },
-  heroLeft: {
-    gap: 2,
-  },
-  heroRight: {},
-  heroLabel: {
-    fontSize: 13,
-    fontWeight: "500",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  heroValue: {
-    fontSize: 44,
-    fontWeight: "700",
-    lineHeight: 52,
-  },
-  heroSubtext: {
-    fontSize: 14,
-  },
-  todayBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-  },
-  todayText: {
-    fontSize: 13,
-    fontWeight: "600",
   },
   actionsRow: {
     flexDirection: "row",
     gap: Spacing.md,
+    marginBottom: Spacing.lg,
   },
-  actionTile: {
+  actionCard: {
+    flex: 1,
+    height: 110,
     borderRadius: 20,
     overflow: "hidden",
-  },
-  actionTileLarge: {
-    flex: 1.2,
-    height: 140,
-  },
-  actionTileSmall: {
-    flex: 1,
-    height: 140,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
   actionGradient: {
     flex: 1,
-    padding: Spacing.lg,
+    padding: Spacing.md,
     justifyContent: "space-between",
   },
-  actionIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  actionIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
+  actionTextWrap: {
+    gap: 2,
+  },
   actionTitle: {
     color: "#FFFFFF",
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
   },
   actionSubtitle: {
     color: "rgba(255,255,255,0.8)",
-    fontSize: 13,
+    fontSize: 12,
   },
-  insightCard: {
+  actionShine: {
+    position: "absolute",
+    top: -20,
+    right: -20,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  momentumCard: {
+    borderRadius: 24,
     padding: Spacing.lg,
-    borderRadius: 20,
+    borderWidth: 1,
     gap: Spacing.md,
   },
-  insightHeader: {
+  momentumHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  momentumTitle: {
+    fontSize: 17,
+    fontWeight: "600",
+  },
+  streakPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+  },
+  streakValue: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  momentumContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.lg,
+  },
+  ringStack: {
+    width: 72,
+    height: 72,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ringContainer: {
+    position: "absolute",
+  },
+  ringBackground: {
+    position: "absolute",
+  },
+  ringForeground: {
+    position: "absolute",
+  },
+  ringInner: {
+    position: "absolute",
+  },
+  momentumStats: {
+    flex: 1,
+    gap: Spacing.sm,
+  },
+  statRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
   },
-  insightIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
+  statDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
-  insightTitle: {
+  statLabel: {
+    flex: 1,
+    fontSize: 14,
+  },
+  statValue: {
     fontSize: 15,
     fontWeight: "600",
   },
-  insightText: {
-    fontSize: 14,
-    lineHeight: 20,
+  dayDots: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.05)",
+  },
+  dayDotColumn: {
+    alignItems: "center",
+    gap: 4,
+  },
+  miniHaloWrap: {
+    width: MINI_HALO_SIZE,
+    height: MINI_HALO_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  miniCheck: {
+    position: "absolute",
+  },
+  dayLabel: {
+    fontSize: 11,
   },
 });
