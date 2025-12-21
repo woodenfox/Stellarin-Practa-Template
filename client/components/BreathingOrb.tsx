@@ -20,7 +20,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing } from "@/constants/theme";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const ORB_SIZE = Math.min(SCREEN_WIDTH * 0.42, 160);
+const ORB_SIZE = Math.min(SCREEN_WIDTH * 0.48, 185);
 const RING_COUNT = 3;
 
 interface BreathingOrbProps {
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
-    height: ORB_SIZE + 80,
+    height: ORB_SIZE + 95,
     marginVertical: Spacing.md,
   },
   ring: {
@@ -351,13 +351,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   riceValue: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "800",
     color: "#FFFFFF",
     letterSpacing: -1,
   },
   riceLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "500",
     color: "rgba(255,255,255,0.85)",
     marginTop: 2,
