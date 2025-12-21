@@ -531,15 +531,13 @@ const styles = StyleSheet.create({
   },
   heroImageWrapper: {
     marginHorizontal: -Spacing.xl,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.sm,
     overflow: "hidden",
     alignItems: "center",
   },
   heroImage: {
-    width: "120%",
-    height: undefined,
-    aspectRatio: 1024 / 585,
-    transform: [{ scale: 0.6 }],
+    width: "110%",
+    height: 200,
   },
   section: {
     marginBottom: Spacing["3xl"],
