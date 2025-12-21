@@ -335,7 +335,14 @@ export default function TendCardScreen() {
           </Animated.View>
 
           {status === "drawn" ? (
-            <Animated.View entering={FadeIn.delay(300).duration(400)}>
+            <Animated.View entering={FadeIn.delay(300).duration(400)} style={styles.buttonGroup}>
+              <Pressable
+                style={[styles.acceptButton, { backgroundColor: theme.primary }]}
+                onPress={handleClose}
+              >
+                <Feather name="heart" size={20} color="#FFFFFF" />
+                <ThemedText style={styles.acceptButtonText}>I'll do it!</ThemedText>
+              </Pressable>
               <Pressable
                 style={[styles.completeButton, { backgroundColor: theme.success }]}
                 onPress={completeCard}
@@ -583,6 +590,23 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.lg,
   },
   completeButtonText: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "600",
+  },
+  buttonGroup: {
+    gap: Spacing.md,
+  },
+  acceptButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.xl,
+    marginHorizontal: Spacing.lg,
+  },
+  acceptButtonText: {
     color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "600",
