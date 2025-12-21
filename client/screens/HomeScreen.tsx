@@ -516,6 +516,11 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     borderWidth: 1,
     gap: Spacing.md,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   momentumHeader: {
     flexDirection: "row",
