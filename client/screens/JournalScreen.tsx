@@ -357,11 +357,13 @@ export default function JournalScreen() {
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
-        <Image
-          source={require("../../assets/images/journal-hero.png")}
-          style={styles.heroImage}
-          resizeMode="contain"
-        />
+        <View style={styles.heroImageWrapper}>
+          <Image
+            source={require("../../assets/images/journal-hero.png")}
+            style={styles.heroImage}
+            resizeMode="cover"
+          />
+        </View>
         
         <View style={styles.section}>
           <ThemedText type="h3" style={styles.sectionTitle}>
@@ -527,10 +529,14 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: Spacing.xl,
   },
+  heroImageWrapper: {
+    marginHorizontal: -Spacing.xl,
+    marginBottom: Spacing.lg,
+  },
   heroImage: {
     width: "100%",
-    height: 180,
-    marginBottom: Spacing.lg,
+    height: undefined,
+    aspectRatio: 1024 / 585,
   },
   section: {
     marginBottom: Spacing["3xl"],
