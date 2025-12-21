@@ -30,8 +30,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { getOrCreateDeviceId } from "@/lib/device-id";
-
-const TEND_API_BASE = "https://tend-cards-api.replit.app/api";
+import { getApiUrl } from "@/lib/query-client";
 
 interface TendCard {
   id: string;
@@ -92,7 +91,8 @@ export default function TendCardScreen() {
   const checkTodayStatus = async () => {
     try {
       const userId = await getOrCreateDeviceId();
-      const response = await fetch(`${TEND_API_BASE}/tend/today?userId=${userId}`);
+      const url = new URL(`/api/tend/today?userId=${encodeURIComponent(userId)}`, getApiUrl());
+      const response = await fetch(url.toString());
       
       if (!response.ok) {
         throw new Error("Failed to check today's status");
@@ -120,7 +120,8 @@ export default function TendCardScreen() {
 
     try {
       const userId = await getOrCreateDeviceId();
-      const response = await fetch(`${TEND_API_BASE}/tend/draw`, {
+      const url = new URL("/api/tend/draw", getApiUrl());
+      const response = await fetch(url.toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
@@ -150,7 +151,8 @@ export default function TendCardScreen() {
 
     try {
       const userId = await getOrCreateDeviceId();
-      const response = await fetch(`${TEND_API_BASE}/tend/complete`, {
+      const url = new URL("/api/tend/complete", getApiUrl());
+      const response = await fetch(url.toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),

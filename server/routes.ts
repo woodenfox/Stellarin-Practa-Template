@@ -72,6 +72,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const TEND_API_BASE = "https://tend-cards-api.replit.app/api";
+
+  app.get("/api/tend/today", async (req, res) => {
+    try {
+      const { userId } = req.query;
+      if (!userId || typeof userId !== "string") {
+        return res.status(400).json({ error: "userId is required" });
+      }
+      const response = await fetch(`${TEND_API_BASE}/tend/today?userId=${encodeURIComponent(userId)}`);
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error) {
+      console.error("Error fetching tend status:", error);
+      res.status(500).json({ error: "Failed to fetch tend status" });
+    }
+  });
+
+  app.post("/api/tend/draw", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      if (!userId || typeof userId !== "string") {
+        return res.status(400).json({ error: "userId is required" });
+      }
+      const response = await fetch(`${TEND_API_BASE}/tend/draw`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error) {
+      console.error("Error drawing tend card:", error);
+      res.status(500).json({ error: "Failed to draw tend card" });
+    }
+  });
+
+  app.post("/api/tend/complete", async (req, res) => {
+    try {
+      const { userId, note } = req.body;
+      if (!userId || typeof userId !== "string") {
+        return res.status(400).json({ error: "userId is required" });
+      }
+      const response = await fetch(`${TEND_API_BASE}/tend/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, note }),
+      });
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error) {
+      console.error("Error completing tend card:", error);
+      res.status(500).json({ error: "Failed to complete tend card" });
+    }
+  });
+
+  app.get("/api/tend/history", async (req, res) => {
+    try {
+      const { userId } = req.query;
+      if (!userId || typeof userId !== "string") {
+        return res.status(400).json({ error: "userId is required" });
+      }
+      const response = await fetch(`${TEND_API_BASE}/tend/history?userId=${encodeURIComponent(userId)}`);
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error) {
+      console.error("Error fetching tend history:", error);
+      res.status(500).json({ error: "Failed to fetch tend history" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
