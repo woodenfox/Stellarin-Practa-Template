@@ -537,8 +537,7 @@ const styles = StyleSheet.create({
   },
   heroImage: {
     width: "110%",
-    height: undefined,
-    aspectRatio: 1024 / 585,
+    height: "50%",
   },
   section: {
     marginBottom: Spacing["3xl"],
