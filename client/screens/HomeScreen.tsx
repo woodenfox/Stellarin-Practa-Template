@@ -6,6 +6,7 @@ import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Svg, { Circle, G } from "react-native-svg";
@@ -264,55 +265,63 @@ function WeeklyMomentum({ days, streak }: { days: any[]; streak: number }) {
   return (
     <Animated.View 
       entering={FadeInDown.delay(400).duration(600).springify()}
-      style={[styles.momentumCard, { backgroundColor: "#FFFFFF", borderColor: theme.border }]}
+      style={[styles.momentumCard, { borderColor: theme.border }]}
     >
-      <View style={styles.momentumHeader}>
-        <ThemedText style={[styles.momentumTitle, { color: theme.text }]}>
-          Weekly Momentum
-        </ThemedText>
-        <View style={[styles.streakPill, { backgroundColor: theme.amberMuted }]}>
-          <Feather name="zap" size={12} color={theme.amber} />
-          <ThemedText style={[styles.streakValue, { color: theme.amber }]}>
-            {streak}
-          </ThemedText>
-        </View>
-      </View>
+      <BlurView
+        intensity={80}
+        tint="light"
+        style={styles.momentumBlur}
+      >
+        <View style={styles.momentumContent}>
+          <View style={styles.momentumHeader}>
+            <ThemedText style={[styles.momentumTitle, { color: theme.text }]}>
+              Weekly Momentum
+            </ThemedText>
+            <View style={[styles.streakPill, { backgroundColor: theme.amberMuted }]}>
+              <Feather name="zap" size={12} color={theme.amber} />
+              <ThemedText style={[styles.streakValue, { color: theme.amber }]}>
+                {streak}
+              </ThemedText>
+            </View>
+          </View>
 
-      <View style={styles.momentumContent}>
-        <View style={styles.ringStack}>
-          <StreakRing progress={journalProgress} color={theme.jade} size={72} strokeWidth={6} />
-          <View style={styles.ringInner}>
-            <StreakRing progress={meditationProgress} color={theme.amber} size={52} strokeWidth={5} />
+          <View style={styles.momentumRingsRow}>
+            <View style={styles.ringStack}>
+              <StreakRing progress={journalProgress} color={theme.jade} size={72} strokeWidth={6} />
+              <View style={styles.ringInner}>
+                <StreakRing progress={meditationProgress} color={theme.amber} size={52} strokeWidth={5} />
+              </View>
+            </View>
+
+            <View style={styles.momentumStats}>
+              <View style={styles.statRow}>
+                <View style={[styles.statDot, { backgroundColor: theme.amber }]} />
+                <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
+                  Meditate
+                </ThemedText>
+                <ThemedText style={[styles.statValue, { color: theme.text }]}>
+                  {meditationDays}/7
+                </ThemedText>
+              </View>
+              <View style={styles.statRow}>
+                <View style={[styles.statDot, { backgroundColor: theme.jade }]} />
+                <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
+                  Journal
+                </ThemedText>
+                <ThemedText style={[styles.statValue, { color: theme.text }]}>
+                  {journalDays}/7
+                </ThemedText>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.dayDots}>
+            {days.map((day, i) => (
+              <DayMiniHalo key={i} day={day} theme={theme} />
+            ))}
           </View>
         </View>
-
-        <View style={styles.momentumStats}>
-          <View style={styles.statRow}>
-            <View style={[styles.statDot, { backgroundColor: theme.amber }]} />
-            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
-              Meditate
-            </ThemedText>
-            <ThemedText style={[styles.statValue, { color: theme.text }]}>
-              {meditationDays}/7
-            </ThemedText>
-          </View>
-          <View style={styles.statRow}>
-            <View style={[styles.statDot, { backgroundColor: theme.jade }]} />
-            <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
-              Journal
-            </ThemedText>
-            <ThemedText style={[styles.statValue, { color: theme.text }]}>
-              {journalDays}/7
-            </ThemedText>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.dayDots}>
-        {days.map((day, i) => (
-          <DayMiniHalo key={i} day={day} theme={theme} />
-        ))}
-      </View>
+      </BlurView>
     </Animated.View>
   );
 }
@@ -513,20 +522,30 @@ const styles = StyleSheet.create({
   },
   momentumCard: {
     borderRadius: 24,
-    padding: Spacing.lg,
     borderWidth: 1,
-    gap: Spacing.md,
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
     zIndex: 10,
+    backgroundColor: "rgba(255,255,255,0.85)",
+  },
+  momentumBlur: {
+    padding: Spacing.lg,
   },
   momentumHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  momentumRingsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   momentumTitle: {
     fontSize: 17,
@@ -545,9 +564,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   momentumContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.lg,
+    gap: Spacing.sm,
   },
   ringStack: {
     width: 72,
