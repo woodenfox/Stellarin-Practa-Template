@@ -1,0 +1,191 @@
+# Tend Cards API Documentation
+
+Base URL: /api
+
+## Overview
+
+Tend Cards is a daily wellness card system. Each user receives one card per day to complete. This API allows client applications to:
+- Check if a card has been drawn today
+- Draw a new card (once per day)
+- Mark the card as completed
+- View past history
+
+## Data Models
+
+### Card (returned in responses)
+- id: string (UUID)
+- title: string
+- prompt: string (the wellness instruction)
+- doneWhen: string | null (completion criteria)
+- duration: string | null (estimated time)
+- imageUrl: string | null (URL to card image)
+
+### DailyTend
+- id: string (UUID)
+- userId: string
+- cardId: string
+- date: string (YYYY-MM-DD format)
+- isCompleted: boolean
+- note: string | null (user's completion note)
+- completedAt: Date | null
+- createdAt: Date
+
+## Endpoints
+
+### GET /api/tend/today
+Get today's tend state for a user. Returns whether a card has been drawn today and its completion status.
+
+**Query Parameters:**
+```
+userId (required) - unique identifier for the user
+```
+
+**Response:**
+```json
+// If not drawn yet:
+{ "status": "not_drawn" }
+
+// If drawn but not completed:
+{
+  "status": "drawn",
+  "dailyTend": {
+    "id": "uuid",
+    "userId": "user-id",
+    "cardId": "card-uuid",
+    "date": "2025-01-01",
+    "isCompleted": false,
+    "note": null,
+    "completedAt": null,
+    "createdAt": "2025-01-01T00:00:00.000Z"
+  },
+  "card": {
+    "id": "uuid",
+    "title": "Card Title",
+    "prompt": "The wellness prompt text",
+    "doneWhen": "Completion criteria",
+    "duration": "Estimated time",
+    "imageUrl": "/uploads/image.jpg"
+  }
+}
+```
+
+---
+
+### POST /api/tend/draw
+Draw today's tend card. Randomly selects from active cards. Can only be called once per day per user.
+
+**Request Body:**
+```json
+{
+  "userId": "user-id (required)"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "drawn",
+  "dailyTend": {
+    "id": "uuid",
+    "userId": "user-id",
+    "cardId": "card-uuid",
+    "date": "2025-01-01",
+    "isCompleted": false,
+    "note": null,
+    "completedAt": null,
+    "createdAt": "2025-01-01T00:00:00.000Z"
+  },
+  "card": {
+    "id": "uuid",
+    "title": "Card Title",
+    "prompt": "The wellness prompt text",
+    "doneWhen": "Completion criteria",
+    "duration": "Estimated time",
+    "imageUrl": "/uploads/image.jpg"
+  }
+}
+```
+
+---
+
+### POST /api/tend/complete
+Mark today's tend as completed. Optionally include a note about the experience.
+
+**Request Body:**
+```json
+{
+  "userId": "user-id (required)",
+  "note": "Optional completion note"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "completed",
+  "dailyTend": {
+    "id": "uuid",
+    "userId": "user-id",
+    "cardId": "card-uuid",
+    "date": "2025-01-01",
+    "isCompleted": true,
+    "note": "Felt great!",
+    "completedAt": "2025-01-01T10:30:00.000Z",
+    "createdAt": "2025-01-01T08:00:00.000Z"
+  },
+  "card": { ...card object }
+}
+```
+
+---
+
+### GET /api/tend/history
+Get a user's tend history. Returns past daily tends with their completion status.
+
+**Query Parameters:**
+```
+userId (required) - unique identifier for the user
+```
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "date": "2025-01-01",
+    "isCompleted": true,
+    "note": "Felt great!",
+    "completedAt": "2025-01-01T10:30:00.000Z",
+    "card": {
+      "title": "Morning Gratitude",
+      "prompt": "...",
+      "imageUrl": "/uploads/image.jpg"
+    }
+  }
+]
+```
+
+---
+
+## Error Responses
+
+All endpoints may return:
+- 400 Bad Request: Invalid input or validation error
+- 404 Not Found: No card drawn yet or resource not found
+- 500 Internal Server Error: Server error
+
+Error format:
+```json
+{
+  "error": "Error message"
+}
+```
+
+## Usage Flow
+
+1. On app launch, call `GET /api/tend/today?userId=xxx` to check today's status
+2. If status is "not_drawn", show a "Draw Card" button
+3. When user taps draw, call `POST /api/tend/draw` with userId
+4. Display the card content from the response
+5. When user completes the task, call `POST /api/tend/complete`
+6. Use `GET /api/tend/history` to show past completed tends

@@ -393,6 +393,10 @@ export default function HomeScreen() {
     navigation.navigate("QuickMeditation");
   };
 
+  const handleStartTend = () => {
+    navigation.navigate("TendCard");
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <ScrollView
@@ -433,6 +437,17 @@ export default function HomeScreen() {
             delay={300}
           />
         </View>
+
+        <View style={styles.tendRow}>
+          <ActionCard
+            icon="sun"
+            title="Tend"
+            subtitle="Daily wellness card"
+            colors={[theme.secondary, "#006699"]}
+            onPress={handleStartTend}
+            delay={400}
+          />
+        </View>
       </ScrollView>
     </View>
   );
@@ -451,6 +466,9 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: "row",
     gap: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  tendRow: {
     marginBottom: Spacing.lg,
   },
   actionCard: {
