@@ -69,7 +69,7 @@ export default function HomeScreen() {
 
   const handleStartMeditation = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate("Session", { duration: 180 });
+    navigation.navigate("QuickMeditation");
   };
 
   return (
@@ -119,7 +119,7 @@ export default function HomeScreen() {
               <Feather name="play-circle" size={28} color="#FFFFFF" />
               <View>
                 <ThemedText style={styles.quickStartTitle}>Quick Meditation</ThemedText>
-                <ThemedText style={styles.quickStartSubtitle}>3 minutes</ThemedText>
+                <ThemedText style={styles.quickStartSubtitle}>Choose duration</ThemedText>
               </View>
             </View>
             <Feather name="chevron-right" size={24} color="rgba(255,255,255,0.7)" />

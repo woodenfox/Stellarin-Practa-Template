@@ -5,6 +5,7 @@ import SessionScreen from "@/screens/SessionScreen";
 import RecordingScreen from "@/screens/RecordingScreen";
 import FAQScreen from "@/screens/FAQScreen";
 import PersonalizedMeditationScreen from "@/screens/PersonalizedMeditationScreen";
+import QuickMeditationScreen from "@/screens/QuickMeditationScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type RootStackParamList = {
@@ -13,6 +14,7 @@ export type RootStackParamList = {
   Recording: undefined;
   FAQ: undefined;
   PersonalizedMeditation: { journalContent: string; riceEarned: number };
+  QuickMeditation: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -56,6 +58,15 @@ export default function RootStackNavigator() {
       <Stack.Screen
         name="PersonalizedMeditation"
         component={PersonalizedMeditationScreen}
+        options={{
+          presentation: "fullScreenModal",
+          headerShown: false,
+          animation: "fade",
+        }}
+      />
+      <Stack.Screen
+        name="QuickMeditation"
+        component={QuickMeditationScreen}
         options={{
           presentation: "fullScreenModal",
           headerShown: false,
