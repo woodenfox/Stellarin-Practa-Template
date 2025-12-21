@@ -407,6 +407,8 @@ export default function HomeScreen() {
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
+        <WeeklyMomentum days={sevenDayData} streak={currentStreak} />
+
         <BreathingOrb
           totalRice={totalRice}
           todaysMinutes={todaysMinutes}
@@ -431,8 +433,6 @@ export default function HomeScreen() {
             delay={300}
           />
         </View>
-
-        <WeeklyMomentum days={sevenDayData} streak={currentStreak} />
       </ScrollView>
     </View>
   );
