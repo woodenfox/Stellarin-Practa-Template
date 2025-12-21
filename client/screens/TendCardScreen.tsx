@@ -308,7 +308,9 @@ export default function TendCardScreen() {
 
                 {card.doneWhen ? (
                   <View style={[styles.doneWhenContainer, { backgroundColor: theme.jadeMuted }]}>
-                    <Feather name="check-circle" size={16} color={theme.jade} />
+                    <ThemedText style={[styles.doneWhenLabel, { color: theme.jade }]}>
+                      You're done when...
+                    </ThemedText>
                     <ThemedText style={[styles.doneWhenText, { color: theme.jade }]}>
                       {card.doneWhen}
                     </ThemedText>
@@ -543,15 +545,16 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   doneWhenContainer: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: Spacing.sm,
     padding: Spacing.md,
     borderRadius: BorderRadius.sm,
     marginTop: Spacing.sm,
+    gap: Spacing.xs,
+  },
+  doneWhenLabel: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   doneWhenText: {
-    flex: 1,
     fontSize: 14,
     lineHeight: 20,
   },
