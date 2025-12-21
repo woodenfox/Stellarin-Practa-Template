@@ -534,11 +534,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
     overflow: "hidden",
     alignItems: "center",
+    height: 140,
   },
   heroImage: {
     width: "120%",
-    height: undefined,
-    aspectRatio: 1024 / 585,
+    height: "100%",
   },
   section: {
     marginBottom: Spacing["3xl"],
