@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, TextInput, StyleSheet, Pressable, Platform } from "react-native";
+import { View, TextInput, StyleSheet, Pressable, Platform, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -357,6 +357,12 @@ export default function JournalScreen() {
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
+        <Image
+          source={require("../../assets/images/journal-hero.png")}
+          style={styles.heroImage}
+          resizeMode="contain"
+        />
+        
         <View style={styles.section}>
           <ThemedText type="h3" style={styles.sectionTitle}>
             What's on your mind?
@@ -520,6 +526,11 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Spacing.xl,
+  },
+  heroImage: {
+    width: "100%",
+    height: 180,
+    marginBottom: Spacing.lg,
   },
   section: {
     marginBottom: Spacing["3xl"],
