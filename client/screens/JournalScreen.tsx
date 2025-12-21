@@ -537,7 +537,8 @@ const styles = StyleSheet.create({
   },
   heroImage: {
     width: "110%",
-    height: "50%",
+    height: 220,
+    resizeMode: "contain",
   },
   section: {
     marginBottom: Spacing["3xl"],
