@@ -112,18 +112,20 @@ function ActionCard({
   );
 }
 
-const MINI_HALO_SIZE = 36;
-const MINI_STROKE = 2.5;
-const MINI_INNER_RADIUS = (MINI_HALO_SIZE - MINI_STROKE) / 2 - 4;
+const MINI_HALO_SIZE = 40;
+const MINI_STROKE = 2;
+const MINI_INNER_RADIUS = (MINI_HALO_SIZE - MINI_STROKE) / 2 - 8;
+const MINI_MIDDLE_RADIUS = (MINI_HALO_SIZE - MINI_STROKE) / 2 - 4;
 const MINI_OUTER_RADIUS = (MINI_HALO_SIZE - MINI_STROKE) / 2;
 const MINI_INNER_CIRC = 2 * Math.PI * MINI_INNER_RADIUS;
+const MINI_MIDDLE_CIRC = 2 * Math.PI * MINI_MIDDLE_RADIUS;
 const MINI_OUTER_CIRC = 2 * Math.PI * MINI_OUTER_RADIUS;
 
 function DayMiniHalo({ day, theme }: { day: any; theme: any }) {
   const pulseScale = useSharedValue(1);
 
   useEffect(() => {
-    if (day.isToday && (!day.meditated || !day.journaled)) {
+    if (day.isToday && (!day.meditated || !day.journaled || !day.tended)) {
       pulseScale.value = withRepeat(
         withSequence(
           withTiming(1.08, { duration: 1200 }),
@@ -135,25 +137,26 @@ function DayMiniHalo({ day, theme }: { day: any; theme: any }) {
     } else {
       pulseScale.value = withTiming(1, { duration: 200 });
     }
-  }, [day.isToday, day.meditated, day.journaled]);
+  }, [day.isToday, day.meditated, day.journaled, day.tended]);
 
   const pulseStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulseScale.value }],
   }));
 
-  const bothComplete = day.meditated && day.journaled;
-  const neitherComplete = !day.meditated && !day.journaled;
+  const allComplete = day.meditated && day.journaled && day.tended;
+  const noneComplete = !day.meditated && !day.journaled && !day.tended;
 
   return (
     <View style={styles.dayDotColumn}>
       <Animated.View style={[styles.miniHaloWrap, pulseStyle]}>
         <Svg width={MINI_HALO_SIZE} height={MINI_HALO_SIZE}>
           <G rotation="-90" origin={`${MINI_HALO_SIZE / 2}, ${MINI_HALO_SIZE / 2}`}>
+            {/* Outer ring - Tend (blue) */}
             <Circle
               cx={MINI_HALO_SIZE / 2}
               cy={MINI_HALO_SIZE / 2}
               r={MINI_OUTER_RADIUS}
-              stroke={neitherComplete && !day.isToday ? theme.border : `${theme.jade}30`}
+              stroke={noneComplete && !day.isToday ? theme.border : `${theme.secondary}30`}
               strokeWidth={MINI_STROKE}
               fill="none"
             />
@@ -161,18 +164,39 @@ function DayMiniHalo({ day, theme }: { day: any; theme: any }) {
               cx={MINI_HALO_SIZE / 2}
               cy={MINI_HALO_SIZE / 2}
               r={MINI_OUTER_RADIUS}
-              stroke={theme.jade}
+              stroke={theme.secondary}
               strokeWidth={MINI_STROKE}
               fill="none"
               strokeDasharray={MINI_OUTER_CIRC}
-              strokeDashoffset={day.journaled ? 0 : MINI_OUTER_CIRC}
+              strokeDashoffset={day.tended ? 0 : MINI_OUTER_CIRC}
               strokeLinecap="round"
             />
+            {/* Middle ring - Journal (green) */}
+            <Circle
+              cx={MINI_HALO_SIZE / 2}
+              cy={MINI_HALO_SIZE / 2}
+              r={MINI_MIDDLE_RADIUS}
+              stroke={noneComplete && !day.isToday ? theme.border : `${theme.jade}30`}
+              strokeWidth={MINI_STROKE}
+              fill="none"
+            />
+            <Circle
+              cx={MINI_HALO_SIZE / 2}
+              cy={MINI_HALO_SIZE / 2}
+              r={MINI_MIDDLE_RADIUS}
+              stroke={theme.jade}
+              strokeWidth={MINI_STROKE}
+              fill="none"
+              strokeDasharray={MINI_MIDDLE_CIRC}
+              strokeDashoffset={day.journaled ? 0 : MINI_MIDDLE_CIRC}
+              strokeLinecap="round"
+            />
+            {/* Inner ring - Meditate (amber) */}
             <Circle
               cx={MINI_HALO_SIZE / 2}
               cy={MINI_HALO_SIZE / 2}
               r={MINI_INNER_RADIUS}
-              stroke={neitherComplete && !day.isToday ? theme.border : `${theme.amber}30`}
+              stroke={noneComplete && !day.isToday ? theme.border : `${theme.amber}30`}
               strokeWidth={MINI_STROKE}
               fill="none"
             />
@@ -189,7 +213,7 @@ function DayMiniHalo({ day, theme }: { day: any; theme: any }) {
             />
           </G>
         </Svg>
-        {bothComplete ? (
+        {allComplete ? (
           <View style={styles.miniCheck}>
             <Feather name="check" size={10} color={theme.amber} />
           </View>
