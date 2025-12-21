@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useMemo, useState } from "react";
+import React, { useRef, useCallback, useMemo, useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -18,10 +18,10 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { DURATION_OPTIONS } from "@/components/DurationPicker";
+import { useMeditation } from "@/context/MeditationContext";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const ITEM_HEIGHT = 80;
 const VISIBLE_ITEMS = 5;
 const CIRCULAR_MULTIPLIER = 3;
@@ -31,12 +31,20 @@ export default function QuickMeditationScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const flatListRef = useRef<FlatList>(null);
+  const { selectedDuration, setSelectedDuration } = useMeditation();
   const itemCount = DURATION_OPTIONS.length;
 
   const [selectedIndex, setSelectedIndex] = useState(() => {
-    const defaultIdx = DURATION_OPTIONS.findIndex((opt) => opt.seconds === 180);
-    return defaultIdx >= 0 ? defaultIdx : 4;
+    const idx = DURATION_OPTIONS.findIndex((opt) => opt.seconds === selectedDuration);
+    return idx >= 0 ? idx : 4;
   });
+
+  useEffect(() => {
+    const idx = DURATION_OPTIONS.findIndex((opt) => opt.seconds === selectedDuration);
+    if (idx >= 0 && idx !== selectedIndex) {
+      setSelectedIndex(idx);
+    }
+  }, [selectedDuration]);
 
   const circularData = useMemo(() => {
     const data: Array<{ label: string; seconds: number; index: number }> = [];
@@ -60,6 +68,7 @@ export default function QuickMeditationScreen() {
       const totalHeight = itemCount * ITEM_HEIGHT;
 
       setSelectedIndex(actualIndex);
+      setSelectedDuration(DURATION_OPTIONS[actualIndex].seconds);
 
       if (offsetY < totalHeight * 0.5) {
         flatListRef.current?.scrollToOffset({
@@ -73,7 +82,7 @@ export default function QuickMeditationScreen() {
         });
       }
     },
-    [itemCount]
+    [itemCount, setSelectedDuration]
   );
 
   const handleItemPress = useCallback(
@@ -81,12 +90,13 @@ export default function QuickMeditationScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const actualIndex = index % itemCount;
       setSelectedIndex(actualIndex);
+      setSelectedDuration(seconds);
       flatListRef.current?.scrollToIndex({
         index,
         animated: true,
       });
     },
-    [itemCount]
+    [itemCount, setSelectedDuration]
   );
 
   const handleStart = useCallback(() => {

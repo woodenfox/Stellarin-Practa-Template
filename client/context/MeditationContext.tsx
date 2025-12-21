@@ -52,6 +52,7 @@ const STORAGE_KEYS = {
   STREAK_DAYS: "@rice_meditation_streak_days",
   CHALLENGE_PROGRESS: "@rice_meditation_challenge",
   JOURNAL_ENTRIES: "@rice_meditation_journal",
+  SELECTED_DURATION: "@rice_meditation_selected_duration",
 };
 
 const MeditationContext = createContext<MeditationContextType | undefined>(undefined);
@@ -125,12 +126,13 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
 
   const loadData = async () => {
     try {
-      const [totalRice, sessions, streakDays, challengeProgress, journalEntries] = await Promise.all([
+      const [totalRice, sessions, streakDays, challengeProgress, journalEntries, selectedDuration] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.TOTAL_RICE),
         AsyncStorage.getItem(STORAGE_KEYS.SESSIONS),
         AsyncStorage.getItem(STORAGE_KEYS.STREAK_DAYS),
         AsyncStorage.getItem(STORAGE_KEYS.CHALLENGE_PROGRESS),
         AsyncStorage.getItem(STORAGE_KEYS.JOURNAL_ENTRIES),
+        AsyncStorage.getItem(STORAGE_KEYS.SELECTED_DURATION),
       ]);
 
       setState((prev) => ({
@@ -140,6 +142,7 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
         streakDays: streakDays ? JSON.parse(streakDays) : [],
         challengeProgress: challengeProgress ? parseInt(challengeProgress, 10) : 0,
         journalEntries: journalEntries ? JSON.parse(journalEntries) : [],
+        selectedDuration: selectedDuration ? parseInt(selectedDuration, 10) : 180,
         isLoading: false,
       }));
     } catch (error) {
@@ -148,8 +151,13 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
     }
   };
 
-  const setSelectedDuration = useCallback((duration: number) => {
+  const setSelectedDuration = useCallback(async (duration: number) => {
     setState((prev) => ({ ...prev, selectedDuration: duration }));
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.SELECTED_DURATION, duration.toString());
+    } catch (error) {
+      console.error("Failed to save selected duration:", error);
+    }
   }, []);
 
   const addSession = useCallback(async (session: MeditationSession) => {
