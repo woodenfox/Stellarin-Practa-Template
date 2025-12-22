@@ -93,7 +93,8 @@ function SwipeableCard({
   const cardWidth = Math.min(screenWidth - Spacing.xl * 2, 340);
   const cardHeight = Math.min(screenHeight - insets.top - insets.bottom - 200, 520);
   
-  const stackPosition = totalCards - 1 - index;
+  // Use forward index so cards[1] appears directly under cards[0]
+  const stackPosition = index;
   const stackOffsetY = stackPosition * 12;
   const stackOffsetX = stackPosition * 4;
   const stackScale = 1 - stackPosition * 0.04;
@@ -177,7 +178,8 @@ function SwipeableCard({
         { scale: isActive ? 1 : stackScale },
       ],
       opacity: isActive ? cardOpacity.value : 0.9,
-      zIndex: isActive ? 10 : index,
+      // Higher z-index for lower index cards (index 0 = top)
+      zIndex: isActive ? totalCards + 1 : totalCards - index,
     };
   });
 
@@ -545,7 +547,7 @@ export default function TendCardScreen() {
                 isFlipped={flippedCards.has(card.id)}
                 onFlip={() => handleFlipCard(card.id)}
               />
-            )).reverse()}
+            ))}
           </View>
 
           <View style={styles.chooseButtonContainer}>
