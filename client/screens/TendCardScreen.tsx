@@ -86,8 +86,11 @@ function SwipeableCard({
   
   const cardWidth = Math.min(screenWidth - Spacing.xl * 2, 320);
   
-  const stackOffset = (totalCards - 1 - index) * 8;
-  const stackScale = 1 - (totalCards - 1 - index) * 0.05;
+  const stackPosition = totalCards - 1 - index;
+  const stackOffsetY = stackPosition * 12;
+  const stackOffsetX = stackPosition * 4;
+  const stackScale = 1 - stackPosition * 0.04;
+  const stackRotation = stackPosition * 2;
 
   const imageUrl = card.imageUrl
     ? card.imageUrl.startsWith("http")
@@ -156,9 +159,9 @@ function SwipeableCard({
 
     return {
       transform: [
-        { translateX: translateX.value },
-        { translateY: isActive ? translateY.value : stackOffset },
-        { rotate: `${rotation.value}deg` },
+        { translateX: isActive ? translateX.value : stackOffsetX },
+        { translateY: isActive ? translateY.value : stackOffsetY },
+        { rotate: `${isActive ? rotation.value : stackRotation}deg` },
         { scale: isActive ? scale.value : stackScale },
       ],
       zIndex: isActive ? 10 : index,
@@ -331,14 +334,11 @@ export default function TendCardScreen() {
   const handleSwipeLeft = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
-    // Remove the swiped card and check if any cards left
+    // Move the swiped card to the back of the deck
     setCards(prev => {
-      const newCards = prev.slice(1);
-      if (newCards.length === 0) {
-        // Refetch if all cards skipped
-        fetchCardChoices();
-      }
-      return newCards;
+      if (prev.length <= 1) return prev;
+      const [first, ...rest] = prev;
+      return [...rest, first];
     });
   };
 
