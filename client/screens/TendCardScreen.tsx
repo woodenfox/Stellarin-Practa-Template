@@ -243,6 +243,7 @@ const SwipeableCard = memo(function SwipeableCard({
           style={styles.cardScrollView}
           contentContainerStyle={styles.cardScrollContent}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={false}
         >
           {imageUrl ? (
             <Image
