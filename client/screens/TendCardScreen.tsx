@@ -29,7 +29,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { Image } from "expo-image";
 
-const cardBackImage = require("@/assets/images/tend-card-back.png");
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -312,13 +311,24 @@ export default function TendCardScreen() {
 
           <Pressable onPress={handleFlipAndDraw} disabled={isDrawing}>
             <View style={[styles.flipCardContainer, { width: cardWidth, height: cardHeight }]}>
-              {/* Card Back */}
+              {/* Card Back - CSS Generated */}
               <Animated.View style={[styles.flipCard, cardBackAnimatedStyle, { width: cardWidth, height: cardHeight }]}>
-                <Image
-                  source={cardBackImage}
-                  style={styles.cardBackImage}
-                  contentFit="cover"
-                />
+                <LinearGradient
+                  colors={["#008ACA", "#0066A0", "#004D7A"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.cardBackGradient}
+                >
+                  <View style={styles.cardBackPattern}>
+                    <View style={styles.cardBackLogoRing}>
+                      <View style={styles.cardBackLogoInner}>
+                        <Feather name="sun" size={32} color="#FC7D0F" />
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.cardBackCornerTL} />
+                  <View style={styles.cardBackCornerBR} />
+                </LinearGradient>
               </Animated.View>
               
               {/* Card Front (placeholder while loading) */}
@@ -546,14 +556,6 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  cardBackGradient: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardBackPattern: {
-    position: "absolute",
-  },
   cardBackText: {
     color: "#FFFFFF",
     fontSize: 20,
@@ -608,6 +610,57 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: BorderRadius.lg,
+  },
+  cardBackGradient: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: BorderRadius.lg,
+  },
+  cardBackPattern: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardBackLogoRing: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  cardBackLogoInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardBackCornerTL: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    width: 24,
+    height: 24,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderColor: "rgba(255,255,255,0.2)",
+    borderTopLeftRadius: 8,
+  },
+  cardBackCornerBR: {
+    position: "absolute",
+    bottom: 16,
+    right: 16,
+    width: 24,
+    height: 24,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderColor: "rgba(255,255,255,0.2)",
+    borderBottomRightRadius: 8,
   },
   tapHint: {
     fontSize: 14,
