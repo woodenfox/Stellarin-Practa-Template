@@ -42,6 +42,7 @@ function ActionCard({
   colors,
   onPress,
   delay = 0,
+  completed = false,
 }: {
   icon: keyof typeof Feather.glyphMap;
   title: string;
@@ -49,7 +50,9 @@ function ActionCard({
   colors: string[];
   onPress: () => void;
   delay?: number;
+  completed?: boolean;
 }) {
+  const { theme } = useTheme();
   const pressScale = useSharedValue(1);
   const floatY = useSharedValue(0);
 
@@ -84,6 +87,38 @@ function ActionCard({
     onPress();
   };
 
+  const primaryColor = colors[0];
+
+  if (completed) {
+    return (
+      <Animated.View entering={FadeInUp.delay(delay).duration(600).springify()}>
+        <Pressable
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          onPress={handlePress}
+        >
+          <Animated.View style={[styles.actionCard, animatedStyle]}>
+            <LinearGradient
+              colors={colors as [string, string, ...string[]]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.actionGradient}
+            >
+              <View style={styles.actionIconWrap}>
+                <Feather name={icon} size={24} color="#FFFFFF" />
+              </View>
+              <View style={styles.actionTextWrap}>
+                <ThemedText style={styles.actionTitle}>{title}</ThemedText>
+                <ThemedText style={styles.actionSubtitle}>{subtitle}</ThemedText>
+              </View>
+              <View style={styles.actionShine} />
+            </LinearGradient>
+          </Animated.View>
+        </Pressable>
+      </Animated.View>
+    );
+  }
+
   return (
     <Animated.View entering={FadeInUp.delay(delay).duration(600).springify()}>
       <Pressable
@@ -91,22 +126,26 @@ function ActionCard({
         onPressOut={handlePressOut}
         onPress={handlePress}
       >
-        <Animated.View style={[styles.actionCard, animatedStyle]}>
-          <LinearGradient
-            colors={colors as [string, string, ...string[]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.actionGradient}
-          >
-            <View style={styles.actionIconWrap}>
-              <Feather name={icon} size={24} color="#FFFFFF" />
+        <Animated.View 
+          style={[
+            styles.actionCard, 
+            animatedStyle,
+            { 
+              backgroundColor: theme.backgroundSecondary,
+              borderWidth: 2,
+              borderColor: primaryColor,
+            }
+          ]}
+        >
+          <View style={styles.actionGradient}>
+            <View style={[styles.actionIconWrap, { backgroundColor: `${primaryColor}20` }]}>
+              <Feather name={icon} size={24} color={primaryColor} />
             </View>
             <View style={styles.actionTextWrap}>
-              <ThemedText style={styles.actionTitle}>{title}</ThemedText>
-              <ThemedText style={styles.actionSubtitle}>{subtitle}</ThemedText>
+              <ThemedText style={[styles.actionTitle, { color: primaryColor }]}>{title}</ThemedText>
+              <ThemedText style={[styles.actionSubtitle, { color: theme.textSecondary }]}>{subtitle}</ThemedText>
             </View>
-            <View style={styles.actionShine} />
-          </LinearGradient>
+          </View>
         </Animated.View>
       </Pressable>
     </Animated.View>
@@ -329,7 +368,7 @@ export default function HomeScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
-  const { sessions, journalEntries, tendCompletions, getWeeklyCompletionPoints } = useMeditation();
+  const { sessions, journalEntries, tendCompletions, getWeeklyCompletionPoints, getTodayStreak, hasJournaledToday, hasTendedToday } = useMeditation();
   const weeklyPoints = getWeeklyCompletionPoints();
   
   const [isGrowing, setIsGrowing] = useState(false);
@@ -465,6 +504,7 @@ export default function HomeScreen() {
             colors={[theme.amber, theme.primary]}
             onPress={handleStartMeditation}
             delay={200}
+            completed={getTodayStreak()}
           />
           <ActionCard
             icon="mic"
@@ -473,6 +513,7 @@ export default function HomeScreen() {
             colors={[theme.jade, "#4A9B7F"]}
             onPress={handleStartJournal}
             delay={300}
+            completed={hasJournaledToday()}
           />
           <ActionCard
             icon="sun"
@@ -481,6 +522,7 @@ export default function HomeScreen() {
             colors={[theme.secondary, "#006699"]}
             onPress={handleStartTend}
             delay={400}
+            completed={hasTendedToday()}
           />
         </View>
       </ScrollView>
