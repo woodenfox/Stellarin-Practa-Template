@@ -98,13 +98,9 @@ function SwipeableCard({
       : `https://tend-cards-api.replit.app${card.imageUrl}`
     : null;
 
-  const handleSwipeLeft = useCallback(() => {
+  const rotateToBack = useCallback(() => {
     onSwipeLeft();
   }, [onSwipeLeft]);
-
-  const handleSwipeRight = useCallback(() => {
-    onSwipeRight();
-  }, [onSwipeRight]);
 
   const panGesture = Gesture.Pan()
     .enabled(isActive)
@@ -114,16 +110,13 @@ function SwipeableCard({
       rotation.value = event.translationX / 20;
     })
     .onEnd((event) => {
-      if (event.translationX > SWIPE_THRESHOLD) {
-        translateX.value = withSpring(screenWidth * 1.5, { damping: 15 }, () => {
-          runOnJS(handleSwipeRight)();
+      const swipedFarEnough = Math.abs(event.translationX) > SWIPE_THRESHOLD;
+      if (swipedFarEnough) {
+        const direction = event.translationX > 0 ? 1 : -1;
+        translateX.value = withSpring(screenWidth * 1.5 * direction, { damping: 15 }, () => {
+          runOnJS(rotateToBack)();
         });
-        rotation.value = withSpring(30);
-      } else if (event.translationX < -SWIPE_THRESHOLD) {
-        translateX.value = withSpring(-screenWidth * 1.5, { damping: 15 }, () => {
-          runOnJS(handleSwipeLeft)();
-        });
-        rotation.value = withSpring(-30);
+        rotation.value = withSpring(30 * direction);
       } else {
         translateX.value = withSpring(0, { damping: 15 });
         translateY.value = withSpring(0, { damping: 15 });
@@ -143,20 +136,6 @@ function SwipeableCard({
   const composedGesture = Gesture.Simultaneous(panGesture, tapGesture);
 
   const animatedStyle = useAnimatedStyle(() => {
-    const likeOpacity = interpolate(
-      translateX.value,
-      [0, SWIPE_THRESHOLD],
-      [0, 1],
-      Extrapolation.CLAMP
-    );
-    
-    const nopeOpacity = interpolate(
-      translateX.value,
-      [-SWIPE_THRESHOLD, 0],
-      [1, 0],
-      Extrapolation.CLAMP
-    );
-
     return {
       transform: [
         { translateX: isActive ? translateX.value : stackOffsetX },
@@ -167,24 +146,6 @@ function SwipeableCard({
       zIndex: isActive ? 10 : index,
     };
   });
-
-  const likeIndicatorStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      translateX.value,
-      [0, SWIPE_THRESHOLD],
-      [0, 1],
-      Extrapolation.CLAMP
-    ),
-  }));
-
-  const nopeIndicatorStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      translateX.value,
-      [-SWIPE_THRESHOLD, 0],
-      [1, 0],
-      Extrapolation.CLAMP
-    ),
-  }));
 
   return (
     <GestureDetector gesture={composedGesture}>
@@ -199,16 +160,6 @@ function SwipeableCard({
           animatedStyle,
         ]}
       >
-        <Animated.View style={[styles.swipeIndicator, styles.likeIndicator, likeIndicatorStyle]}>
-          <Feather name="heart" size={32} color={theme.success} />
-          <ThemedText style={[styles.indicatorText, { color: theme.success }]}>CHOOSE</ThemedText>
-        </Animated.View>
-        
-        <Animated.View style={[styles.swipeIndicator, styles.nopeIndicator, nopeIndicatorStyle]}>
-          <Feather name="x" size={32} color={theme.error} />
-          <ThemedText style={[styles.indicatorText, { color: theme.error }]}>SKIP</ThemedText>
-        </Animated.View>
-
         {imageUrl ? (
           <Image
             source={{ uri: imageUrl }}
@@ -457,7 +408,7 @@ export default function TendCardScreen() {
               Choose your wellness focus
             </ThemedText>
             <ThemedText style={[styles.choosingHint, { color: theme.textSecondary }]}>
-              Swipe right to choose, left to skip
+              Swipe to flip through cards
             </ThemedText>
           </Animated.View>
 
@@ -475,19 +426,14 @@ export default function TendCardScreen() {
             )).reverse()}
           </View>
 
-          <View style={styles.swipeHintRow}>
-            <View style={styles.swipeHintItem}>
-              <View style={[styles.swipeHintCircle, { backgroundColor: `${theme.error}20` }]}>
-                <Feather name="x" size={20} color={theme.error} />
-              </View>
-              <ThemedText style={[styles.swipeHintText, { color: theme.textSecondary }]}>Skip</ThemedText>
-            </View>
-            <View style={styles.swipeHintItem}>
-              <View style={[styles.swipeHintCircle, { backgroundColor: `${theme.success}20` }]}>
-                <Feather name="heart" size={20} color={theme.success} />
-              </View>
-              <ThemedText style={[styles.swipeHintText, { color: theme.textSecondary }]}>Choose</ThemedText>
-            </View>
+          <View style={styles.chooseButtonContainer}>
+            <Pressable
+              style={[styles.chooseButton, { backgroundColor: theme.primary }]}
+              onPress={handleSwipeRight}
+            >
+              <Feather name="heart" size={20} color="#FFFFFF" />
+              <ThemedText style={styles.chooseButtonText}>Choose This Card</ThemedText>
+            </Pressable>
           </View>
         </View>
       );
@@ -728,30 +674,21 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: Spacing.md,
   },
-  swipeIndicator: {
-    position: "absolute",
-    top: Spacing.lg,
-    zIndex: 100,
+  chooseButtonContainer: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing["2xl"],
+  },
+  chooseButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.xs,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    backgroundColor: "rgba(255,255,255,0.95)",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.lg,
   },
-  likeIndicator: {
-    right: Spacing.lg,
-    borderWidth: 2,
-    borderColor: "#34C759",
-  },
-  nopeIndicator: {
-    left: Spacing.lg,
-    borderWidth: 2,
-    borderColor: "#FF3B30",
-  },
-  indicatorText: {
-    fontSize: 14,
+  chooseButtonText: {
+    color: "#FFFFFF",
+    fontSize: 17,
     fontWeight: "700",
   },
   swipeHintRow: {
