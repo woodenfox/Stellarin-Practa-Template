@@ -106,11 +106,12 @@ export function SpiralMandala({ onPress }: SpiralMandalaProps) {
       true
     );
     
-    rotationValue.value = withRepeat(
-      withTiming(360, { duration: 60000, easing: Easing.linear }),
-      -1,
-      false
-    );
+    // Rotate a full 360000 degrees (1000 rotations) over a very long time
+    // This ensures no visible reset during normal app usage
+    rotationValue.value = withTiming(360000, { 
+      duration: 60000 * 1000, 
+      easing: Easing.linear 
+    });
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => {
