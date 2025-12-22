@@ -313,42 +313,12 @@ function WeeklyMomentum({ days, streak }: { days: any[]; streak: number }) {
 
           <View style={styles.momentumRingsRow}>
             <View style={styles.ringStack}>
-              <StreakRing progress={tendProgress} color={theme.secondary} size={92} strokeWidth={6} />
+              <StreakRing progress={tendProgress} color={theme.secondary} size={80} strokeWidth={5} />
               <View style={styles.ringInner}>
-                <StreakRing progress={journalProgress} color={theme.jade} size={72} strokeWidth={6} />
+                <StreakRing progress={journalProgress} color={theme.jade} size={62} strokeWidth={5} />
               </View>
               <View style={styles.ringInnermost}>
-                <StreakRing progress={meditationProgress} color={theme.amber} size={52} strokeWidth={5} />
-              </View>
-            </View>
-
-            <View style={styles.momentumStats}>
-              <View style={styles.statRow}>
-                <View style={[styles.statDot, { backgroundColor: theme.amber }]} />
-                <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
-                  Meditate
-                </ThemedText>
-                <ThemedText style={[styles.statValue, { color: theme.text }]}>
-                  {meditationDays}/7
-                </ThemedText>
-              </View>
-              <View style={styles.statRow}>
-                <View style={[styles.statDot, { backgroundColor: theme.jade }]} />
-                <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
-                  Journal
-                </ThemedText>
-                <ThemedText style={[styles.statValue, { color: theme.text }]}>
-                  {journalDays}/7
-                </ThemedText>
-              </View>
-              <View style={styles.statRow}>
-                <View style={[styles.statDot, { backgroundColor: theme.secondary }]} />
-                <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
-                  Tend
-                </ThemedText>
-                <ThemedText style={[styles.statValue, { color: theme.text }]}>
-                  {tendDays}/7
-                </ThemedText>
+                <StreakRing progress={meditationProgress} color={theme.amber} size={44} strokeWidth={5} />
               </View>
             </View>
           </View>
@@ -583,9 +553,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   momentumRingsRow: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.lg,
+    justifyContent: "center",
     marginBottom: Spacing.md,
   },
   momentumTitle: {
@@ -608,8 +577,8 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   ringStack: {
-    width: 92,
-    height: 92,
+    width: 80,
+    height: 80,
     alignItems: "center",
     justifyContent: "center",
   },
