@@ -23,7 +23,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
-import { BreathingOrb } from "@/components/BreathingOrb";
+import { SpiralMandala } from "@/components/SpiralMandala";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useMeditation } from "@/context/MeditationContext";
@@ -328,7 +328,7 @@ export default function HomeScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
-  const { sessions, totalRice, journalEntries, tendCompletions } = useMeditation();
+  const { sessions, journalEntries, tendCompletions } = useMeditation();
 
   const sevenDayData = useMemo(() => {
     const today = new Date();
@@ -378,17 +378,6 @@ export default function HomeScreen() {
     return streak;
   }, [sessions, journalEntries, tendCompletions]);
 
-  const todaysMeditation = useMemo(() => {
-    const today = new Date().toISOString().split("T")[0];
-    return sessions.filter((s) => s.date === today);
-  }, [sessions]);
-
-  const todaysMinutes = useMemo(() => {
-    return Math.floor(
-      todaysMeditation.reduce((acc, s) => acc + s.duration, 0) / 60
-    );
-  }, [todaysMeditation]);
-
   const handleStartMeditation = () => {
     navigation.navigate("QuickMeditation");
   };
@@ -421,11 +410,7 @@ export default function HomeScreen() {
       >
         <WeeklyMomentum days={sevenDayData} streak={currentStreak} />
 
-        <BreathingOrb
-          totalRice={totalRice}
-          todaysMinutes={todaysMinutes}
-          onPress={handleOrbPress}
-        />
+        <SpiralMandala onPress={handleOrbPress} />
 
         <View style={styles.actionsRow}>
           <ActionCard
