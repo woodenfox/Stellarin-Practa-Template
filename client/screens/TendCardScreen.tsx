@@ -68,6 +68,8 @@ function SwipeableCard({
   onSwipeLeft,
   onSwipeRight,
   isActive,
+  isFlipped,
+  onFlip,
 }: {
   card: TendCard;
   index: number;
@@ -75,16 +77,21 @@ function SwipeableCard({
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
   isActive: boolean;
+  isFlipped: boolean;
+  onFlip: () => void;
 }) {
-  const { theme } = useTheme();
-  const { width: screenWidth } = useWindowDimensions();
+  const { theme, isDark } = useTheme();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const rotation = useSharedValue(0);
   const scale = useSharedValue(1);
+  const flipProgress = useSharedValue(isFlipped ? 1 : 0);
   
-  const cardWidth = Math.min(screenWidth - Spacing.xl * 2, 320);
+  const cardWidth = Math.min(screenWidth - Spacing.xl * 2, 340);
+  const cardHeight = Math.min(screenHeight - insets.top - insets.bottom - 200, 520);
   
   const stackPosition = totalCards - 1 - index;
   const stackOffsetY = stackPosition * 12;
@@ -98,12 +105,26 @@ function SwipeableCard({
       : `https://tend-cards-api.replit.app${card.imageUrl}`
     : null;
 
+  useEffect(() => {
+    flipProgress.value = withTiming(isFlipped ? 1 : 0, { 
+      duration: 500, 
+      easing: Easing.inOut(Easing.ease) 
+    });
+  }, [isFlipped]);
+
   const rotateToBack = useCallback(() => {
     onSwipeLeft();
   }, [onSwipeLeft]);
 
+  const handleFlip = useCallback(() => {
+    if (!isFlipped) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onFlip();
+    }
+  }, [isFlipped, onFlip]);
+
   const panGesture = Gesture.Pan()
-    .enabled(isActive)
+    .enabled(isActive && isFlipped)
     .onUpdate((event) => {
       translateX.value = event.translationX;
       translateY.value = event.translationY * 0.3;
@@ -125,17 +146,14 @@ function SwipeableCard({
     });
 
   const tapGesture = Gesture.Tap()
-    .enabled(isActive)
-    .onStart(() => {
-      scale.value = withSpring(0.98);
-    })
+    .enabled(isActive && !isFlipped)
     .onEnd(() => {
-      scale.value = withSpring(1);
+      runOnJS(handleFlip)();
     });
 
-  const composedGesture = Gesture.Simultaneous(panGesture, tapGesture);
+  const composedGesture = Gesture.Race(tapGesture, panGesture);
 
-  const animatedStyle = useAnimatedStyle(() => {
+  const containerStyle = useAnimatedStyle(() => {
     return {
       transform: [
         { translateX: isActive ? translateX.value : stackOffsetX },
@@ -147,54 +165,114 @@ function SwipeableCard({
     };
   });
 
+  const cardBackStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { perspective: 1200 },
+        { rotateY: `${interpolate(flipProgress.value, [0, 1], [0, 180])}deg` },
+      ],
+      backfaceVisibility: 'hidden' as const,
+      opacity: flipProgress.value > 0.5 ? 0 : 1,
+    };
+  });
+
+  const cardFrontStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { perspective: 1200 },
+        { rotateY: `${interpolate(flipProgress.value, [0, 1], [180, 360])}deg` },
+      ],
+      backfaceVisibility: 'hidden' as const,
+      opacity: flipProgress.value > 0.5 ? 1 : 0,
+    };
+  });
+
   return (
     <GestureDetector gesture={composedGesture}>
-      <Animated.View
-        style={[
-          styles.swipeCard,
-          {
-            width: cardWidth,
-            backgroundColor: theme.backgroundDefault,
-            borderColor: theme.border,
-          },
-          animatedStyle,
-        ]}
-      >
-        {imageUrl ? (
-          <Image
-            source={{ uri: imageUrl }}
-            style={styles.swipeCardImage}
-            contentFit="cover"
-          />
-        ) : (
+      <Animated.View style={[styles.flipCardWrapper, { width: cardWidth, height: cardHeight }, containerStyle]}>
+        <Animated.View style={[styles.flipCardFace, cardBackStyle]}>
           <LinearGradient
-            colors={[theme.secondary, theme.jade]}
+            colors={["#008ACA", "#0066A0", "#004D7A"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.swipeCardImagePlaceholder}
+            style={styles.cardBackGradient}
           >
-            <Feather name="sun" size={48} color="rgba(255,255,255,0.5)" />
-          </LinearGradient>
-        )}
-
-        <View style={styles.swipeCardContent}>
-          <ThemedText style={[styles.swipeCardTitle, { color: theme.text }]} numberOfLines={2}>
-            {card.title}
-          </ThemedText>
-
-          <ThemedText style={[styles.swipeCardPrompt, { color: theme.textSecondary }]} numberOfLines={3}>
-            {card.prompt}
-          </ThemedText>
-
-          {card.duration ? (
-            <View style={styles.durationRow}>
-              <Feather name="clock" size={14} color={theme.textSecondary} />
-              <ThemedText style={[styles.durationText, { color: theme.textSecondary }]}>
-                {card.duration}
-              </ThemedText>
+            <View style={styles.cardBackPattern}>
+              <View style={styles.cardBackLogoRing}>
+                <Image
+                  source={require("../../assets/images/icon.png")}
+                  style={styles.cardBackLogoImage}
+                  contentFit="contain"
+                />
+              </View>
+              <ThemedText style={styles.tapToRevealText}>Tap to reveal</ThemedText>
             </View>
-          ) : null}
-        </View>
+            <View style={styles.cardBackCornerTL} />
+            <View style={styles.cardBackCornerBR} />
+          </LinearGradient>
+        </Animated.View>
+
+        <Animated.View 
+          style={[
+            styles.flipCardFace, 
+            styles.flipCardFront,
+            { backgroundColor: theme.backgroundDefault, borderColor: theme.border },
+            cardFrontStyle
+          ]}
+        >
+          <ScrollView 
+            style={styles.cardScrollView}
+            contentContainerStyle={styles.cardScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {imageUrl ? (
+              <Image
+                source={{ uri: imageUrl }}
+                style={styles.fullCardImage}
+                contentFit="cover"
+              />
+            ) : (
+              <LinearGradient
+                colors={[theme.secondary, theme.jade]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.fullCardImagePlaceholder}
+              >
+                <Feather name="sun" size={48} color="rgba(255,255,255,0.5)" />
+              </LinearGradient>
+            )}
+
+            <View style={styles.fullCardContent}>
+              <ThemedText style={[styles.fullCardTitle, { color: theme.text }]}>
+                {card.title}
+              </ThemedText>
+
+              <ThemedText style={[styles.fullCardPrompt, { color: theme.textSecondary }]}>
+                {card.prompt}
+              </ThemedText>
+
+              {card.doneWhen ? (
+                <View style={[styles.doneWhenContainer, { backgroundColor: theme.jadeMuted }]}>
+                  <ThemedText style={[styles.doneWhenLabel, { color: theme.jade }]}>
+                    You're done when...
+                  </ThemedText>
+                  <ThemedText style={[styles.doneWhenText, { color: theme.jade }]}>
+                    {card.doneWhen}
+                  </ThemedText>
+                </View>
+              ) : null}
+
+              {card.duration ? (
+                <View style={styles.durationRow}>
+                  <Feather name="clock" size={14} color={theme.textSecondary} />
+                  <ThemedText style={[styles.durationText, { color: theme.textSecondary }]}>
+                    {card.duration}
+                  </ThemedText>
+                </View>
+              ) : null}
+            </View>
+          </ScrollView>
+        </Animated.View>
       </Animated.View>
     </GestureDetector>
   );
@@ -213,6 +291,7 @@ export default function TendCardScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isCompleting, setIsCompleting] = useState(false);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set());
 
   const cardScale = useSharedValue(0.9);
   const glowOpacity = useSharedValue(0.3);
@@ -285,12 +364,26 @@ export default function TendCardScreen() {
   const handleSwipeLeft = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
+    // Reset flipped state for the swiped card
+    const swipedCardId = cards[0]?.id;
+    if (swipedCardId) {
+      setFlippedCards(prev => {
+        const next = new Set(prev);
+        next.delete(swipedCardId);
+        return next;
+      });
+    }
+    
     // Move the swiped card to the back of the deck
     setCards(prev => {
       if (prev.length <= 1) return prev;
       const [first, ...rest] = prev;
       return [...rest, first];
     });
+  };
+
+  const handleFlipCard = (cardId: string) => {
+    setFlippedCards(prev => new Set(prev).add(cardId));
   };
 
   const handleSwipeRight = async () => {
@@ -401,6 +494,8 @@ export default function TendCardScreen() {
     }
 
     if (status === "choosing" && cards.length > 0) {
+      const topCardFlipped = flippedCards.has(cards[0]?.id);
+      
       return (
         <View style={styles.choosingContainer}>
           <Animated.View entering={FadeInUp.duration(400)}>
@@ -408,7 +503,7 @@ export default function TendCardScreen() {
               Choose your wellness focus
             </ThemedText>
             <ThemedText style={[styles.choosingHint, { color: theme.textSecondary }]}>
-              Swipe to flip through cards
+              {topCardFlipped ? "Swipe to see more cards" : "Tap the card to reveal"}
             </ThemedText>
           </Animated.View>
 
@@ -422,14 +517,23 @@ export default function TendCardScreen() {
                 onSwipeLeft={handleSwipeLeft}
                 onSwipeRight={handleSwipeRight}
                 isActive={index === 0}
+                isFlipped={flippedCards.has(card.id)}
+                onFlip={() => handleFlipCard(card.id)}
               />
             )).reverse()}
           </View>
 
           <View style={styles.chooseButtonContainer}>
             <Pressable
-              style={[styles.chooseButton, { backgroundColor: theme.primary }]}
-              onPress={handleSwipeRight}
+              style={[
+                styles.chooseButton, 
+                { 
+                  backgroundColor: topCardFlipped ? theme.primary : theme.border,
+                  opacity: topCardFlipped ? 1 : 0.6,
+                }
+              ]}
+              onPress={topCardFlipped ? handleSwipeRight : undefined}
+              disabled={!topCardFlipped}
             >
               <Feather name="heart" size={20} color="#FFFFFF" />
               <ThemedText style={styles.chooseButtonText}>Choose This Card</ThemedText>
@@ -838,5 +942,109 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "600",
+  },
+  flipCardWrapper: {
+    position: "absolute",
+  },
+  flipCardFace: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+    borderRadius: BorderRadius.lg,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  flipCardFront: {
+    borderWidth: 1,
+  },
+  cardBackGradient: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardBackPattern: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardBackLogoRing: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.lg,
+  },
+  cardBackLogoImage: {
+    width: 60,
+    height: 60,
+  },
+  tapToRevealText: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 15,
+    fontWeight: "600",
+    letterSpacing: 1,
+  },
+  cardBackCornerTL: {
+    position: "absolute",
+    top: Spacing.lg,
+    left: Spacing.lg,
+    width: 40,
+    height: 40,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderColor: "rgba(255,255,255,0.2)",
+    borderTopLeftRadius: BorderRadius.sm,
+  },
+  cardBackCornerBR: {
+    position: "absolute",
+    bottom: Spacing.lg,
+    right: Spacing.lg,
+    width: 40,
+    height: 40,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderColor: "rgba(255,255,255,0.2)",
+    borderBottomRightRadius: BorderRadius.sm,
+  },
+  cardScrollView: {
+    flex: 1,
+  },
+  cardScrollContent: {
+    flexGrow: 1,
+  },
+  fullCardImage: {
+    width: "100%",
+    height: 200,
+  },
+  fullCardImagePlaceholder: {
+    width: "100%",
+    height: 200,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fullCardContent: {
+    padding: Spacing.lg,
+    flex: 1,
+  },
+  fullCardTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    marginBottom: Spacing.sm,
+  },
+  fullCardPrompt: {
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: Spacing.lg,
   },
 });
