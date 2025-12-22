@@ -311,18 +311,6 @@ function WeeklyMomentum({ days, streak }: { days: any[]; streak: number }) {
             </View>
           </View>
 
-          <View style={styles.momentumRingsRow}>
-            <View style={styles.ringStack}>
-              <StreakRing progress={tendProgress} color={theme.secondary} size={80} strokeWidth={5} />
-              <View style={styles.ringInner}>
-                <StreakRing progress={journalProgress} color={theme.jade} size={62} strokeWidth={5} />
-              </View>
-              <View style={styles.ringInnermost}>
-                <StreakRing progress={meditationProgress} color={theme.amber} size={44} strokeWidth={5} />
-              </View>
-            </View>
-          </View>
-
           <View style={styles.dayDots}>
             {days.map((day, i) => (
               <DayMiniHalo key={i} day={day} theme={theme} />
