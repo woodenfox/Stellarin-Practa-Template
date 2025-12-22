@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { ScrollView, View, StyleSheet, Pressable } from "react-native";
+import { ScrollView, View, StyleSheet, Pressable, Alert } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { reloadAppAsync } from "expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -114,6 +116,29 @@ export default function CommunityScreen() {
   const pulseAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulseScale.value }],
   }));
+
+  const handleResetAppData = () => {
+    Alert.alert(
+      "Reset App Data",
+      "This will clear all your meditation sessions, journal entries, and progress. This cannot be undone. Are you sure?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset Everything",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await AsyncStorage.clear();
+              reloadAppAsync();
+            } catch (error) {
+              console.error("Failed to reset app data:", error);
+              Alert.alert("Error", "Failed to reset app data. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const formatRiceCount = (count: number) => {
     if (count >= 1000000) {
@@ -276,6 +301,26 @@ export default function CommunityScreen() {
             </ThemedText>
           </View>
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="h4" style={styles.sectionTitle}>
+          Developer Options
+        </ThemedText>
+        <Pressable
+          style={[styles.resetButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.error }]}
+          onPress={handleResetAppData}
+        >
+          <Feather name="trash-2" size={20} color={theme.error} />
+          <View style={styles.resetButtonText}>
+            <ThemedText style={[styles.resetButtonTitle, { color: theme.error }]}>
+              Reset App Data
+            </ThemedText>
+            <ThemedText style={[styles.resetButtonSubtitle, { color: theme.textSecondary }]}>
+              Clear all sessions, journal entries, and progress
+            </ThemedText>
+          </View>
+        </Pressable>
       </View>
 
       <FooterIllustration />
@@ -460,5 +505,24 @@ const styles = StyleSheet.create({
   },
   supportDescription: {
     fontSize: 13,
+  },
+  resetButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    gap: Spacing.md,
+  },
+  resetButtonText: {
+    flex: 1,
+  },
+  resetButtonTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  resetButtonSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
   },
 });
