@@ -1,5 +1,6 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useState, useRef } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Dimensions } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -330,6 +331,43 @@ export default function HomeScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { sessions, journalEntries, tendCompletions, getWeeklyCompletionPoints } = useMeditation();
   const weeklyPoints = getWeeklyCompletionPoints();
+  
+  const [isGrowing, setIsGrowing] = useState(false);
+  const [previousPoints, setPreviousPoints] = useState(weeklyPoints);
+  const hasCheckedPoints = useRef(false);
+  
+  useEffect(() => {
+    const checkForGrowth = async () => {
+      if (hasCheckedPoints.current) return;
+      hasCheckedPoints.current = true;
+      
+      try {
+        const storedPoints = await AsyncStorage.getItem("@stellarin_last_weekly_points");
+        const lastPoints = storedPoints ? parseInt(storedPoints, 10) : 0;
+        
+        if (weeklyPoints > lastPoints) {
+          setPreviousPoints(lastPoints);
+          setIsGrowing(true);
+        }
+        
+        await AsyncStorage.setItem("@stellarin_last_weekly_points", weeklyPoints.toString());
+      } catch (error) {
+        console.error("Error checking growth:", error);
+      }
+    };
+    
+    checkForGrowth();
+  }, [weeklyPoints]);
+  
+  const handleGrowthComplete = async () => {
+    setIsGrowing(false);
+    setPreviousPoints(weeklyPoints);
+    try {
+      await AsyncStorage.setItem("@stellarin_last_weekly_points", weeklyPoints.toString());
+    } catch (error) {
+      console.error("Error saving points:", error);
+    }
+  };
 
   const sevenDayData = useMemo(() => {
     const today = new Date();
@@ -411,7 +449,13 @@ export default function HomeScreen() {
       >
         <WeeklyMomentum days={sevenDayData} streak={currentStreak} />
 
-        <SpiralMandala onPress={handleOrbPress} weeklyPoints={weeklyPoints} />
+        <SpiralMandala 
+          onPress={handleOrbPress} 
+          weeklyPoints={weeklyPoints}
+          isGrowing={isGrowing}
+          previousPoints={previousPoints}
+          onGrowthComplete={handleGrowthComplete}
+        />
 
         <View style={styles.actionsRow}>
           <ActionCard

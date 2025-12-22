@@ -1,10 +1,13 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { View, StyleSheet, Dimensions, Pressable } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
+  useAnimatedProps,
   withRepeat,
   withTiming,
+  withSequence,
+  withDelay,
   Easing,
   interpolate,
 } from "react-native-reanimated";
@@ -13,12 +16,17 @@ import * as Haptics from "expo-haptics";
 
 import { useTheme } from "@/hooks/useTheme";
 
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const MANDALA_SIZE = Math.min(SCREEN_WIDTH * 0.9, 380);
 
 interface SpiralMandalaProps {
   onPress?: () => void;
   weeklyPoints?: number;
+  isGrowing?: boolean;
+  previousPoints?: number;
+  onGrowthComplete?: () => void;
 }
 
 interface MandalaParameters {
@@ -57,21 +65,135 @@ function computeNodes(
   return nodes;
 }
 
-export function SpiralMandala({ onPress, weeklyPoints = 0 }: SpiralMandalaProps) {
+function EnergyRing({ 
+  delay, 
+  maxRadius, 
+  color,
+  isActive 
+}: { 
+  delay: number; 
+  maxRadius: number; 
+  color: string;
+  isActive: boolean;
+}) {
+  const progress = useSharedValue(0);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    if (isActive) {
+      progress.value = 0;
+      opacity.value = 0;
+      
+      progress.value = withDelay(
+        delay,
+        withTiming(1, { duration: 2000, easing: Easing.out(Easing.cubic) })
+      );
+      
+      opacity.value = withDelay(
+        delay,
+        withSequence(
+          withTiming(0.4, { duration: 400, easing: Easing.out(Easing.ease) }),
+          withTiming(0.4, { duration: 1200 }),
+          withTiming(0, { duration: 400, easing: Easing.in(Easing.ease) })
+        )
+      );
+    }
+  }, [isActive]);
+
+  const animatedProps = useAnimatedProps(() => {
+    const outerStart = maxRadius * 1.4;
+    const outerEnd = maxRadius * 0.3;
+    const r = outerStart - (outerStart - outerEnd) * progress.value;
+    
+    return {
+      r,
+      opacity: opacity.value,
+    };
+  });
+
+  return (
+    <AnimatedCircle
+      cx={0}
+      cy={0}
+      stroke={color}
+      strokeWidth={2}
+      fill="none"
+      animatedProps={animatedProps}
+    />
+  );
+}
+
+export function SpiralMandala({ 
+  onPress, 
+  weeklyPoints = 0,
+  isGrowing = false,
+  previousPoints = 0,
+  onGrowthComplete,
+}: SpiralMandalaProps) {
   const { theme, isDark } = useTheme();
   
   const breathValue = useSharedValue(0);
   const rotationValue = useSharedValue(0);
   const pressScale = useSharedValue(1);
+  const pulseScale = useSharedValue(1);
 
   const maxRadius = MANDALA_SIZE * 0.40;
   const cx = MANDALA_SIZE / 2;
   const cy = MANDALA_SIZE / 2;
 
-  const armCount = Math.min(3 + weeklyPoints, 24);
+  const [displayedArms, setDisplayedArms] = useState(Math.min(3 + weeklyPoints, 24));
+  const [showRings, setShowRings] = useState(false);
+
+  const targetArmCount = Math.min(3 + weeklyPoints, 24);
+  const previousArmCount = Math.min(3 + previousPoints, 24);
+
+  const updateArms = useCallback((newCount: number) => {
+    setDisplayedArms(newCount);
+  }, []);
+
+  const handleGrowthComplete = useCallback(() => {
+    setDisplayedArms(targetArmCount);
+    setShowRings(false);
+    onGrowthComplete?.();
+  }, [targetArmCount, onGrowthComplete]);
+
+  useEffect(() => {
+    if (isGrowing && targetArmCount > previousArmCount) {
+      setDisplayedArms(previousArmCount);
+      setShowRings(true);
+      
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      pulseScale.value = withSequence(
+        withTiming(1.08, { duration: 400, easing: Easing.out(Easing.ease) }),
+        withTiming(1, { duration: 300, easing: Easing.inOut(Easing.ease) })
+      );
+      
+      const armDiff = targetArmCount - previousArmCount;
+      const stepDuration = 3000 / armDiff;
+      
+      let currentArm = previousArmCount;
+      const interval = setInterval(() => {
+        currentArm++;
+        if (currentArm <= targetArmCount) {
+          updateArms(currentArm);
+        }
+        if (currentArm >= targetArmCount) {
+          clearInterval(interval);
+          setTimeout(() => {
+            handleGrowthComplete();
+          }, 500);
+        }
+      }, stepDuration);
+      
+      return () => clearInterval(interval);
+    } else if (!isGrowing) {
+      setDisplayedArms(targetArmCount);
+    }
+  }, [isGrowing, targetArmCount, previousArmCount]);
   
   const parameters: MandalaParameters = useMemo(() => ({
-    arms: armCount,
+    arms: displayedArms,
     density: 4,
     curvature: 0.5,
     lineOpacity: 0.15,
@@ -80,7 +202,7 @@ export function SpiralMandala({ onPress, weeklyPoints = 0 }: SpiralMandalaProps)
       theme.primary,
       theme.secondary,
     ],
-  }), [theme.primary, theme.secondary, armCount]);
+  }), [theme.primary, theme.secondary, displayedArms]);
 
   const allArms = useMemo(() => {
     const arms = [];
@@ -109,8 +231,6 @@ export function SpiralMandala({ onPress, weeklyPoints = 0 }: SpiralMandalaProps)
       true
     );
     
-    // Rotate a full 360000 degrees (1000 rotations) over a very long time
-    // This ensures no visible reset during normal app usage
     rotationValue.value = withTiming(360000, { 
       duration: 60000 * 1000, 
       easing: Easing.linear 
@@ -121,7 +241,7 @@ export function SpiralMandala({ onPress, weeklyPoints = 0 }: SpiralMandalaProps)
     const breath = interpolate(breathValue.value, [0, 1], [1, 1.03]);
     return {
       transform: [
-        { scale: breath * pressScale.value },
+        { scale: breath * pressScale.value * pulseScale.value },
         { rotate: `${rotationValue.value}deg` },
       ],
     };
@@ -150,6 +270,29 @@ export function SpiralMandala({ onPress, weeklyPoints = 0 }: SpiralMandalaProps)
         <Animated.View style={[styles.mandalaWrap, animatedStyle]}>
           <Svg width={MANDALA_SIZE} height={MANDALA_SIZE}>
             <G x={cx} y={cy}>
+              {showRings ? (
+                <>
+                  <EnergyRing 
+                    delay={0} 
+                    maxRadius={maxRadius} 
+                    color={theme.secondary}
+                    isActive={showRings}
+                  />
+                  <EnergyRing 
+                    delay={300} 
+                    maxRadius={maxRadius} 
+                    color={theme.primary}
+                    isActive={showRings}
+                  />
+                  <EnergyRing 
+                    delay={600} 
+                    maxRadius={maxRadius} 
+                    color={theme.secondary}
+                    isActive={showRings}
+                  />
+                </>
+              ) : null}
+              
               {allArms.map(({ armIndex, color, nodes }) => (
                 <G key={armIndex}>
                   {nodes.map((node, i) => (
