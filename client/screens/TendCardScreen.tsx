@@ -95,10 +95,11 @@ function SwipeableCard({
   
   // Use forward index so cards[1] appears directly under cards[0]
   const stackPosition = index;
-  const stackOffsetY = stackPosition * 12;
-  const stackOffsetX = stackPosition * 4;
-  const stackScale = 1 - stackPosition * 0.04;
-  const stackRotation = stackPosition * 2;
+  // No visual difference for stacked cards - they look the same as active card
+  const stackOffsetY = 0;
+  const stackOffsetX = 0;
+  const stackScale = 1;
+  const stackRotation = 0;
 
   const imageUrl = card.imageUrl
     ? card.imageUrl.startsWith("http")
@@ -177,7 +178,7 @@ function SwipeableCard({
         { rotate: `${isActive ? rotation.value : stackRotation}deg` },
         { scale: isActive ? 1 : stackScale },
       ],
-      opacity: isActive ? cardOpacity.value : 0.9,
+      opacity: isActive ? cardOpacity.value : 1,
       // Higher z-index for lower index cards (index 0 = top)
       zIndex: isActive ? totalCards + 1 : totalCards - index,
     };
