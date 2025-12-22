@@ -66,57 +66,57 @@ function computeNodes(
 }
 
 function EnergyRing({ 
-  delay, 
+  phaseOffset, 
   maxRadius, 
   color,
-  isActive 
+  isActive,
+  glowIntensity,
 }: { 
-  delay: number; 
+  phaseOffset: number; 
   maxRadius: number; 
   color: string;
   isActive: boolean;
+  glowIntensity: number;
 }) {
-  const progress = useSharedValue(0);
-  const opacity = useSharedValue(0);
+  const time = useSharedValue(0);
 
   useEffect(() => {
     if (isActive) {
-      progress.value = 0;
-      opacity.value = 0;
-      
-      progress.value = withDelay(
-        delay,
-        withTiming(1, { duration: 2000, easing: Easing.out(Easing.cubic) })
+      time.value = 0;
+      time.value = withRepeat(
+        withTiming(1, { duration: 2500, easing: Easing.linear }),
+        -1,
+        false
       );
-      
-      opacity.value = withDelay(
-        delay,
-        withSequence(
-          withTiming(0.4, { duration: 400, easing: Easing.out(Easing.ease) }),
-          withTiming(0.4, { duration: 1200 }),
-          withTiming(0, { duration: 400, easing: Easing.in(Easing.ease) })
-        )
-      );
+    } else {
+      time.value = 0;
     }
   }, [isActive]);
 
   const animatedProps = useAnimatedProps(() => {
-    const outerStart = maxRadius * 1.4;
-    const outerEnd = maxRadius * 0.3;
-    const r = outerStart - (outerStart - outerEnd) * progress.value;
+    const ringPhase = (phaseOffset + time.value) % 1;
+    const ringProgress = 1 - ringPhase;
+    
+    const outerStart = maxRadius * 1.3;
+    const outerEnd = maxRadius * 0.95;
+    const r = outerEnd + (outerStart - outerEnd) * ringProgress;
+    
+    const ringAlpha = Math.sin(ringPhase * Math.PI) * glowIntensity * 0.35;
     
     return {
       r,
-      opacity: opacity.value,
+      opacity: ringAlpha,
     };
   });
+
+  if (!isActive) return null;
 
   return (
     <AnimatedCircle
       cx={0}
       cy={0}
       stroke={color}
-      strokeWidth={2}
+      strokeWidth={1.5}
       fill="none"
       animatedProps={animatedProps}
     />
@@ -143,6 +143,7 @@ export function SpiralMandala({
 
   const [displayedArms, setDisplayedArms] = useState(Math.min(3 + weeklyPoints, 24));
   const [showRings, setShowRings] = useState(false);
+  const [glowIntensity, setGlowIntensity] = useState(0);
 
   const targetArmCount = Math.min(3 + weeklyPoints, 24);
   const previousArmCount = Math.min(3 + previousPoints, 24);
@@ -169,26 +170,50 @@ export function SpiralMandala({
         withTiming(1, { duration: 300, easing: Easing.inOut(Easing.ease) })
       );
       
+      const duration = 3500;
+      const startTime = Date.now();
+      
+      const glowInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const rawProgress = Math.min(elapsed / duration, 1);
+        
+        let intensity = 0;
+        if (rawProgress < 0.3) {
+          intensity = rawProgress / 0.3;
+        } else if (rawProgress < 0.7) {
+          intensity = 1;
+        } else {
+          intensity = 1 - (rawProgress - 0.7) / 0.3;
+        }
+        setGlowIntensity(intensity);
+      }, 50);
+      
       const armDiff = targetArmCount - previousArmCount;
       const stepDuration = 3000 / armDiff;
       
       let currentArm = previousArmCount;
-      const interval = setInterval(() => {
+      const armInterval = setInterval(() => {
         currentArm++;
         if (currentArm <= targetArmCount) {
           updateArms(currentArm);
         }
         if (currentArm >= targetArmCount) {
-          clearInterval(interval);
+          clearInterval(armInterval);
           setTimeout(() => {
+            clearInterval(glowInterval);
+            setGlowIntensity(0);
             handleGrowthComplete();
           }, 500);
         }
       }, stepDuration);
       
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(armInterval);
+        clearInterval(glowInterval);
+      };
     } else if (!isGrowing) {
       setDisplayedArms(targetArmCount);
+      setGlowIntensity(0);
     }
   }, [isGrowing, targetArmCount, previousArmCount]);
   
@@ -273,22 +298,25 @@ export function SpiralMandala({
               {showRings ? (
                 <>
                   <EnergyRing 
-                    delay={0} 
+                    phaseOffset={0} 
                     maxRadius={maxRadius} 
                     color={theme.secondary}
                     isActive={showRings}
+                    glowIntensity={glowIntensity}
                   />
                   <EnergyRing 
-                    delay={300} 
+                    phaseOffset={0.33} 
                     maxRadius={maxRadius} 
                     color={theme.primary}
                     isActive={showRings}
+                    glowIntensity={glowIntensity}
                   />
                   <EnergyRing 
-                    delay={600} 
+                    phaseOffset={0.66} 
                     maxRadius={maxRadius} 
                     color={theme.secondary}
                     isActive={showRings}
+                    glowIntensity={glowIntensity}
                   />
                 </>
               ) : null}
