@@ -29,78 +29,31 @@ interface MandalaParameters {
   colorPalette: string[];
 }
 
-function SpiralArm({
-  armIndex,
-  totalArms,
-  parameters,
-  maxRadius,
-}: {
-  armIndex: number;
-  totalArms: number;
-  parameters: MandalaParameters;
-  maxRadius: number;
-}) {
-  const { density, curvature, lineOpacity, nodeScale, colorPalette } = parameters;
-  
+function computeNodes(
+  armIndex: number,
+  totalArms: number,
+  density: number,
+  curvature: number,
+  nodeScale: number,
+  maxRadius: number
+) {
   const armOffset = (armIndex / totalArms) * Math.PI * 2;
-  const colorIndex = armIndex % 2;
-  const color = colorPalette[colorIndex];
   const spiralTurns = 0.25 + curvature * 0.35;
   const nodesPerSpiral = Math.floor(6 + density * 1.5);
-  
   const startR = maxRadius * 0.1;
   const endR = maxRadius * 0.9;
-  
-  const nodes = useMemo(() => {
-    const result = [];
-    for (let i = 0; i < nodesPerSpiral; i++) {
-      const progress = i / (nodesPerSpiral - 1);
-      const radius = startR + (endR - startR) * progress;
-      const angle = armOffset + progress * spiralTurns * Math.PI * 2;
-      const x = Math.cos(angle) * radius;
-      const y = Math.sin(angle) * radius;
-      const nodeSize = (1.5 + progress * 1.5) * nodeScale;
-      
-      result.push({ x, y, size: nodeSize, progress });
-    }
-    return result;
-  }, [armOffset, spiralTurns, nodesPerSpiral, startR, endR, nodeScale]);
 
-  return (
-    <G>
-      {nodes.map((node, i) => (
-        i > 0 ? (
-          <Line
-            key={`line-${i}`}
-            x1={nodes[i - 1].x}
-            y1={nodes[i - 1].y}
-            x2={node.x}
-            y2={node.y}
-            stroke={color}
-            strokeWidth={0.75}
-            strokeOpacity={lineOpacity}
-            strokeLinecap="round"
-          />
-        ) : null
-      ))}
-      {nodes.map((node, i) => (
-        <G key={`node-${i}`}>
-          <Circle
-            cx={node.x}
-            cy={node.y}
-            r={node.size}
-            fill={color}
-          />
-          <Circle
-            cx={node.x - node.size * 0.2}
-            cy={node.y - node.size * 0.2}
-            r={node.size * 0.25}
-            fill="rgba(255,255,255,0.5)"
-          />
-        </G>
-      ))}
-    </G>
-  );
+  const nodes = [];
+  for (let i = 0; i < nodesPerSpiral; i++) {
+    const progress = i / (nodesPerSpiral - 1);
+    const radius = startR + (endR - startR) * progress;
+    const angle = armOffset + progress * spiralTurns * Math.PI * 2;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    const size = (1.5 + progress * 1.5) * nodeScale;
+    nodes.push({ x, y, size });
+  }
+  return nodes;
 }
 
 export function SpiralMandala({ onPress }: SpiralMandalaProps) {
@@ -109,6 +62,10 @@ export function SpiralMandala({ onPress }: SpiralMandalaProps) {
   const breathValue = useSharedValue(0);
   const rotationValue = useSharedValue(0);
   const pressScale = useSharedValue(1);
+
+  const maxRadius = MANDALA_SIZE * 0.40;
+  const cx = MANDALA_SIZE / 2;
+  const cy = MANDALA_SIZE / 2;
 
   const parameters: MandalaParameters = useMemo(() => ({
     arms: 6,
@@ -121,6 +78,26 @@ export function SpiralMandala({ onPress }: SpiralMandalaProps) {
       theme.secondary,
     ],
   }), [theme.primary, theme.secondary]);
+
+  const allArms = useMemo(() => {
+    const arms = [];
+    for (let armIndex = 0; armIndex < parameters.arms; armIndex++) {
+      const colorIndex = armIndex % 2;
+      const color = parameters.colorPalette[colorIndex];
+      const nodes = computeNodes(
+        armIndex,
+        parameters.arms,
+        parameters.density,
+        parameters.curvature,
+        parameters.nodeScale,
+        maxRadius
+      );
+      arms.push({ armIndex, color, nodes });
+    }
+    return arms;
+  }, [parameters, maxRadius]);
+
+  const centerSize = 4 * parameters.nodeScale;
 
   useEffect(() => {
     breathValue.value = withRepeat(
@@ -159,11 +136,6 @@ export function SpiralMandala({ onPress }: SpiralMandalaProps) {
     onPress?.();
   };
 
-  const cx = MANDALA_SIZE / 2;
-  const cy = MANDALA_SIZE / 2;
-  const maxRadius = MANDALA_SIZE * 0.40;
-  const centerSize = 4 * parameters.nodeScale;
-
   return (
     <View style={styles.container}>
       <Pressable
@@ -174,14 +146,40 @@ export function SpiralMandala({ onPress }: SpiralMandalaProps) {
         <Animated.View style={[styles.mandalaWrap, animatedStyle]}>
           <Svg width={MANDALA_SIZE} height={MANDALA_SIZE}>
             <G x={cx} y={cy}>
-              {Array.from({ length: parameters.arms }).map((_, i) => (
-                <SpiralArm
-                  key={i}
-                  armIndex={i}
-                  totalArms={parameters.arms}
-                  parameters={parameters}
-                  maxRadius={maxRadius}
-                />
+              {allArms.map(({ armIndex, color, nodes }) => (
+                <G key={armIndex}>
+                  {nodes.map((node, i) => (
+                    i > 0 ? (
+                      <Line
+                        key={`line-${armIndex}-${i}`}
+                        x1={nodes[i - 1].x}
+                        y1={nodes[i - 1].y}
+                        x2={node.x}
+                        y2={node.y}
+                        stroke={color}
+                        strokeWidth={0.75}
+                        strokeOpacity={parameters.lineOpacity}
+                        strokeLinecap="round"
+                      />
+                    ) : null
+                  ))}
+                  {nodes.map((node, i) => (
+                    <G key={`node-${armIndex}-${i}`}>
+                      <Circle
+                        cx={node.x}
+                        cy={node.y}
+                        r={node.size}
+                        fill={color}
+                      />
+                      <Circle
+                        cx={node.x - node.size * 0.2}
+                        cy={node.y - node.size * 0.2}
+                        r={node.size * 0.25}
+                        fill="rgba(255,255,255,0.5)"
+                      />
+                    </G>
+                  ))}
+                </G>
               ))}
               
               <Circle
