@@ -1,7 +1,7 @@
-import React, { useMemo, useEffect, useState, useRef } from "react";
+import React, { useMemo, useEffect, useState, useRef, useCallback } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Dimensions } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -373,30 +373,32 @@ export default function HomeScreen() {
   
   const [isGrowing, setIsGrowing] = useState(false);
   const [previousPoints, setPreviousPoints] = useState(weeklyPoints);
-  const hasCheckedPoints = useRef(false);
+  const isCheckingGrowth = useRef(false);
   
-  useEffect(() => {
-    const checkForGrowth = async () => {
-      if (hasCheckedPoints.current) return;
-      hasCheckedPoints.current = true;
-      
-      try {
-        const storedPoints = await AsyncStorage.getItem("@stellarin_last_weekly_points");
-        const lastPoints = storedPoints ? parseInt(storedPoints, 10) : 0;
+  useFocusEffect(
+    useCallback(() => {
+      const checkForGrowth = async () => {
+        if (isCheckingGrowth.current || isGrowing) return;
+        isCheckingGrowth.current = true;
         
-        if (weeklyPoints > lastPoints) {
-          setPreviousPoints(lastPoints);
-          setIsGrowing(true);
+        try {
+          const storedPoints = await AsyncStorage.getItem("@stellarin_last_weekly_points");
+          const lastPoints = storedPoints ? parseInt(storedPoints, 10) : 0;
+          
+          if (weeklyPoints > lastPoints) {
+            setPreviousPoints(lastPoints);
+            setIsGrowing(true);
+          }
+        } catch (error) {
+          console.error("Error checking growth:", error);
+        } finally {
+          isCheckingGrowth.current = false;
         }
-        
-        await AsyncStorage.setItem("@stellarin_last_weekly_points", weeklyPoints.toString());
-      } catch (error) {
-        console.error("Error checking growth:", error);
-      }
-    };
-    
-    checkForGrowth();
-  }, [weeklyPoints]);
+      };
+      
+      checkForGrowth();
+    }, [weeklyPoints, isGrowing])
+  );
   
   const handleGrowthComplete = async () => {
     setIsGrowing(false);
