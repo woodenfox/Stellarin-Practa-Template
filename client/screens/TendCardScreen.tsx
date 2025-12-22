@@ -106,25 +106,13 @@ function SwipeableCard({
       : `https://tend-cards-api.replit.app${card.imageUrl}`
     : null;
 
-  // Reset position when card becomes active again (after being recycled)
-  // Only animate if the card was actually off-screen (recycled from back of deck)
+  // Reset position when card becomes active - no animation, just snap to position
   useEffect(() => {
     if (isActive) {
-      const wasOffScreen = Math.abs(translateX.value) > screenWidth * 0.3;
-      
-      if (wasOffScreen) {
-        // Card was swiped away and recycled - animate it back
-        translateX.value = withSpring(0, { damping: 20, stiffness: 200 });
-        translateY.value = withSpring(0, { damping: 20, stiffness: 200 });
-        rotation.value = withSpring(0, { damping: 20, stiffness: 200 });
-        cardOpacity.value = withTiming(1, { duration: 200 });
-      } else {
-        // Card was just promoted from underneath - set values directly, no animation
-        translateX.value = 0;
-        translateY.value = 0;
-        rotation.value = 0;
-        cardOpacity.value = 1;
-      }
+      translateX.value = 0;
+      translateY.value = 0;
+      rotation.value = 0;
+      cardOpacity.value = 1;
     }
   }, [isActive]);
 
