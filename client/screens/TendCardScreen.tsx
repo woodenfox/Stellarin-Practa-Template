@@ -302,17 +302,24 @@ export default function TendCardScreen() {
 
     if (status === "not_drawn") {
       return (
-        <View style={styles.centerContent}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: insets.bottom + Spacing["3xl"] },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
           <Animated.View entering={FadeInUp.duration(600).springify()}>
-            <ThemedText style={[styles.drawPrompt, { color: theme.text, marginBottom: Spacing.lg }]}>
+            <ThemedText style={[styles.drawPrompt, { color: theme.text, marginBottom: Spacing.lg, textAlign: "center" }]}>
               Tap to reveal your daily wellness card
             </ThemedText>
           </Animated.View>
 
-          <Pressable onPress={handleFlipAndDraw} disabled={isDrawing}>
-            <View style={[styles.flipCardContainer, { width: cardWidth, height: cardHeight }]}>
+          <Pressable onPress={handleFlipAndDraw} disabled={isDrawing} style={styles.cardWrapper}>
+            <View style={[styles.flipCardContainer, { width: "100%" }]}>
               {/* Card Back - CSS Generated */}
-              <Animated.View style={[styles.flipCard, cardBackAnimatedStyle, { width: cardWidth, height: cardHeight }]}>
+              <Animated.View style={[styles.flipCardBack, cardBackAnimatedStyle]}>
                 <LinearGradient
                   colors={["#008ACA", "#0066A0", "#004D7A"]}
                   start={{ x: 0, y: 0 }}
@@ -321,9 +328,11 @@ export default function TendCardScreen() {
                 >
                   <View style={styles.cardBackPattern}>
                     <View style={styles.cardBackLogoRing}>
-                      <View style={styles.cardBackLogoInner}>
-                        <Feather name="sun" size={32} color="#FC7D0F" />
-                      </View>
+                      <Image
+                        source={require("../../assets/images/icon.png")}
+                        style={styles.cardBackLogoImage}
+                        contentFit="contain"
+                      />
                     </View>
                   </View>
                   <View style={styles.cardBackCornerTL} />
@@ -334,12 +343,10 @@ export default function TendCardScreen() {
               {/* Card Front (placeholder while loading) */}
               <Animated.View 
                 style={[
-                  styles.flipCard, 
+                  styles.flipCardBack, 
                   styles.flipCardFront, 
                   cardFrontAnimatedStyle, 
                   { 
-                    width: cardWidth, 
-                    height: cardHeight,
                     backgroundColor: theme.backgroundDefault,
                     borderColor: theme.border,
                   }
@@ -355,12 +362,12 @@ export default function TendCardScreen() {
 
           {isDrawing ? null : (
             <Animated.View entering={FadeInDown.delay(300).duration(400)}>
-              <ThemedText style={[styles.tapHint, { color: theme.textSecondary }]}>
+              <ThemedText style={[styles.tapHint, { color: theme.textSecondary, textAlign: "center" }]}>
                 Tap the card to draw
               </ThemedText>
             </Animated.View>
           )}
-        </View>
+        </ScrollView>
       );
     }
 
@@ -601,7 +608,29 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  flipCardBack: {
+    width: "100%",
+    aspectRatio: 2 / 3,
+    borderRadius: BorderRadius.lg,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
+  },
   flipCardFront: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -639,6 +668,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.95)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  cardBackLogoImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
   },
   cardBackCornerTL: {
     position: "absolute",
