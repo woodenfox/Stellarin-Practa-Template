@@ -87,7 +87,7 @@ function SwipeableCard({
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const rotation = useSharedValue(0);
-  const scale = useSharedValue(1);
+  const cardOpacity = useSharedValue(1);
   const flipProgress = useSharedValue(isFlipped ? 1 : 0);
   
   const cardWidth = Math.min(screenWidth - Spacing.xl * 2, 340);
@@ -104,6 +104,16 @@ function SwipeableCard({
       ? card.imageUrl
       : `https://tend-cards-api.replit.app${card.imageUrl}`
     : null;
+
+  // Reset position when card becomes active again (after being recycled)
+  useEffect(() => {
+    if (isActive) {
+      translateX.value = withSpring(0, { damping: 20, stiffness: 200 });
+      translateY.value = withSpring(0, { damping: 20, stiffness: 200 });
+      rotation.value = withSpring(0, { damping: 20, stiffness: 200 });
+      cardOpacity.value = withTiming(1, { duration: 200 });
+    }
+  }, [isActive]);
 
   useEffect(() => {
     flipProgress.value = withTiming(isFlipped ? 1 : 0, { 
@@ -123,8 +133,8 @@ function SwipeableCard({
     }
   }, [isFlipped, onFlip]);
 
+  // Pan gesture for swiping (only when flipped)
   const panGesture = Gesture.Pan()
-    .enabled(isActive && isFlipped)
     .onUpdate((event) => {
       translateX.value = event.translationX;
       translateY.value = event.translationY * 0.3;
@@ -134,10 +144,21 @@ function SwipeableCard({
       const swipedFarEnough = Math.abs(event.translationX) > SWIPE_THRESHOLD;
       if (swipedFarEnough) {
         const direction = event.translationX > 0 ? 1 : -1;
-        translateX.value = withSpring(screenWidth * 1.5 * direction, { damping: 15 }, () => {
-          runOnJS(rotateToBack)();
-        });
-        rotation.value = withSpring(30 * direction);
+        // Animate card off screen to the side
+        translateX.value = withTiming(
+          screenWidth * direction, 
+          { duration: 250, easing: Easing.out(Easing.ease) },
+          () => {
+            // After exiting, animate it settling under the stack
+            translateX.value = withTiming(stackOffsetX, { duration: 150 });
+            translateY.value = withTiming(stackOffsetY, { duration: 150 });
+            rotation.value = withTiming(stackRotation, { duration: 150 });
+            cardOpacity.value = withTiming(0.7, { duration: 100 }, () => {
+              runOnJS(rotateToBack)();
+            });
+          }
+        );
+        rotation.value = withTiming(15 * direction, { duration: 250 });
       } else {
         translateX.value = withSpring(0, { damping: 15 });
         translateY.value = withSpring(0, { damping: 15 });
@@ -145,13 +166,11 @@ function SwipeableCard({
       }
     });
 
+  // Tap gesture for flipping (only when not flipped)
   const tapGesture = Gesture.Tap()
-    .enabled(isActive && !isFlipped)
     .onEnd(() => {
       runOnJS(handleFlip)();
     });
-
-  const composedGesture = Gesture.Race(tapGesture, panGesture);
 
   const containerStyle = useAnimatedStyle(() => {
     return {
@@ -159,8 +178,9 @@ function SwipeableCard({
         { translateX: isActive ? translateX.value : stackOffsetX },
         { translateY: isActive ? translateY.value : stackOffsetY },
         { rotate: `${isActive ? rotation.value : stackRotation}deg` },
-        { scale: isActive ? scale.value : stackScale },
+        { scale: isActive ? 1 : stackScale },
       ],
+      opacity: isActive ? cardOpacity.value : 0.9,
       zIndex: isActive ? 10 : index,
     };
   });
@@ -187,95 +207,114 @@ function SwipeableCard({
     };
   });
 
-  return (
-    <GestureDetector gesture={composedGesture}>
-      <Animated.View style={[styles.flipCardWrapper, { width: cardWidth, height: cardHeight }, containerStyle]}>
-        <Animated.View style={[styles.flipCardFace, cardBackStyle]}>
-          <LinearGradient
-            colors={["#008ACA", "#0066A0", "#004D7A"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardBackGradient}
-          >
-            <View style={styles.cardBackPattern}>
-              <View style={styles.cardBackLogoRing}>
-                <Image
-                  source={require("../../assets/images/icon.png")}
-                  style={styles.cardBackLogoImage}
-                  contentFit="contain"
-                />
-              </View>
-              <ThemedText style={styles.tapToRevealText}>Tap to reveal</ThemedText>
-            </View>
-            <View style={styles.cardBackCornerTL} />
-            <View style={styles.cardBackCornerBR} />
-          </LinearGradient>
-        </Animated.View>
-
-        <Animated.View 
-          style={[
-            styles.flipCardFace, 
-            styles.flipCardFront,
-            { backgroundColor: theme.backgroundDefault, borderColor: theme.border },
-            cardFrontStyle
-          ]}
+  // Use separate gesture detectors based on flip state to prevent gesture conflicts
+  const cardContent = (
+    <Animated.View style={[styles.flipCardWrapper, { width: cardWidth, height: cardHeight }, containerStyle]}>
+      <Animated.View style={[styles.flipCardFace, cardBackStyle]}>
+        <LinearGradient
+          colors={["#008ACA", "#0066A0", "#004D7A"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cardBackGradient}
         >
-          <ScrollView 
-            style={styles.cardScrollView}
-            contentContainerStyle={styles.cardScrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {imageUrl ? (
+          <View style={styles.cardBackPattern}>
+            <View style={styles.cardBackLogoRing}>
               <Image
-                source={{ uri: imageUrl }}
-                style={styles.fullCardImage}
-                contentFit="cover"
+                source={require("../../assets/images/icon.png")}
+                style={styles.cardBackLogoImage}
+                contentFit="contain"
               />
-            ) : (
-              <LinearGradient
-                colors={[theme.secondary, theme.jade]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.fullCardImagePlaceholder}
-              >
-                <Feather name="sun" size={48} color="rgba(255,255,255,0.5)" />
-              </LinearGradient>
-            )}
-
-            <View style={styles.fullCardContent}>
-              <ThemedText style={[styles.fullCardTitle, { color: theme.text }]}>
-                {card.title}
-              </ThemedText>
-
-              <ThemedText style={[styles.fullCardPrompt, { color: theme.textSecondary }]}>
-                {card.prompt}
-              </ThemedText>
-
-              {card.doneWhen ? (
-                <View style={[styles.doneWhenContainer, { backgroundColor: theme.jadeMuted }]}>
-                  <ThemedText style={[styles.doneWhenLabel, { color: theme.jade }]}>
-                    You're done when...
-                  </ThemedText>
-                  <ThemedText style={[styles.doneWhenText, { color: theme.jade }]}>
-                    {card.doneWhen}
-                  </ThemedText>
-                </View>
-              ) : null}
-
-              {card.duration ? (
-                <View style={styles.durationRow}>
-                  <Feather name="clock" size={14} color={theme.textSecondary} />
-                  <ThemedText style={[styles.durationText, { color: theme.textSecondary }]}>
-                    {card.duration}
-                  </ThemedText>
-                </View>
-              ) : null}
             </View>
-          </ScrollView>
-        </Animated.View>
+            <ThemedText style={styles.tapToRevealText}>Tap to reveal</ThemedText>
+          </View>
+          <View style={styles.cardBackCornerTL} />
+          <View style={styles.cardBackCornerBR} />
+        </LinearGradient>
       </Animated.View>
-    </GestureDetector>
+
+      <Animated.View 
+        style={[
+          styles.flipCardFace, 
+          styles.flipCardFront,
+          { backgroundColor: theme.backgroundDefault, borderColor: theme.border },
+          cardFrontStyle
+        ]}
+      >
+        <ScrollView 
+          style={styles.cardScrollView}
+          contentContainerStyle={styles.cardScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={styles.fullCardImage}
+              contentFit="cover"
+            />
+          ) : (
+            <LinearGradient
+              colors={[theme.secondary, theme.jade]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.fullCardImagePlaceholder}
+            >
+              <Feather name="sun" size={48} color="rgba(255,255,255,0.5)" />
+            </LinearGradient>
+          )}
+
+          <View style={styles.fullCardContent}>
+            <ThemedText style={[styles.fullCardTitle, { color: theme.text }]}>
+              {card.title}
+            </ThemedText>
+
+            <ThemedText style={[styles.fullCardPrompt, { color: theme.textSecondary }]}>
+              {card.prompt}
+            </ThemedText>
+
+            {card.doneWhen ? (
+              <View style={[styles.doneWhenContainer, { backgroundColor: theme.jadeMuted }]}>
+                <ThemedText style={[styles.doneWhenLabel, { color: theme.jade }]}>
+                  You're done when...
+                </ThemedText>
+                <ThemedText style={[styles.doneWhenText, { color: theme.jade }]}>
+                  {card.doneWhen}
+                </ThemedText>
+              </View>
+            ) : null}
+
+            {card.duration ? (
+              <View style={styles.durationRow}>
+                <Feather name="clock" size={14} color={theme.textSecondary} />
+                <ThemedText style={[styles.durationText, { color: theme.textSecondary }]}>
+                  {card.duration}
+                </ThemedText>
+              </View>
+            ) : null}
+          </View>
+        </ScrollView>
+      </Animated.View>
+    </Animated.View>
   );
+
+  // Use separate gesture detectors: tap for face-down, pan for flipped
+  if (isActive && !isFlipped) {
+    return (
+      <GestureDetector gesture={tapGesture}>
+        {cardContent}
+      </GestureDetector>
+    );
+  }
+  
+  if (isActive && isFlipped) {
+    return (
+      <GestureDetector gesture={panGesture}>
+        {cardContent}
+      </GestureDetector>
+    );
+  }
+
+  // Non-active cards don't need gesture handling
+  return cardContent;
 }
 
 export default function TendCardScreen() {
@@ -364,17 +403,7 @@ export default function TendCardScreen() {
   const handleSwipeLeft = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
-    // Reset flipped state for the swiped card
-    const swipedCardId = cards[0]?.id;
-    if (swipedCardId) {
-      setFlippedCards(prev => {
-        const next = new Set(prev);
-        next.delete(swipedCardId);
-        return next;
-      });
-    }
-    
-    // Move the swiped card to the back of the deck
+    // Move the swiped card to the back of the deck (keep it revealed)
     setCards(prev => {
       if (prev.length <= 1) return prev;
       const [first, ...rest] = prev;
