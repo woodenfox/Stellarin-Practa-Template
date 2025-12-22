@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, memo } from "react";
 import {
   View,
   StyleSheet,
@@ -61,7 +61,7 @@ type TendStatus = "loading" | "choosing" | "drawn" | "completed" | "error";
 
 const SWIPE_THRESHOLD = 100;
 
-function SwipeableCard({
+const SwipeableCard = memo(function SwipeableCard({
   card,
   index,
   totalCards,
@@ -249,6 +249,8 @@ function SwipeableCard({
               source={{ uri: imageUrl }}
               style={styles.fullCardImage}
               contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={0}
             />
           ) : (
             <LinearGradient
@@ -314,7 +316,7 @@ function SwipeableCard({
 
   // Non-active cards don't need gesture handling
   return cardContent;
-}
+});
 
 export default function TendCardScreen() {
   const { theme } = useTheme();
