@@ -53,6 +53,7 @@ interface MeditationContextType extends MeditationState {
   hasJournaledToday: () => boolean;
   getTodayStreak: () => boolean;
   getWeekStreaks: () => { day: string; completed: boolean; isToday: boolean }[];
+  getWeeklyCompletionPoints: () => number;
   refreshCommunityStats: () => Promise<void>;
 }
 
@@ -333,6 +334,29 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
     });
   }, [state.streakDays]);
 
+  const getWeeklyCompletionPoints = useCallback(() => {
+    const today = new Date();
+    const currentDayIndex = today.getDay();
+    const saturdayOffset = currentDayIndex === 6 ? 0 : -(currentDayIndex + 1);
+    
+    let points = 0;
+    
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + saturdayOffset + i);
+      const dateStr = date.toISOString().split("T")[0];
+      
+      // Check meditation
+      if (state.streakDays.includes(dateStr)) points++;
+      // Check journal
+      if (state.journalEntries.some(e => e.date === dateStr)) points++;
+      // Check tend
+      if (state.tendCompletions.some(c => c.date === dateStr)) points++;
+    }
+    
+    return points;
+  }, [state.streakDays, state.journalEntries, state.tendCompletions]);
+
   return (
     <MeditationContext.Provider
       value={{
@@ -347,6 +371,7 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
         hasJournaledToday,
         getTodayStreak,
         getWeekStreaks,
+        getWeeklyCompletionPoints,
         refreshCommunityStats,
       }}
     >

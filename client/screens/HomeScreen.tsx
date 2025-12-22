@@ -328,7 +328,8 @@ export default function HomeScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
-  const { sessions, journalEntries, tendCompletions } = useMeditation();
+  const { sessions, journalEntries, tendCompletions, getWeeklyCompletionPoints } = useMeditation();
+  const weeklyPoints = getWeeklyCompletionPoints();
 
   const sevenDayData = useMemo(() => {
     const today = new Date();
@@ -410,7 +411,7 @@ export default function HomeScreen() {
       >
         <WeeklyMomentum days={sevenDayData} streak={currentStreak} />
 
-        <SpiralMandala onPress={handleOrbPress} />
+        <SpiralMandala onPress={handleOrbPress} weeklyPoints={weeklyPoints} />
 
         <View style={styles.actionsRow}>
           <ActionCard

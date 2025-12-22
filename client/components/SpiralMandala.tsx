@@ -18,6 +18,7 @@ const MANDALA_SIZE = Math.min(SCREEN_WIDTH * 0.9, 380);
 
 interface SpiralMandalaProps {
   onPress?: () => void;
+  weeklyPoints?: number;
 }
 
 interface MandalaParameters {
@@ -56,7 +57,7 @@ function computeNodes(
   return nodes;
 }
 
-export function SpiralMandala({ onPress }: SpiralMandalaProps) {
+export function SpiralMandala({ onPress, weeklyPoints = 0 }: SpiralMandalaProps) {
   const { theme, isDark } = useTheme();
   
   const breathValue = useSharedValue(0);
@@ -67,8 +68,10 @@ export function SpiralMandala({ onPress }: SpiralMandalaProps) {
   const cx = MANDALA_SIZE / 2;
   const cy = MANDALA_SIZE / 2;
 
+  const armCount = Math.min(3 + weeklyPoints, 24);
+  
   const parameters: MandalaParameters = useMemo(() => ({
-    arms: 6,
+    arms: armCount,
     density: 4,
     curvature: 0.5,
     lineOpacity: 0.15,
@@ -77,7 +80,7 @@ export function SpiralMandala({ onPress }: SpiralMandalaProps) {
       theme.primary,
       theme.secondary,
     ],
-  }), [theme.primary, theme.secondary]);
+  }), [theme.primary, theme.secondary, armCount]);
 
   const allArms = useMemo(() => {
     const arms = [];
