@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -23,12 +23,12 @@ import Animated, {
   Easing,
   FadeIn,
   FadeInUp,
-  FadeInDown,
-  interpolate,
   runOnJS,
+  interpolate,
+  Extrapolation,
 } from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { Image } from "expo-image";
-
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -57,31 +57,211 @@ interface DailyTend {
   createdAt: string;
 }
 
-type TendStatus = "loading" | "not_drawn" | "drawn" | "completed" | "error";
+type TendStatus = "loading" | "choosing" | "drawn" | "completed" | "error";
+
+const SWIPE_THRESHOLD = 100;
+
+function SwipeableCard({
+  card,
+  index,
+  totalCards,
+  onSwipeLeft,
+  onSwipeRight,
+  isActive,
+}: {
+  card: TendCard;
+  index: number;
+  totalCards: number;
+  onSwipeLeft: () => void;
+  onSwipeRight: () => void;
+  isActive: boolean;
+}) {
+  const { theme } = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
+  
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const rotation = useSharedValue(0);
+  const scale = useSharedValue(1);
+  
+  const cardWidth = Math.min(screenWidth - Spacing.xl * 2, 320);
+  
+  const stackOffset = (totalCards - 1 - index) * 8;
+  const stackScale = 1 - (totalCards - 1 - index) * 0.05;
+
+  const imageUrl = card.imageUrl
+    ? card.imageUrl.startsWith("http")
+      ? card.imageUrl
+      : `https://tend-cards-api.replit.app${card.imageUrl}`
+    : null;
+
+  const handleSwipeLeft = useCallback(() => {
+    onSwipeLeft();
+  }, [onSwipeLeft]);
+
+  const handleSwipeRight = useCallback(() => {
+    onSwipeRight();
+  }, [onSwipeRight]);
+
+  const panGesture = Gesture.Pan()
+    .enabled(isActive)
+    .onUpdate((event) => {
+      translateX.value = event.translationX;
+      translateY.value = event.translationY * 0.3;
+      rotation.value = event.translationX / 20;
+    })
+    .onEnd((event) => {
+      if (event.translationX > SWIPE_THRESHOLD) {
+        translateX.value = withSpring(screenWidth * 1.5, { damping: 15 }, () => {
+          runOnJS(handleSwipeRight)();
+        });
+        rotation.value = withSpring(30);
+      } else if (event.translationX < -SWIPE_THRESHOLD) {
+        translateX.value = withSpring(-screenWidth * 1.5, { damping: 15 }, () => {
+          runOnJS(handleSwipeLeft)();
+        });
+        rotation.value = withSpring(-30);
+      } else {
+        translateX.value = withSpring(0, { damping: 15 });
+        translateY.value = withSpring(0, { damping: 15 });
+        rotation.value = withSpring(0, { damping: 15 });
+      }
+    });
+
+  const tapGesture = Gesture.Tap()
+    .enabled(isActive)
+    .onStart(() => {
+      scale.value = withSpring(0.98);
+    })
+    .onEnd(() => {
+      scale.value = withSpring(1);
+    });
+
+  const composedGesture = Gesture.Simultaneous(panGesture, tapGesture);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const likeOpacity = interpolate(
+      translateX.value,
+      [0, SWIPE_THRESHOLD],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
+    
+    const nopeOpacity = interpolate(
+      translateX.value,
+      [-SWIPE_THRESHOLD, 0],
+      [1, 0],
+      Extrapolation.CLAMP
+    );
+
+    return {
+      transform: [
+        { translateX: translateX.value },
+        { translateY: isActive ? translateY.value : stackOffset },
+        { rotate: `${rotation.value}deg` },
+        { scale: isActive ? scale.value : stackScale },
+      ],
+      zIndex: isActive ? 10 : index,
+    };
+  });
+
+  const likeIndicatorStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      translateX.value,
+      [0, SWIPE_THRESHOLD],
+      [0, 1],
+      Extrapolation.CLAMP
+    ),
+  }));
+
+  const nopeIndicatorStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      translateX.value,
+      [-SWIPE_THRESHOLD, 0],
+      [1, 0],
+      Extrapolation.CLAMP
+    ),
+  }));
+
+  return (
+    <GestureDetector gesture={composedGesture}>
+      <Animated.View
+        style={[
+          styles.swipeCard,
+          {
+            width: cardWidth,
+            backgroundColor: theme.backgroundDefault,
+            borderColor: theme.border,
+          },
+          animatedStyle,
+        ]}
+      >
+        <Animated.View style={[styles.swipeIndicator, styles.likeIndicator, likeIndicatorStyle]}>
+          <Feather name="heart" size={32} color={theme.success} />
+          <ThemedText style={[styles.indicatorText, { color: theme.success }]}>CHOOSE</ThemedText>
+        </Animated.View>
+        
+        <Animated.View style={[styles.swipeIndicator, styles.nopeIndicator, nopeIndicatorStyle]}>
+          <Feather name="x" size={32} color={theme.error} />
+          <ThemedText style={[styles.indicatorText, { color: theme.error }]}>SKIP</ThemedText>
+        </Animated.View>
+
+        {imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.swipeCardImage}
+            contentFit="cover"
+          />
+        ) : (
+          <LinearGradient
+            colors={[theme.secondary, theme.jade]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.swipeCardImagePlaceholder}
+          >
+            <Feather name="sun" size={48} color="rgba(255,255,255,0.5)" />
+          </LinearGradient>
+        )}
+
+        <View style={styles.swipeCardContent}>
+          <ThemedText style={[styles.swipeCardTitle, { color: theme.text }]} numberOfLines={2}>
+            {card.title}
+          </ThemedText>
+
+          <ThemedText style={[styles.swipeCardPrompt, { color: theme.textSecondary }]} numberOfLines={3}>
+            {card.prompt}
+          </ThemedText>
+
+          {card.duration ? (
+            <View style={styles.durationRow}>
+              <Feather name="clock" size={14} color={theme.textSecondary} />
+              <ThemedText style={[styles.durationText, { color: theme.textSecondary }]}>
+                {card.duration}
+              </ThemedText>
+            </View>
+          ) : null}
+        </View>
+      </Animated.View>
+    </GestureDetector>
+  );
+}
 
 export default function TendCardScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const { width: screenWidth } = useWindowDimensions();
   const { addTendCompletion } = useMeditation();
 
   const [status, setStatus] = useState<TendStatus>("loading");
-  const [card, setCard] = useState<TendCard | null>(null);
+  const [cards, setCards] = useState<TendCard[]>([]);
+  const [selectedCard, setSelectedCard] = useState<TendCard | null>(null);
   const [dailyTend, setDailyTend] = useState<DailyTend | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
-  const [isFlipped, setIsFlipped] = useState(false);
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
   const cardScale = useSharedValue(0.9);
-  const cardRotate = useSharedValue(0);
   const glowOpacity = useSharedValue(0.3);
-  const flipProgress = useSharedValue(0);
-
-  // Card dimensions - match 2:3 aspect ratio of the card back image
-  const cardWidth = Math.min(screenWidth - Spacing.xl * 2, 300);
-  const cardHeight = cardWidth * 1.5;
 
   useEffect(() => {
     checkTodayStatus();
@@ -114,9 +294,10 @@ export default function TendCardScreen() {
       const data = await response.json();
       
       if (data.status === "not_drawn") {
-        setStatus("not_drawn");
+        // Fetch 3 random cards for choosing
+        await fetchCardChoices();
       } else if (data.status === "drawn") {
-        setCard(data.card);
+        setSelectedCard(data.card);
         setDailyTend(data.dailyTend);
         setStatus(data.dailyTend.isCompleted ? "completed" : "drawn");
       }
@@ -127,9 +308,45 @@ export default function TendCardScreen() {
     }
   };
 
-  const drawCard = async () => {
-    setIsDrawing(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  const fetchCardChoices = async () => {
+    try {
+      const url = new URL("/api/tend/choices", getApiUrl());
+      const response = await fetch(url.toString());
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch card choices");
+      }
+
+      const data = await response.json();
+      setCards(data.cards || []);
+      setCurrentCardIndex(0);
+      setStatus("choosing");
+    } catch (err) {
+      console.error("Error fetching card choices:", err);
+      setError("Failed to load cards. Please try again.");
+      setStatus("error");
+    }
+  };
+
+  const handleSwipeLeft = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    // Remove the swiped card and check if any cards left
+    setCards(prev => {
+      const newCards = prev.slice(1);
+      if (newCards.length === 0) {
+        // Refetch if all cards skipped
+        fetchCardChoices();
+      }
+      return newCards;
+    });
+  };
+
+  const handleSwipeRight = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    
+    const chosenCard = cards[0];
+    if (!chosenCard) return;
 
     try {
       const userId = await getOrCreateDeviceId();
@@ -137,24 +354,22 @@ export default function TendCardScreen() {
       const response = await fetch(url.toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId, cardId: chosenCard.id }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to draw card");
+        throw new Error("Failed to select card");
       }
 
       const data = await response.json();
-      setCard(data.card);
+      setSelectedCard(data.card);
       setDailyTend(data.dailyTend);
+      setCards([]);
       setStatus("drawn");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err) {
-      console.error("Error drawing card:", err);
-      setError("Failed to draw card. Please try again.");
+      console.error("Error selecting card:", err);
+      setError("Failed to select card. Please try again.");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } finally {
-      setIsDrawing(false);
     }
   };
 
@@ -179,9 +394,8 @@ export default function TendCardScreen() {
       setDailyTend(data.dailyTend);
       setStatus("completed");
       
-      // Save tend completion locally for streak tracking
-      if (card) {
-        await addTendCompletion(card.id);
+      if (selectedCard) {
+        await addTendCompletion(selectedCard.id);
       }
       
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -199,77 +413,12 @@ export default function TendCardScreen() {
   };
 
   const cardAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: cardScale.value },
-      { rotate: `${cardRotate.value}deg` },
-    ],
+    transform: [{ scale: cardScale.value }],
   }));
 
   const glowAnimatedStyle = useAnimatedStyle(() => ({
     opacity: glowOpacity.value,
   }));
-
-  // Flip animation styles
-  const cardBackAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { perspective: 1200 },
-      { rotateY: `${interpolate(flipProgress.value, [0, 1], [0, 180])}deg` },
-    ],
-    backfaceVisibility: "hidden" as const,
-    opacity: flipProgress.value > 0.5 ? 0 : 1,
-  }));
-
-  const cardFrontAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { perspective: 1200 },
-      { rotateY: `${interpolate(flipProgress.value, [0, 1], [180, 360])}deg` },
-    ],
-    backfaceVisibility: "hidden" as const,
-    opacity: flipProgress.value > 0.5 ? 1 : 0,
-  }));
-
-  const handleFlipAndDraw = async () => {
-    if (isDrawing || isFlipped) return;
-    
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsDrawing(true);
-
-    // Start the flip animation
-    flipProgress.value = withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) });
-
-    try {
-      const userId = await getOrCreateDeviceId();
-      const url = new URL("/api/tend/draw", getApiUrl());
-      const response = await fetch(url.toString(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to draw card");
-      }
-
-      const data = await response.json();
-      
-      // Wait for animation midpoint to set the card data
-      setTimeout(() => {
-        setCard(data.card);
-        setDailyTend(data.dailyTend);
-        setIsFlipped(true);
-        setStatus("drawn");
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }, 400);
-    } catch (err) {
-      console.error("Error drawing card:", err);
-      // Reverse the flip on error
-      flipProgress.value = withTiming(0, { duration: 400 });
-      setError("Failed to draw card. Please try again.");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } finally {
-      setTimeout(() => setIsDrawing(false), 800);
-    }
-  };
 
   const renderContent = () => {
     if (status === "loading") {
@@ -300,82 +449,55 @@ export default function TendCardScreen() {
       );
     }
 
-    if (status === "not_drawn") {
+    if (status === "choosing" && cards.length > 0) {
       return (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: insets.bottom + Spacing["3xl"] },
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          <Animated.View entering={FadeInUp.duration(600).springify()}>
-            <ThemedText style={[styles.drawPrompt, { color: theme.text, marginBottom: Spacing.lg, textAlign: "center" }]}>
-              Tap to reveal your daily wellness card
+        <View style={styles.choosingContainer}>
+          <Animated.View entering={FadeInUp.duration(400)}>
+            <ThemedText style={[styles.choosingPrompt, { color: theme.text }]}>
+              Choose your wellness focus
+            </ThemedText>
+            <ThemedText style={[styles.choosingHint, { color: theme.textSecondary }]}>
+              Swipe right to choose, left to skip
             </ThemedText>
           </Animated.View>
 
-          <Pressable onPress={handleFlipAndDraw} disabled={isDrawing} style={styles.cardWrapper}>
-            <View style={[styles.flipCardContainer, { width: "100%" }]}>
-              {/* Card Back - CSS Generated */}
-              <Animated.View style={[styles.flipCardBack, cardBackAnimatedStyle]}>
-                <LinearGradient
-                  colors={["#008ACA", "#0066A0", "#004D7A"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.cardBackGradient}
-                >
-                  <View style={styles.cardBackPattern}>
-                    <View style={styles.cardBackLogoRing}>
-                      <Image
-                        source={require("../../assets/images/icon.png")}
-                        style={styles.cardBackLogoImage}
-                        contentFit="contain"
-                      />
-                    </View>
-                  </View>
-                  <View style={styles.cardBackCornerTL} />
-                  <View style={styles.cardBackCornerBR} />
-                </LinearGradient>
-              </Animated.View>
-              
-              {/* Card Front (placeholder while loading) */}
-              <Animated.View 
-                style={[
-                  styles.flipCardBack, 
-                  styles.flipCardFront, 
-                  cardFrontAnimatedStyle, 
-                  { 
-                    backgroundColor: theme.backgroundDefault,
-                    borderColor: theme.border,
-                  }
-                ]}
-              >
-                <ActivityIndicator size="large" color={theme.primary} />
-                <ThemedText style={[styles.loadingText, { color: theme.textSecondary, marginTop: Spacing.md }]}>
-                  Drawing your card...
-                </ThemedText>
-              </Animated.View>
-            </View>
-          </Pressable>
+          <View style={styles.cardStack}>
+            {cards.slice(0, 3).map((card, index) => (
+              <SwipeableCard
+                key={card.id}
+                card={card}
+                index={index}
+                totalCards={Math.min(cards.length, 3)}
+                onSwipeLeft={handleSwipeLeft}
+                onSwipeRight={handleSwipeRight}
+                isActive={index === 0}
+              />
+            )).reverse()}
+          </View>
 
-          {isDrawing ? null : (
-            <Animated.View entering={FadeInDown.delay(300).duration(400)}>
-              <ThemedText style={[styles.tapHint, { color: theme.textSecondary, textAlign: "center" }]}>
-                Tap the card to draw
-              </ThemedText>
-            </Animated.View>
-          )}
-        </ScrollView>
+          <View style={styles.swipeHintRow}>
+            <View style={styles.swipeHintItem}>
+              <View style={[styles.swipeHintCircle, { backgroundColor: `${theme.error}20` }]}>
+                <Feather name="x" size={20} color={theme.error} />
+              </View>
+              <ThemedText style={[styles.swipeHintText, { color: theme.textSecondary }]}>Skip</ThemedText>
+            </View>
+            <View style={styles.swipeHintItem}>
+              <View style={[styles.swipeHintCircle, { backgroundColor: `${theme.success}20` }]}>
+                <Feather name="heart" size={20} color={theme.success} />
+              </View>
+              <ThemedText style={[styles.swipeHintText, { color: theme.textSecondary }]}>Choose</ThemedText>
+            </View>
+          </View>
+        </View>
       );
     }
 
-    if ((status === "drawn" || status === "completed") && card) {
-      const imageUrl = card.imageUrl
-        ? card.imageUrl.startsWith("http")
-          ? card.imageUrl
-          : `https://tend-cards-api.replit.app${card.imageUrl}`
+    if ((status === "drawn" || status === "completed") && selectedCard) {
+      const imageUrl = selectedCard.imageUrl
+        ? selectedCard.imageUrl.startsWith("http")
+          ? selectedCard.imageUrl
+          : `https://tend-cards-api.replit.app${selectedCard.imageUrl}`
         : null;
 
       return (
@@ -409,29 +531,29 @@ export default function TendCardScreen() {
 
               <View style={styles.cardContent}>
                 <ThemedText style={[styles.cardTitle, { color: theme.text }]}>
-                  {card.title}
+                  {selectedCard.title}
                 </ThemedText>
 
                 <ThemedText style={[styles.cardPrompt, { color: theme.textSecondary }]}>
-                  {card.prompt}
+                  {selectedCard.prompt}
                 </ThemedText>
 
-                {card.doneWhen ? (
+                {selectedCard.doneWhen ? (
                   <View style={[styles.doneWhenContainer, { backgroundColor: theme.jadeMuted }]}>
                     <ThemedText style={[styles.doneWhenLabel, { color: theme.jade }]}>
                       You're done when...
                     </ThemedText>
                     <ThemedText style={[styles.doneWhenText, { color: theme.jade }]}>
-                      {card.doneWhen}
+                      {selectedCard.doneWhen}
                     </ThemedText>
                   </View>
                 ) : null}
 
-                {card.duration ? (
+                {selectedCard.duration ? (
                   <View style={styles.durationRow}>
                     <Feather name="clock" size={14} color={theme.textSecondary} />
                     <ThemedText style={[styles.durationText, { color: theme.textSecondary }]}>
-                      {card.duration}
+                      {selectedCard.duration}
                     </ThemedText>
                   </View>
                 ) : null}
@@ -545,12 +667,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  drawCardContainer: {
-    width: 240,
-    height: 320,
+  choosingContainer: {
+    flex: 1,
+    paddingHorizontal: Spacing.lg,
+  },
+  choosingPrompt: {
+    fontSize: 22,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: Spacing.sm,
+  },
+  choosingHint: {
+    fontSize: 15,
+    textAlign: "center",
+    marginBottom: Spacing.xl,
+  },
+  cardStack: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.xl,
+  },
+  swipeCard: {
+    position: "absolute",
     borderRadius: BorderRadius.lg,
     overflow: "hidden",
-    marginBottom: Spacing["2xl"],
+    borderWidth: 1,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -563,142 +705,75 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  cardBackText: {
-    color: "#FFFFFF",
+  swipeCardImage: {
+    width: "100%",
+    height: 180,
+  },
+  swipeCardImagePlaceholder: {
+    width: "100%",
+    height: 180,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  swipeCardContent: {
+    padding: Spacing.lg,
+  },
+  swipeCardTitle: {
     fontSize: 20,
     fontWeight: "700",
-    marginTop: 60,
+    marginBottom: Spacing.sm,
   },
-  drawPrompt: {
-    fontSize: 17,
-    textAlign: "center",
-    marginBottom: Spacing.xl,
+  swipeCardPrompt: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: Spacing.md,
   },
-  drawButton: {
+  swipeIndicator: {
+    position: "absolute",
+    top: Spacing.lg,
+    zIndex: 100,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing["3xl"],
-    paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.xl,
-    minWidth: 180,
-  },
-  drawButtonText: {
-    color: "#FFFFFF",
-    fontSize: 17,
-    fontWeight: "600",
-  },
-  flipCardContainer: {
-    position: "relative",
-  },
-  flipCard: {
-    position: "absolute",
-    borderRadius: BorderRadius.lg,
-    overflow: "hidden",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.25,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 10,
-      },
-    }),
-  },
-  flipCardBack: {
-    width: "100%",
-    aspectRatio: 2 / 3,
-    borderRadius: BorderRadius.lg,
-    overflow: "hidden",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.25,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 10,
-      },
-    }),
-  },
-  flipCardFront: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-  },
-  cardBackImage: {
-    width: "100%",
-    height: "100%",
-    borderRadius: BorderRadius.lg,
-  },
-  cardBackGradient: {
-    width: "100%",
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: BorderRadius.lg,
-  },
-  cardBackPattern: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardBackLogoRing: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.3)",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-  cardBackLogoInner: {
-    width: 168,
-    height: 168,
-    borderRadius: 84,
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
     backgroundColor: "rgba(255,255,255,0.95)",
+  },
+  likeIndicator: {
+    right: Spacing.lg,
+    borderWidth: 2,
+    borderColor: "#34C759",
+  },
+  nopeIndicator: {
+    left: Spacing.lg,
+    borderWidth: 2,
+    borderColor: "#FF3B30",
+  },
+  indicatorText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  swipeHintRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: Spacing["3xl"],
+    paddingBottom: Spacing["2xl"],
+  },
+  swipeHintItem: {
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  swipeHintCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
   },
-  cardBackLogoImage: {
-    width: 180,
-    height: 180,
-    borderRadius: 36,
-  },
-  cardBackCornerTL: {
-    position: "absolute",
-    top: 16,
-    left: 16,
-    width: 24,
-    height: 24,
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
-    borderColor: "rgba(255,255,255,0.2)",
-    borderTopLeftRadius: 8,
-  },
-  cardBackCornerBR: {
-    position: "absolute",
-    bottom: 16,
-    right: 16,
-    width: 24,
-    height: 24,
-    borderBottomWidth: 2,
-    borderRightWidth: 2,
-    borderColor: "rgba(255,255,255,0.2)",
-    borderBottomRightRadius: 8,
-  },
-  tapHint: {
-    fontSize: 14,
-    marginTop: Spacing.xl,
+  swipeHintText: {
+    fontSize: 13,
+    fontWeight: "500",
   },
   scrollView: {
     flex: 1,
@@ -746,39 +821,41 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cardContent: {
-    padding: Spacing.xl,
-    gap: Spacing.md,
+    padding: Spacing.lg,
   },
   cardTitle: {
     fontSize: 22,
     fontWeight: "700",
+    marginBottom: Spacing.sm,
   },
   cardPrompt: {
     fontSize: 16,
     lineHeight: 24,
+    marginBottom: Spacing.lg,
   },
   doneWhenContainer: {
     padding: Spacing.md,
-    borderRadius: BorderRadius.sm,
-    marginTop: Spacing.sm,
-    gap: Spacing.xs,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.md,
   },
   doneWhenLabel: {
     fontSize: 12,
     fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: Spacing.xs,
   },
   doneWhenText: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
   },
   durationRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.xs,
-    marginTop: Spacing.xs,
   },
   durationText: {
-    fontSize: 13,
+    fontSize: 14,
   },
   completedBadge: {
     position: "absolute",
@@ -786,28 +863,14 @@ const styles = StyleSheet.create({
     right: Spacing.md,
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: Spacing.xs,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
+    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
   },
   completedText: {
     color: "#FFFFFF",
     fontSize: 13,
-    fontWeight: "600",
-  },
-  completeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.sm,
-    paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.xl,
-    marginHorizontal: Spacing.lg,
-  },
-  completeButtonText: {
-    color: "#FFFFFF",
-    fontSize: 17,
     fontWeight: "600",
   },
   buttonGroup: {
@@ -819,10 +882,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: Spacing.sm,
     paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.xl,
-    marginHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.lg,
   },
   acceptButtonText: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "600",
+  },
+  completeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+  },
+  completeButtonText: {
     color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "600",

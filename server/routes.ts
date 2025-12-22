@@ -89,16 +89,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/tend/choices", async (req, res) => {
+    try {
+      const response = await fetch(`${TEND_API_BASE}/cards/random?count=3`);
+      if (!response.ok) {
+        const allCardsResponse = await fetch(`${TEND_API_BASE}/cards`);
+        if (!allCardsResponse.ok) {
+          throw new Error("Failed to fetch cards");
+        }
+        const allCards = await allCardsResponse.json();
+        const cards = allCards.cards || allCards;
+        const shuffled = [...cards].sort(() => Math.random() - 0.5);
+        res.json({ cards: shuffled.slice(0, 3) });
+        return;
+      }
+      const data = await response.json();
+      res.json({ cards: data.cards || data });
+    } catch (error) {
+      console.error("Error fetching card choices:", error);
+      res.status(500).json({ error: "Failed to fetch card choices" });
+    }
+  });
+
   app.post("/api/tend/draw", async (req, res) => {
     try {
-      const { userId } = req.body;
+      const { userId, cardId } = req.body;
       if (!userId || typeof userId !== "string") {
         return res.status(400).json({ error: "userId is required" });
       }
       const response = await fetch(`${TEND_API_BASE}/tend/draw`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId, cardId }),
       });
       const data = await response.json();
       res.status(response.status).json(data);
