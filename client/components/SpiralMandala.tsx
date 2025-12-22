@@ -14,7 +14,7 @@ import * as Haptics from "expo-haptics";
 import { useTheme } from "@/hooks/useTheme";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const MANDALA_SIZE = Math.min(SCREEN_WIDTH * 0.78, 336);
+const MANDALA_SIZE = Math.min(SCREEN_WIDTH * 0.9, 380);
 
 interface SpiralMandalaProps {
   onPress?: () => void;
