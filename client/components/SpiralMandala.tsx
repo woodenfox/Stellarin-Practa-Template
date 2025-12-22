@@ -10,6 +10,8 @@ import Animated, {
   withDelay,
   Easing,
   interpolate,
+  runOnJS,
+  SharedValue,
 } from "react-native-reanimated";
 import Svg, { Circle, Line, G } from "react-native-svg";
 import * as Haptics from "expo-haptics";
@@ -17,6 +19,7 @@ import * as Haptics from "expo-haptics";
 import { useTheme } from "@/hooks/useTheme";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const AnimatedLine = Animated.createAnimatedComponent(Line);
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const MANDALA_SIZE = Math.min(SCREEN_WIDTH * 0.9, 380);
@@ -38,6 +41,12 @@ interface MandalaParameters {
   colorPalette: string[];
 }
 
+interface NodeData {
+  x: number;
+  y: number;
+  size: number;
+}
+
 function computeNodes(
   armIndex: number,
   totalArms: number,
@@ -45,14 +54,14 @@ function computeNodes(
   curvature: number,
   nodeScale: number,
   maxRadius: number
-) {
+): NodeData[] {
   const armOffset = (armIndex / totalArms) * Math.PI * 2;
   const spiralTurns = 0.25 + curvature * 0.35;
   const nodesPerSpiral = Math.floor(6 + density * 1.5);
   const startR = maxRadius * 0.1;
   const endR = maxRadius * 0.9;
 
-  const nodes = [];
+  const nodes: NodeData[] = [];
   for (let i = 0; i < nodesPerSpiral; i++) {
     const progress = i / (nodesPerSpiral - 1);
     const radius = startR + (endR - startR) * progress;
@@ -123,6 +132,217 @@ function EnergyRing({
   );
 }
 
+function GrowingNode({
+  node,
+  nodeIndex,
+  color,
+  growthProgress,
+  totalNodes,
+}: {
+  node: NodeData;
+  nodeIndex: number;
+  color: string;
+  growthProgress: SharedValue<number>;
+  totalNodes: number;
+}) {
+  const nodeThreshold = nodeIndex / totalNodes;
+  const nodeEndThreshold = (nodeIndex + 1) / totalNodes;
+
+  const animatedProps = useAnimatedProps(() => {
+    const progress = growthProgress.value;
+    
+    if (progress < nodeThreshold) {
+      return {
+        cx: 0,
+        cy: 0,
+        r: 0,
+        opacity: 0,
+      };
+    }
+    
+    const nodeProgress = Math.min(
+      (progress - nodeThreshold) / (nodeEndThreshold - nodeThreshold),
+      1
+    );
+    
+    const eased = nodeProgress < 0.5 
+      ? 2 * nodeProgress * nodeProgress 
+      : 1 - Math.pow(-2 * nodeProgress + 2, 2) / 2;
+    
+    return {
+      cx: node.x * eased,
+      cy: node.y * eased,
+      r: node.size * eased,
+      opacity: eased,
+    };
+  });
+
+  const highlightProps = useAnimatedProps(() => {
+    const progress = growthProgress.value;
+    
+    if (progress < nodeThreshold) {
+      return {
+        cx: 0,
+        cy: 0,
+        r: 0,
+        opacity: 0,
+      };
+    }
+    
+    const nodeProgress = Math.min(
+      (progress - nodeThreshold) / (nodeEndThreshold - nodeThreshold),
+      1
+    );
+    
+    const eased = nodeProgress < 0.5 
+      ? 2 * nodeProgress * nodeProgress 
+      : 1 - Math.pow(-2 * nodeProgress + 2, 2) / 2;
+    
+    const cx = node.x * eased;
+    const cy = node.y * eased;
+    const size = node.size * eased;
+    
+    return {
+      cx: cx - size * 0.2,
+      cy: cy - size * 0.2,
+      r: size * 0.25,
+      opacity: eased * 0.5,
+    };
+  });
+
+  return (
+    <>
+      <AnimatedCircle
+        fill={color}
+        animatedProps={animatedProps}
+      />
+      <AnimatedCircle
+        fill="rgba(255,255,255,0.5)"
+        animatedProps={highlightProps}
+      />
+    </>
+  );
+}
+
+function GrowingLine({
+  prevNode,
+  node,
+  nodeIndex,
+  color,
+  lineOpacity,
+  growthProgress,
+  totalNodes,
+}: {
+  prevNode: NodeData;
+  node: NodeData;
+  nodeIndex: number;
+  color: string;
+  lineOpacity: number;
+  growthProgress: SharedValue<number>;
+  totalNodes: number;
+}) {
+  const prevThreshold = (nodeIndex - 1) / totalNodes;
+  const nodeThreshold = nodeIndex / totalNodes;
+
+  const animatedProps = useAnimatedProps(() => {
+    const progress = growthProgress.value;
+    
+    if (progress < prevThreshold) {
+      return {
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: 0,
+        strokeOpacity: 0,
+      };
+    }
+    
+    const lineProgress = Math.min(
+      (progress - prevThreshold) / (nodeThreshold - prevThreshold),
+      1
+    );
+    
+    const eased = lineProgress < 0.5 
+      ? 2 * lineProgress * lineProgress 
+      : 1 - Math.pow(-2 * lineProgress + 2, 2) / 2;
+    
+    const prevEased = progress >= nodeThreshold ? 1 : eased;
+    
+    return {
+      x1: prevNode.x * prevEased,
+      y1: prevNode.y * prevEased,
+      x2: prevNode.x + (node.x - prevNode.x) * eased,
+      y2: prevNode.y + (node.y - prevNode.y) * eased,
+      strokeOpacity: lineOpacity * eased,
+    };
+  });
+
+  return (
+    <AnimatedLine
+      stroke={color}
+      strokeWidth={0.75}
+      strokeLinecap="round"
+      animatedProps={animatedProps}
+    />
+  );
+}
+
+function GrowingArm({
+  armIndex,
+  totalArms,
+  color,
+  density,
+  curvature,
+  nodeScale,
+  maxRadius,
+  lineOpacity,
+  growthProgress,
+}: {
+  armIndex: number;
+  totalArms: number;
+  color: string;
+  density: number;
+  curvature: number;
+  nodeScale: number;
+  maxRadius: number;
+  lineOpacity: number;
+  growthProgress: SharedValue<number>;
+}) {
+  const nodes = useMemo(() => 
+    computeNodes(armIndex, totalArms, density, curvature, nodeScale, maxRadius),
+    [armIndex, totalArms, density, curvature, nodeScale, maxRadius]
+  );
+
+  return (
+    <G>
+      {nodes.map((node, i) => (
+        i > 0 ? (
+          <GrowingLine
+            key={`line-${i}`}
+            prevNode={nodes[i - 1]}
+            node={node}
+            nodeIndex={i}
+            color={color}
+            lineOpacity={lineOpacity}
+            growthProgress={growthProgress}
+            totalNodes={nodes.length}
+          />
+        ) : null
+      ))}
+      {nodes.map((node, i) => (
+        <GrowingNode
+          key={`node-${i}`}
+          node={node}
+          nodeIndex={i}
+          color={color}
+          growthProgress={growthProgress}
+          totalNodes={nodes.length}
+        />
+      ))}
+    </G>
+  );
+}
+
 export function SpiralMandala({ 
   onPress, 
   weeklyPoints = 0,
@@ -136,31 +356,41 @@ export function SpiralMandala({
   const rotationValue = useSharedValue(0);
   const pressScale = useSharedValue(1);
   const pulseScale = useSharedValue(1);
+  const armGrowthProgress = useSharedValue(1);
 
   const maxRadius = MANDALA_SIZE * 0.40;
   const cx = MANDALA_SIZE / 2;
   const cy = MANDALA_SIZE / 2;
 
-  const [displayedArms, setDisplayedArms] = useState(Math.min(3 + weeklyPoints, 24));
-  const [showRings, setShowRings] = useState(false);
-  const [glowIntensity, setGlowIntensity] = useState(0);
-
   const targetArmCount = Math.min(3 + weeklyPoints, 24);
   const previousArmCount = Math.min(3 + previousPoints, 24);
 
-  const updateArms = useCallback((newCount: number) => {
-    setDisplayedArms(newCount);
-  }, []);
+  const [baseArms, setBaseArms] = useState(targetArmCount);
+  const [growingArmIndices, setGrowingArmIndices] = useState<number[]>([]);
+  const [showRings, setShowRings] = useState(false);
+  const [glowIntensity, setGlowIntensity] = useState(0);
 
-  const handleGrowthComplete = useCallback(() => {
-    setDisplayedArms(targetArmCount);
+  const density = 4;
+  const curvature = 0.5;
+  const lineOpacity = 0.15;
+  const nodeScale = 1.2;
+
+  const handleAnimationComplete = useCallback(() => {
+    setBaseArms(targetArmCount);
+    setGrowingArmIndices([]);
     setShowRings(false);
+    setGlowIntensity(0);
     onGrowthComplete?.();
   }, [targetArmCount, onGrowthComplete]);
 
   useEffect(() => {
     if (isGrowing && targetArmCount > previousArmCount) {
-      setDisplayedArms(previousArmCount);
+      setBaseArms(previousArmCount);
+      const newArmIndices: number[] = [];
+      for (let i = previousArmCount; i < targetArmCount; i++) {
+        newArmIndices.push(i);
+      }
+      setGrowingArmIndices(newArmIndices);
       setShowRings(true);
       
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -170,7 +400,17 @@ export function SpiralMandala({
         withTiming(1, { duration: 300, easing: Easing.inOut(Easing.ease) })
       );
       
-      const duration = 3500;
+      armGrowthProgress.value = 0;
+      armGrowthProgress.value = withTiming(1, {
+        duration: 2500,
+        easing: Easing.out(Easing.cubic),
+      }, (finished) => {
+        if (finished) {
+          runOnJS(handleAnimationComplete)();
+        }
+      });
+      
+      const duration = 3000;
       const startTime = Date.now();
       
       const glowInterval = setInterval(() => {
@@ -186,68 +426,42 @@ export function SpiralMandala({
           intensity = 1 - (rawProgress - 0.7) / 0.3;
         }
         setGlowIntensity(intensity);
+        
+        if (rawProgress >= 1) {
+          clearInterval(glowInterval);
+        }
       }, 50);
       
-      const armDiff = targetArmCount - previousArmCount;
-      const stepDuration = 3000 / armDiff;
-      
-      let currentArm = previousArmCount;
-      const armInterval = setInterval(() => {
-        currentArm++;
-        if (currentArm <= targetArmCount) {
-          updateArms(currentArm);
-        }
-        if (currentArm >= targetArmCount) {
-          clearInterval(armInterval);
-          setTimeout(() => {
-            clearInterval(glowInterval);
-            setGlowIntensity(0);
-            handleGrowthComplete();
-          }, 500);
-        }
-      }, stepDuration);
-      
       return () => {
-        clearInterval(armInterval);
         clearInterval(glowInterval);
       };
     } else if (!isGrowing) {
-      setDisplayedArms(targetArmCount);
+      setBaseArms(targetArmCount);
+      setGrowingArmIndices([]);
       setGlowIntensity(0);
+      armGrowthProgress.value = 1;
     }
   }, [isGrowing, targetArmCount, previousArmCount]);
-  
-  const parameters: MandalaParameters = useMemo(() => ({
-    arms: displayedArms,
-    density: 4,
-    curvature: 0.5,
-    lineOpacity: 0.15,
-    nodeScale: 1.2,
-    colorPalette: [
-      theme.primary,
-      theme.secondary,
-    ],
-  }), [theme.primary, theme.secondary, displayedArms]);
 
-  const allArms = useMemo(() => {
+  const baseArmData = useMemo(() => {
     const arms = [];
-    for (let armIndex = 0; armIndex < parameters.arms; armIndex++) {
+    for (let armIndex = 0; armIndex < baseArms; armIndex++) {
       const colorIndex = armIndex % 2;
-      const color = parameters.colorPalette[colorIndex];
+      const color = colorIndex === 0 ? theme.primary : theme.secondary;
       const nodes = computeNodes(
         armIndex,
-        parameters.arms,
-        parameters.density,
-        parameters.curvature,
-        parameters.nodeScale,
+        baseArms + growingArmIndices.length,
+        density,
+        curvature,
+        nodeScale,
         maxRadius
       );
       arms.push({ armIndex, color, nodes });
     }
     return arms;
-  }, [parameters, maxRadius]);
+  }, [baseArms, growingArmIndices.length, theme.primary, theme.secondary, maxRadius]);
 
-  const centerSize = 4 * parameters.nodeScale;
+  const centerSize = 4 * nodeScale;
 
   useEffect(() => {
     breathValue.value = withRepeat(
@@ -321,7 +535,7 @@ export function SpiralMandala({
                 </>
               ) : null}
               
-              {allArms.map(({ armIndex, color, nodes }) => (
+              {baseArmData.map(({ armIndex, color, nodes }) => (
                 <G key={armIndex}>
                   {nodes.map((node, i) => (
                     i > 0 ? (
@@ -333,7 +547,7 @@ export function SpiralMandala({
                         y2={node.y}
                         stroke={color}
                         strokeWidth={0.75}
-                        strokeOpacity={parameters.lineOpacity}
+                        strokeOpacity={lineOpacity}
                         strokeLinecap="round"
                       />
                     ) : null
@@ -357,11 +571,26 @@ export function SpiralMandala({
                 </G>
               ))}
               
+              {growingArmIndices.map((armIndex) => (
+                <GrowingArm
+                  key={`growing-${armIndex}`}
+                  armIndex={armIndex}
+                  totalArms={baseArms + growingArmIndices.length}
+                  color={armIndex % 2 === 0 ? theme.primary : theme.secondary}
+                  density={density}
+                  curvature={curvature}
+                  nodeScale={nodeScale}
+                  maxRadius={maxRadius}
+                  lineOpacity={lineOpacity}
+                  growthProgress={armGrowthProgress}
+                />
+              ))}
+              
               <Circle
                 cx={0}
                 cy={0}
                 r={centerSize}
-                fill={parameters.colorPalette[0]}
+                fill={theme.primary}
               />
               <Circle
                 cx={-centerSize * 0.25}
