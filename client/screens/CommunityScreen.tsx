@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ScrollView, View, StyleSheet, Pressable, Alert } from "react-native";
+import { ScrollView, View, StyleSheet, Pressable, Alert, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { reloadAppAsync } from "expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -117,27 +117,46 @@ export default function CommunityScreen() {
     transform: [{ scale: pulseScale.value }],
   }));
 
+  const performReset = async () => {
+    try {
+      await AsyncStorage.clear();
+      if (Platform.OS === "web") {
+        window.location.reload();
+      } else {
+        reloadAppAsync();
+      }
+    } catch (error) {
+      console.error("Failed to reset app data:", error);
+      if (Platform.OS === "web") {
+        window.alert("Failed to reset app data. Please try again.");
+      } else {
+        Alert.alert("Error", "Failed to reset app data. Please try again.");
+      }
+    }
+  };
+
   const handleResetAppData = () => {
-    Alert.alert(
-      "Reset App Data",
-      "This will clear all your meditation sessions, journal entries, and progress. This cannot be undone. Are you sure?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Reset Everything",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await AsyncStorage.clear();
-              reloadAppAsync();
-            } catch (error) {
-              console.error("Failed to reset app data:", error);
-              Alert.alert("Error", "Failed to reset app data. Please try again.");
-            }
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(
+        "This will clear all your meditation sessions, journal entries, and progress. This cannot be undone. Are you sure?"
+      );
+      if (confirmed) {
+        performReset();
+      }
+    } else {
+      Alert.alert(
+        "Reset App Data",
+        "This will clear all your meditation sessions, journal entries, and progress. This cannot be undone. Are you sure?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Reset Everything",
+            style: "destructive",
+            onPress: performReset,
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const formatRiceCount = (count: number) => {
