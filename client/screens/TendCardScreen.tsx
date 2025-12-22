@@ -144,21 +144,17 @@ function SwipeableCard({
       const swipedFarEnough = Math.abs(event.translationX) > SWIPE_THRESHOLD;
       if (swipedFarEnough) {
         const direction = event.translationX > 0 ? 1 : -1;
-        // Animate card off screen to the side
+        // Animate card off screen to the side, then immediately rotate the deck
         translateX.value = withTiming(
-          screenWidth * direction, 
-          { duration: 250, easing: Easing.out(Easing.ease) },
+          screenWidth * 1.2 * direction, 
+          { duration: 300, easing: Easing.out(Easing.cubic) },
           () => {
-            // After exiting, animate it settling under the stack
-            translateX.value = withTiming(stackOffsetX, { duration: 150 });
-            translateY.value = withTiming(stackOffsetY, { duration: 150 });
-            rotation.value = withTiming(stackRotation, { duration: 150 });
-            cardOpacity.value = withTiming(0.7, { duration: 100 }, () => {
-              runOnJS(rotateToBack)();
-            });
+            // Rotate the deck immediately after the card exits
+            runOnJS(rotateToBack)();
           }
         );
-        rotation.value = withTiming(15 * direction, { duration: 250 });
+        rotation.value = withTiming(20 * direction, { duration: 300 });
+        cardOpacity.value = withTiming(0.5, { duration: 300 });
       } else {
         translateX.value = withSpring(0, { damping: 15 });
         translateY.value = withSpring(0, { damping: 15 });
