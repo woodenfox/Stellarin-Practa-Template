@@ -1,0 +1,308 @@
+Back to Generator
+Lite Mandala
+
+Lite Mandala
+A simplified, mobile-optimized spiral pattern
+
+Implementation Guide
+Copy the complete component code below
+
+Complete Component Code
+Copy this entire code block into a new file called LiteMandalaCanvas.tsx
+
+import { useEffect, useRef, useState } from "react";
+
+interface MandalaParameters {
+  arms: number;
+  density: number;
+  curvature: number;
+  lineOpacity?: number;
+  nodeScale?: number;
+  breathSpeed?: number;
+  rotationSpeed?: number;
+  colorPalette: string[];
+  seed: number;
+}
+
+interface LiteMandalaCanvasProps {
+  parameters: MandalaParameters;
+  width?: number;
+  height?: number;
+  className?: string;
+  animate?: boolean;
+}
+
+export function LiteMandalaCanvas({ 
+  parameters, 
+  width = 800, 
+  height = 800, 
+  className,
+  animate = true
+}: LiteMandalaCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationRef = useRef<number>();
+  const timeRef = useRef<number>(0);
+  const isDarkRef = useRef(true);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof document !== 'undefined') {
+      const dark = document.documentElement.classList.contains('dark');
+      isDarkRef.current = dark;
+      return dark;
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    const checkTheme = () => {
+      const dark = document.documentElement.classList.contains('dark');
+      isDarkRef.current = dark;
+      setIsDark(dark);
+    };
+    
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    checkTheme();
+    
+    return () => observer.disconnect();
+  }, []);
+
+  const drawMandala = (
+    ctx: CanvasRenderingContext2D, 
+    time: number, 
+    w: number, 
+    h: number, 
+    darkMode: boolean
+  ) => {
+    const { 
+      arms = 6, 
+      density = 4, 
+      curvature = 0.5,
+      lineOpacity = 0.12,
+      nodeScale = 1,
+      breathSpeed = 1,
+      rotationSpeed = 1,
+      colorPalette = [
+        "hsl(28, 97%, 52%)", 
+        "hsl(199, 100%, 40%)"
+      ],
+    } = parameters;
+
+    const cx = w / 2;
+    const cy = h / 2;
+    const maxRadius = Math.min(w, h) * 0.40;
+    const nodePalette = colorPalette;
+    
+    // Background
+    if (darkMode) {
+      ctx.fillStyle = "rgb(10, 12, 18)";
+    } else {
+      const bgGradient = ctx.createRadialGradient(
+        cx, cy, 0, cx, cy, maxRadius * 1.2
+      );
+      bgGradient.addColorStop(0, "rgba(255, 255, 255, 1)");
+      bgGradient.addColorStop(0.7, "rgba(252, 250, 255, 1)");
+      bgGradient.addColorStop(1, "rgba(245, 242, 250, 1)");
+      ctx.fillStyle = bgGradient;
+    }
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    
+    // Breathing animation
+    const breath = animate 
+      ? Math.sin(time * 0.001 * breathSpeed) * 0.03 + 1 
+      : 1;
+    const rotation = animate 
+      ? time * 0.0002 * rotationSpeed 
+      : 0;
+    ctx.scale(breath, breath);
+    ctx.rotate(rotation);
+
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // Draw node helper
+    const drawNode = (
+      x: number, 
+      y: number, 
+      size: number, 
+      colorIndex: number, 
+      alpha: number = 1
+    ) => {
+      const scaledSize = size * nodeScale;
+      const color = nodePalette[colorIndex % nodePalette.length];
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x, y, scaledSize, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Highlight
+      ctx.fillStyle = darkMode 
+        ? "rgba(255,255,255,0.4)" 
+        : "rgba(255,255,255,0.6)";
+      ctx.beginPath();
+      ctx.arc(
+        x - scaledSize * 0.2, 
+        y - scaledSize * 0.2, 
+        scaledSize * 0.25, 
+        0, 
+        Math.PI * 2
+      );
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    };
+
+    // Draw spiral arm
+    const drawSpiralArm = (
+      startR: number, 
+      endR: number, 
+      nodeCount: number, 
+      spiralTurns: number
+    ) => {
+      for (let arm = 0; arm < arms; arm++) {
+        const armOffset = (arm / arms) * Math.PI * 2;
+        const armColorIndex = arm % 2;
+        const color = nodePalette[armColorIndex % nodePalette.length];
+        
+        // Draw connecting line
+        ctx.globalAlpha = lineOpacity;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 0.75;
+        ctx.beginPath();
+        
+        for (let i = 0; i < nodeCount; i++) {
+          const progress = i / (nodeCount - 1);
+          const radius = startR + (endR - startR) * progress;
+          const angle = armOffset + progress * spiralTurns * Math.PI * 2;
+          const x = Math.cos(angle) * radius;
+          const y = Math.sin(angle) * radius;
+          
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        
+        // Draw nodes
+        for (let i = 0; i < nodeCount; i++) {
+          const progress = i / (nodeCount - 1);
+          const radius = startR + (endR - startR) * progress;
+          const angle = armOffset + progress * spiralTurns * Math.PI * 2;
+          const x = Math.cos(angle) * radius;
+          const y = Math.sin(angle) * radius;
+          const nodeSize = 1.5 + progress * 1.5;
+          
+          drawNode(x, y, nodeSize, armColorIndex, 1);
+        }
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    const spiralTurns = 0.25 + curvature * 0.35;
+    const nodesPerSpiral = Math.floor(6 + density * 1.5);
+
+    drawSpiralArm(maxRadius * 0.1, maxRadius * 0.9, nodesPerSpiral, spiralTurns);
+
+    // Center node
+    const centerSize = 4 * nodeScale;
+    ctx.fillStyle = nodePalette[0];
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, centerSize, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.fillStyle = darkMode 
+      ? "rgba(255,255,255,0.5)" 
+      : "rgba(255,255,255,0.7)";
+    ctx.beginPath();
+    ctx.arc(-centerSize * 0.25, -centerSize * 0.25, centerSize * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  };
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const pixelRatio = window.devicePixelRatio || 1;
+    canvas.width = width * pixelRatio;
+    canvas.height = height * pixelRatio;
+    ctx.scale(pixelRatio, pixelRatio);
+
+    const render = (timestamp: number) => {
+      if (animate) {
+        timeRef.current = timestamp;
+      }
+      drawMandala(ctx, timeRef.current, width, height, isDarkRef.current);
+      
+      if (animate) {
+        animationRef.current = requestAnimationFrame(render);
+      }
+    };
+
+    render(timeRef.current);
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [parameters, width, height, animate, isDark]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className={className}
+      style={{ width, height }}
+    />
+  );
+}
+Usage Example
+import { LiteMandalaCanvas } from './LiteMandalaCanvas';
+
+const params = {
+  arms: 6,           // Number of spiral arms
+  density: 4,        // Nodes per arm
+  curvature: 0.5,    // How much spirals curve
+  lineOpacity: 0.12, // Visibility of connecting lines
+  nodeScale: 1,      // Size multiplier for nodes
+  breathSpeed: 1,    // Breathing animation speed
+  rotationSpeed: 1,  // Rotation animation speed
+  colorPalette: [
+    "hsl(28, 97%, 52%)",  // Orange
+    "hsl(199, 100%, 40%)" // Blue
+  ],
+  seed: 333
+};
+
+function App() {
+  return (
+    <LiteMandalaCanvas 
+      parameters={params}
+      width={350}
+      height={350}
+      animate={true}
+    />
+  );
+}
+Key Parameters
+Parameter	Range	Effect
+arms	3-32	Number of spiral arms
+density	1-8	Number of nodes per arm
+curvature	0-1	How much the spirals curve/twist
+lineOpacity	0-1	Visibility of connecting lines between nodes
+nodeScale	0.5-3	Size multiplier for all nodes
+breathSpeed	0-2	Speed of the breathing pulse animation
+rotationSpeed	0-2	Speed of the slow rotation animation
+colorPalette	HSL[]	Alternating arm colors (first two used)
+Theme Support
+The component automatically detects dark/light mode by checking for a dark class on the html element. Background colors adapt accordingly while the spiral nodes maintain their vibrant brand colors in both themes.
+
