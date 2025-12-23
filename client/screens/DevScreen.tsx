@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ScrollView, View, StyleSheet, Pressable, Alert, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Clipboard from "expo-clipboard";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import * as Battery from "expo-battery";
@@ -476,6 +477,47 @@ export default function DevScreen() {
     showAlert("Added", "Test meditation session added. Restart app to see changes.");
   };
 
+  const getPersonalInfoText = () => {
+    const lines: string[] = [];
+    
+    if (deviceInfo?.deviceName) {
+      lines.push(`Device: ${deviceInfo.deviceName}`);
+    }
+    if (deviceInfo?.modelName) {
+      lines.push(`Model: ${deviceInfo.modelName}`);
+    }
+    if (localeInfo) {
+      lines.push(`Language: ${localeInfo.languageTag}`);
+      if (localeInfo.regionCode) {
+        lines.push(`Region: ${localeInfo.regionCode}`);
+      }
+      if (localeInfo.timezone) {
+        lines.push(`Timezone: ${localeInfo.timezone}`);
+      }
+      if (localeInfo.currencyCode) {
+        lines.push(`Currency: ${localeInfo.currencySymbol} ${localeInfo.currencyCode}`);
+      }
+      if (localeInfo.uses24hourClock !== null) {
+        lines.push(`24-hour clock: ${localeInfo.uses24hourClock ? "Yes" : "No"}`);
+      }
+    }
+    if (deviceInfo?.osName && deviceInfo?.osVersion) {
+      lines.push(`OS: ${deviceInfo.osName} ${deviceInfo.osVersion}`);
+    }
+    
+    return lines.join("\n");
+  };
+
+  const handleCopyPersonalInfo = async () => {
+    const text = getPersonalInfoText();
+    if (!text) {
+      showAlert("Nothing to Copy", "Personal info is still loading.");
+      return;
+    }
+    await Clipboard.setStringAsync(text);
+    showAlert("Copied", "Personal info copied to clipboard.");
+  };
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
@@ -511,6 +553,80 @@ export default function DevScreen() {
           <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Platform:</ThemedText>
           <ThemedText style={styles.infoValue}>{Platform.OS}</ThemedText>
         </View>
+      </View>
+
+      <View style={[styles.infoCard, { backgroundColor: theme.backgroundDefault }]}>
+        <View style={styles.sectionHeader}>
+          <ThemedText type="h4">Your Profile</ThemedText>
+          <Pressable onPress={handleCopyPersonalInfo} hitSlop={8} style={styles.copyButton}>
+            <Feather name="copy" size={16} color={theme.primary} />
+            <ThemedText style={[styles.copyText, { color: theme.primary }]}>Copy</ThemedText>
+          </Pressable>
+        </View>
+        {deviceInfo || localeInfo ? (
+          <>
+            {deviceInfo?.deviceName ? (
+              <View style={styles.infoRow}>
+                <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Device Name:</ThemedText>
+                <ThemedText style={[styles.infoValue, styles.infoValueWrap]} numberOfLines={1}>
+                  {deviceInfo.deviceName}
+                </ThemedText>
+              </View>
+            ) : null}
+            {deviceInfo?.modelName ? (
+              <View style={styles.infoRow}>
+                <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Device Model:</ThemedText>
+                <ThemedText style={styles.infoValue}>{deviceInfo.modelName}</ThemedText>
+              </View>
+            ) : null}
+            {localeInfo?.languageTag ? (
+              <View style={styles.infoRow}>
+                <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Language:</ThemedText>
+                <ThemedText style={styles.infoValue}>{localeInfo.languageTag}</ThemedText>
+              </View>
+            ) : null}
+            {localeInfo?.regionCode ? (
+              <View style={styles.infoRow}>
+                <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Region:</ThemedText>
+                <ThemedText style={styles.infoValue}>{localeInfo.regionCode}</ThemedText>
+              </View>
+            ) : null}
+            {localeInfo?.timezone ? (
+              <View style={styles.infoRow}>
+                <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Timezone:</ThemedText>
+                <ThemedText style={[styles.infoValue, styles.infoValueWrap]} numberOfLines={1}>
+                  {localeInfo.timezone}
+                </ThemedText>
+              </View>
+            ) : null}
+            {localeInfo?.currencyCode ? (
+              <View style={styles.infoRow}>
+                <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Currency:</ThemedText>
+                <ThemedText style={styles.infoValue}>
+                  {localeInfo.currencySymbol} {localeInfo.currencyCode}
+                </ThemedText>
+              </View>
+            ) : null}
+            {localeInfo && localeInfo.uses24hourClock !== null ? (
+              <View style={styles.infoRow}>
+                <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Time Format:</ThemedText>
+                <ThemedText style={styles.infoValue}>
+                  {localeInfo.uses24hourClock ? "24-hour" : "12-hour"}
+                </ThemedText>
+              </View>
+            ) : null}
+            {deviceInfo?.osName && deviceInfo?.osVersion ? (
+              <View style={styles.infoRow}>
+                <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Operating System:</ThemedText>
+                <ThemedText style={styles.infoValue}>
+                  {deviceInfo.osName} {deviceInfo.osVersion}
+                </ThemedText>
+              </View>
+            ) : null}
+          </>
+        ) : (
+          <ThemedText style={{ color: theme.textSecondary }}>Loading...</ThemedText>
+        )}
       </View>
 
       <View style={[styles.infoCard, { backgroundColor: theme.backgroundDefault }]}>
@@ -1002,5 +1118,14 @@ const styles = StyleSheet.create({
   devButtonSubtitle: {
     fontSize: 13,
     marginTop: 2,
+  },
+  copyButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  copyText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
 });
