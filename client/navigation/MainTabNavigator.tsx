@@ -4,8 +4,6 @@ import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet } from "react-native";
 import HomeScreen from "@/screens/HomeScreen";
-import TimerScreen from "@/screens/TimerScreen";
-import ProgressScreen from "@/screens/ProgressScreen";
 import JournalScreen from "@/screens/JournalScreen";
 import CommunityScreen from "@/screens/CommunityScreen";
 import DevScreen from "@/screens/DevScreen";
@@ -17,8 +15,6 @@ const isDev = __DEV__;
 
 export type MainTabParamList = {
   HomeTab: undefined;
-  TimerTab: undefined;
-  ProgressTab: undefined;
   JournalTab: undefined;
   CommunityTab: undefined;
   DevTab: undefined;
@@ -64,28 +60,6 @@ export default function MainTabNavigator() {
           headerTitle: () => <HeaderTitle />,
           tabBarIcon: ({ color, size }) => (
             <Feather name="home" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="TimerTab"
-        component={TimerScreen}
-        options={{
-          title: "Timer",
-          headerTitle: "Meditation Timer",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="clock" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="ProgressTab"
-        component={ProgressScreen}
-        options={{
-          title: "Progress",
-          headerTitle: "Your Progress",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="trending-up" size={size} color={color} />
           ),
         }}
       />
