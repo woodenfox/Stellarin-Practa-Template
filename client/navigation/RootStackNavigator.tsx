@@ -7,6 +7,7 @@ import FAQScreen from "@/screens/FAQScreen";
 import PersonalizedMeditationScreen from "@/screens/PersonalizedMeditationScreen";
 import QuickMeditationScreen from "@/screens/QuickMeditationScreen";
 import TendCardScreen from "@/screens/TendCardScreen";
+import NotificationsPromptScreen from "@/screens/NotificationsPromptScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type RootStackParamList = {
@@ -17,6 +18,7 @@ export type RootStackParamList = {
   PersonalizedMeditation: { journalContent: string; riceEarned: number };
   QuickMeditation: undefined;
   TendCard: undefined;
+  NotificationsPrompt: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -78,6 +80,15 @@ export default function RootStackNavigator() {
       <Stack.Screen
         name="TendCard"
         component={TendCardScreen}
+        options={{
+          presentation: "fullScreenModal",
+          headerShown: false,
+          animation: "fade",
+        }}
+      />
+      <Stack.Screen
+        name="NotificationsPrompt"
+        component={NotificationsPromptScreen}
         options={{
           presentation: "fullScreenModal",
           headerShown: false,

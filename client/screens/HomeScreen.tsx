@@ -10,6 +10,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Notifications from "expo-notifications";
 import Svg, { Circle, G } from "react-native-svg";
 import Animated, {
   useSharedValue,
@@ -374,6 +375,30 @@ export default function HomeScreen() {
   const [isGrowing, setIsGrowing] = useState(false);
   const [previousPoints, setPreviousPoints] = useState(weeklyPoints);
   const isCheckingGrowth = useRef(false);
+  const hasCheckedNotifications = useRef(false);
+
+  useEffect(() => {
+    const checkNotificationPrompt = async () => {
+      if (hasCheckedNotifications.current) return;
+      hasCheckedNotifications.current = true;
+
+      try {
+        const prompted = await AsyncStorage.getItem("@stellarin_notifications_prompted");
+        if (prompted === "true") return;
+
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status === "undetermined") {
+          setTimeout(() => {
+            navigation.navigate("NotificationsPrompt");
+          }, 1500);
+        }
+      } catch (error) {
+        console.error("Error checking notification prompt:", error);
+      }
+    };
+
+    checkNotificationPrompt();
+  }, [navigation]);
   
   useFocusEffect(
     useCallback(() => {
