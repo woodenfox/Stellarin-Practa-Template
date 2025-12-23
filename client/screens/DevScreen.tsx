@@ -135,6 +135,21 @@ interface SensorAvailability {
   lightSensor: boolean;
 }
 
+interface GeoInfo {
+  publicIp: string | null;
+  country: string | null;
+  countryCode: string | null;
+  region: string | null;
+  city: string | null;
+  zip: string | null;
+  lat: number | null;
+  lon: number | null;
+  isp: string | null;
+  org: string | null;
+  loading: boolean;
+  error: string | null;
+}
+
 const deviceTypeMap: Record<number, string> = {
   0: "Unknown",
   1: "Phone",
@@ -167,6 +182,20 @@ export default function DevScreen() {
   const [brightnessInfo, setBrightnessInfo] = useState<BrightnessInfo | null>(null);
   const [localeInfo, setLocaleInfo] = useState<LocaleInfo | null>(null);
   const [sensorAvailability, setSensorAvailability] = useState<SensorAvailability | null>(null);
+  const [geoInfo, setGeoInfo] = useState<GeoInfo>({
+    publicIp: null,
+    country: null,
+    countryCode: null,
+    region: null,
+    city: null,
+    zip: null,
+    lat: null,
+    lon: null,
+    isp: null,
+    org: null,
+    loading: true,
+    error: null,
+  });
 
   useEffect(() => {
     checkNotificationStatus();
@@ -178,6 +207,7 @@ export default function DevScreen() {
     loadBrightnessInfo();
     loadLocaleInfo();
     loadSensorAvailability();
+    loadGeoInfo();
   }, []);
 
   const loadDeviceInfo = async () => {
@@ -352,6 +382,44 @@ export default function DevScreen() {
     }
   };
 
+  const loadGeoInfo = async () => {
+    setGeoInfo(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await fetch("http://ip-api.com/json/?fields=status,message,country,countryCode,region,regionName,city,zip,lat,lon,isp,org,query");
+      const data = await response.json();
+      
+      if (data.status === "success") {
+        setGeoInfo({
+          publicIp: data.query,
+          country: data.country,
+          countryCode: data.countryCode,
+          region: data.regionName,
+          city: data.city,
+          zip: data.zip,
+          lat: data.lat,
+          lon: data.lon,
+          isp: data.isp,
+          org: data.org,
+          loading: false,
+          error: null,
+        });
+      } else {
+        setGeoInfo(prev => ({
+          ...prev,
+          loading: false,
+          error: data.message || "Failed to get location",
+        }));
+      }
+    } catch (error) {
+      console.log("Error loading geo info:", error);
+      setGeoInfo(prev => ({
+        ...prev,
+        loading: false,
+        error: "Network error",
+      }));
+    }
+  };
+
   const formatBytes = (bytes: number | null): string => {
     if (bytes === null) return "N/A";
     const gb = bytes / (1024 * 1024 * 1024);
@@ -375,6 +443,7 @@ export default function DevScreen() {
     loadBrightnessInfo();
     loadLocaleInfo();
     loadSensorAvailability();
+    loadGeoInfo();
     checkNotificationStatus();
     showAlert("Refreshed", "Device info updated.");
   };
@@ -486,10 +555,13 @@ export default function DevScreen() {
     if (deviceInfo?.modelName) {
       lines.push(`Model: ${deviceInfo.modelName}`);
     }
+    if (deviceInfo?.osName && deviceInfo?.osVersion) {
+      lines.push(`OS: ${deviceInfo.osName} ${deviceInfo.osVersion}`);
+    }
     if (localeInfo) {
       lines.push(`Language: ${localeInfo.languageTag}`);
       if (localeInfo.regionCode) {
-        lines.push(`Region: ${localeInfo.regionCode}`);
+        lines.push(`Device Region: ${localeInfo.regionCode}`);
       }
       if (localeInfo.timezone) {
         lines.push(`Timezone: ${localeInfo.timezone}`);
@@ -501,8 +573,21 @@ export default function DevScreen() {
         lines.push(`24-hour clock: ${localeInfo.uses24hourClock ? "Yes" : "No"}`);
       }
     }
-    if (deviceInfo?.osName && deviceInfo?.osVersion) {
-      lines.push(`OS: ${deviceInfo.osName} ${deviceInfo.osVersion}`);
+    if (geoInfo.publicIp) {
+      lines.push(`\n--- From IP Address ---`);
+      lines.push(`Public IP: ${geoInfo.publicIp}`);
+      if (geoInfo.city && geoInfo.region) {
+        lines.push(`Location: ${geoInfo.city}, ${geoInfo.region}`);
+      }
+      if (geoInfo.country) {
+        lines.push(`Country: ${geoInfo.country}`);
+      }
+      if (geoInfo.isp) {
+        lines.push(`ISP: ${geoInfo.isp}`);
+      }
+      if (geoInfo.lat && geoInfo.lon) {
+        lines.push(`Coordinates: ${geoInfo.lat}, ${geoInfo.lon}`);
+      }
     }
     
     return lines.join("\n");
@@ -623,6 +708,75 @@ export default function DevScreen() {
                 </ThemedText>
               </View>
             ) : null}
+
+            <ThemedText style={[styles.subsectionTitle, { color: theme.textSecondary, marginTop: Spacing.md }]}>
+              From Your IP Address
+            </ThemedText>
+
+            {geoInfo.loading ? (
+              <ThemedText style={{ color: theme.textSecondary, paddingVertical: Spacing.sm }}>
+                Looking up location...
+              </ThemedText>
+            ) : geoInfo.error ? (
+              <ThemedText style={{ color: theme.error, paddingVertical: Spacing.sm }}>
+                {geoInfo.error}
+              </ThemedText>
+            ) : (
+              <>
+                {geoInfo.publicIp ? (
+                  <View style={styles.infoRow}>
+                    <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Public IP:</ThemedText>
+                    <ThemedText style={styles.infoValue}>{geoInfo.publicIp}</ThemedText>
+                  </View>
+                ) : null}
+                {geoInfo.city && geoInfo.region ? (
+                  <View style={styles.infoRow}>
+                    <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Location:</ThemedText>
+                    <ThemedText style={styles.infoValue}>
+                      {geoInfo.city}, {geoInfo.region}
+                    </ThemedText>
+                  </View>
+                ) : null}
+                {geoInfo.country ? (
+                  <View style={styles.infoRow}>
+                    <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Country:</ThemedText>
+                    <ThemedText style={styles.infoValue}>
+                      {geoInfo.country} ({geoInfo.countryCode})
+                    </ThemedText>
+                  </View>
+                ) : null}
+                {geoInfo.zip ? (
+                  <View style={styles.infoRow}>
+                    <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Postal Code:</ThemedText>
+                    <ThemedText style={styles.infoValue}>{geoInfo.zip}</ThemedText>
+                  </View>
+                ) : null}
+                {geoInfo.isp ? (
+                  <View style={styles.infoRow}>
+                    <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>ISP:</ThemedText>
+                    <ThemedText style={[styles.infoValue, styles.infoValueWrap]} numberOfLines={1}>
+                      {geoInfo.isp}
+                    </ThemedText>
+                  </View>
+                ) : null}
+                {geoInfo.org ? (
+                  <View style={styles.infoRow}>
+                    <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Organization:</ThemedText>
+                    <ThemedText style={[styles.infoValue, styles.infoValueWrap]} numberOfLines={1}>
+                      {geoInfo.org}
+                    </ThemedText>
+                  </View>
+                ) : null}
+                {geoInfo.lat && geoInfo.lon ? (
+                  <View style={styles.infoRow}>
+                    <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Coordinates:</ThemedText>
+                    <ThemedText style={styles.infoValue}>
+                      {geoInfo.lat.toFixed(4)}, {geoInfo.lon.toFixed(4)}
+                    </ThemedText>
+                  </View>
+                ) : null}
+              </>
+            )}
           </>
         ) : (
           <ThemedText style={{ color: theme.textSecondary }}>Loading...</ThemedText>
@@ -1127,5 +1281,11 @@ const styles = StyleSheet.create({
   copyText: {
     fontSize: 14,
     fontWeight: "500",
+  },
+  subsectionTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 });
