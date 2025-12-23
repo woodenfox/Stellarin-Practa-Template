@@ -122,20 +122,29 @@ export default function DevScreen() {
   };
 
   const handleTestLocalNotification = async () => {
+    if (Platform.OS === "web") {
+      showAlert("Not Available", "Push notifications don't work on web. Test this feature using Expo Go on your phone.");
+      return;
+    }
+
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== "granted") {
       showAlert("Permission Required", "Enable notifications first to test this feature.");
       return;
     }
 
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "Test Notification",
-        body: "This is a test notification from Stellarin!",
-      },
-      trigger: { seconds: 2, type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL },
-    });
-    showAlert("Scheduled", "A test notification will appear in 2 seconds.");
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Test Notification",
+          body: "This is a test notification from Stellarin!",
+        },
+        trigger: { seconds: 2, type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL },
+      });
+      showAlert("Scheduled", "A test notification will appear in 2 seconds.");
+    } catch (error) {
+      showAlert("Error", "Failed to schedule notification. This feature may be limited in Expo Go.");
+    }
   };
 
   const handleAddTestSession = async () => {
