@@ -6,6 +6,10 @@ import * as Device from "expo-device";
 import * as Battery from "expo-battery";
 import * as Application from "expo-application";
 import * as Network from "expo-network";
+import * as ScreenOrientation from "expo-screen-orientation";
+import * as Brightness from "expo-brightness";
+import * as Localization from "expo-localization";
+import { Accelerometer, Gyroscope, Magnetometer, Barometer, Pedometer, LightSensor } from "expo-sensors";
 import Constants from "expo-constants";
 import { reloadAppAsync } from "expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -97,6 +101,39 @@ interface AppInfo {
   installTime: Date | null;
 }
 
+interface ScreenInfo {
+  orientation: string;
+  orientationLock: string;
+}
+
+interface BrightnessInfo {
+  brightness: number;
+  isAvailable: boolean;
+}
+
+interface LocaleInfo {
+  languageCode: string | null;
+  languageTag: string;
+  regionCode: string | null;
+  currencyCode: string | null;
+  currencySymbol: string | null;
+  decimalSeparator: string | null;
+  digitGroupingSeparator: string | null;
+  textDirection: string | null;
+  timezone: string | null;
+  uses24hourClock: boolean | null;
+  calendar: string | null;
+}
+
+interface SensorAvailability {
+  accelerometer: boolean;
+  gyroscope: boolean;
+  magnetometer: boolean;
+  barometer: boolean;
+  pedometer: boolean;
+  lightSensor: boolean;
+}
+
 const deviceTypeMap: Record<number, string> = {
   0: "Unknown",
   1: "Phone",
@@ -125,6 +162,10 @@ export default function DevScreen() {
   const [batteryInfo, setBatteryInfo] = useState<BatteryInfo | null>(null);
   const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
+  const [screenInfo, setScreenInfo] = useState<ScreenInfo | null>(null);
+  const [brightnessInfo, setBrightnessInfo] = useState<BrightnessInfo | null>(null);
+  const [localeInfo, setLocaleInfo] = useState<LocaleInfo | null>(null);
+  const [sensorAvailability, setSensorAvailability] = useState<SensorAvailability | null>(null);
 
   useEffect(() => {
     checkNotificationStatus();
@@ -132,6 +173,10 @@ export default function DevScreen() {
     loadBatteryInfo();
     loadNetworkInfo();
     loadAppInfo();
+    loadScreenInfo();
+    loadBrightnessInfo();
+    loadLocaleInfo();
+    loadSensorAvailability();
   }, []);
 
   const loadDeviceInfo = async () => {
@@ -209,6 +254,103 @@ export default function DevScreen() {
     }
   };
 
+  const orientationMap: Record<number, string> = {
+    0: "Unknown",
+    1: "Portrait Up",
+    2: "Portrait Down",
+    3: "Landscape Left",
+    4: "Landscape Right",
+  };
+
+  const orientationLockMap: Record<number, string> = {
+    0: "Default",
+    1: "All",
+    2: "Portrait",
+    3: "Portrait Up",
+    4: "Portrait Down",
+    5: "Landscape",
+    6: "Landscape Left",
+    7: "Landscape Right",
+  };
+
+  const loadScreenInfo = async () => {
+    try {
+      const orientation = await ScreenOrientation.getOrientationAsync();
+      const lock = await ScreenOrientation.getOrientationLockAsync();
+      setScreenInfo({
+        orientation: orientationMap[orientation] || `Unknown (${orientation})`,
+        orientationLock: orientationLockMap[lock] || `Unknown (${lock})`,
+      });
+    } catch (error) {
+      console.log("Error loading screen info:", error);
+    }
+  };
+
+  const loadBrightnessInfo = async () => {
+    try {
+      const isAvailable = await Brightness.isAvailableAsync();
+      let brightness = -1;
+      if (isAvailable) {
+        brightness = await Brightness.getBrightnessAsync();
+      }
+      setBrightnessInfo({
+        brightness,
+        isAvailable,
+      });
+    } catch (error) {
+      console.log("Error loading brightness info:", error);
+    }
+  };
+
+  const loadLocaleInfo = () => {
+    try {
+      const locales = Localization.getLocales();
+      const calendars = Localization.getCalendars();
+      const locale = locales[0];
+      const calendar = calendars[0];
+
+      setLocaleInfo({
+        languageCode: locale?.languageCode || null,
+        languageTag: locale?.languageTag || "Unknown",
+        regionCode: locale?.regionCode || null,
+        currencyCode: locale?.currencyCode || null,
+        currencySymbol: locale?.currencySymbol || null,
+        decimalSeparator: locale?.decimalSeparator || null,
+        digitGroupingSeparator: locale?.digitGroupingSeparator || null,
+        textDirection: locale?.textDirection || null,
+        timezone: calendar?.timeZone || null,
+        uses24hourClock: calendar?.uses24hourClock ?? null,
+        calendar: calendar?.calendar || null,
+      });
+    } catch (error) {
+      console.log("Error loading locale info:", error);
+    }
+  };
+
+  const loadSensorAvailability = async () => {
+    try {
+      const [accelerometer, gyroscope, magnetometer, barometer, pedometer, lightSensor] = 
+        await Promise.all([
+          Accelerometer.isAvailableAsync(),
+          Gyroscope.isAvailableAsync(),
+          Magnetometer.isAvailableAsync(),
+          Barometer.isAvailableAsync(),
+          Pedometer.isAvailableAsync(),
+          LightSensor.isAvailableAsync(),
+        ]);
+      setSensorAvailability({
+        accelerometer,
+        gyroscope,
+        magnetometer,
+        barometer,
+        pedometer,
+        lightSensor,
+      });
+    } catch (error) {
+      console.log("Error loading sensor availability:", error);
+    }
+  };
+
   const formatBytes = (bytes: number | null): string => {
     if (bytes === null) return "N/A";
     const gb = bytes / (1024 * 1024 * 1024);
@@ -228,6 +370,10 @@ export default function DevScreen() {
     loadBatteryInfo();
     loadNetworkInfo();
     loadAppInfo();
+    loadScreenInfo();
+    loadBrightnessInfo();
+    loadLocaleInfo();
+    loadSensorAvailability();
     checkNotificationStatus();
     showAlert("Refreshed", "Device info updated.");
   };
@@ -586,6 +732,144 @@ export default function DevScreen() {
             {formatValue(Constants.sessionId)}
           </ThemedText>
         </View>
+      </View>
+
+      <View style={[styles.infoCard, { backgroundColor: theme.backgroundDefault }]}>
+        <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>
+          Screen
+        </ThemedText>
+        {screenInfo ? (
+          <>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Orientation:</ThemedText>
+              <ThemedText style={styles.infoValue}>{screenInfo.orientation}</ThemedText>
+            </View>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Orientation Lock:</ThemedText>
+              <ThemedText style={styles.infoValue}>{screenInfo.orientationLock}</ThemedText>
+            </View>
+          </>
+        ) : (
+          <ThemedText style={{ color: theme.textSecondary }}>Loading...</ThemedText>
+        )}
+        {brightnessInfo ? (
+          <>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Brightness Available:</ThemedText>
+              <ThemedText style={styles.infoValue}>{formatValue(brightnessInfo.isAvailable)}</ThemedText>
+            </View>
+            {brightnessInfo.isAvailable && brightnessInfo.brightness >= 0 && (
+              <View style={styles.infoRow}>
+                <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Brightness Level:</ThemedText>
+                <ThemedText style={styles.infoValue}>{Math.round(brightnessInfo.brightness * 100)}%</ThemedText>
+              </View>
+            )}
+          </>
+        ) : null}
+      </View>
+
+      <View style={[styles.infoCard, { backgroundColor: theme.backgroundDefault }]}>
+        <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>
+          Localization
+        </ThemedText>
+        {localeInfo ? (
+          <>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Language:</ThemedText>
+              <ThemedText style={styles.infoValue}>{localeInfo.languageTag}</ThemedText>
+            </View>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Language Code:</ThemedText>
+              <ThemedText style={styles.infoValue}>{formatValue(localeInfo.languageCode)}</ThemedText>
+            </View>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Region:</ThemedText>
+              <ThemedText style={styles.infoValue}>{formatValue(localeInfo.regionCode)}</ThemedText>
+            </View>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Currency:</ThemedText>
+              <ThemedText style={styles.infoValue}>
+                {localeInfo.currencySymbol} {localeInfo.currencyCode}
+              </ThemedText>
+            </View>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Decimal Separator:</ThemedText>
+              <ThemedText style={styles.infoValue}>{formatValue(localeInfo.decimalSeparator)}</ThemedText>
+            </View>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Grouping Separator:</ThemedText>
+              <ThemedText style={styles.infoValue}>{formatValue(localeInfo.digitGroupingSeparator)}</ThemedText>
+            </View>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Text Direction:</ThemedText>
+              <ThemedText style={styles.infoValue}>{formatValue(localeInfo.textDirection)}</ThemedText>
+            </View>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Timezone:</ThemedText>
+              <ThemedText style={[styles.infoValue, styles.infoValueWrap]} numberOfLines={1}>
+                {formatValue(localeInfo.timezone)}
+              </ThemedText>
+            </View>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>24-Hour Clock:</ThemedText>
+              <ThemedText style={styles.infoValue}>{formatValue(localeInfo.uses24hourClock)}</ThemedText>
+            </View>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Calendar:</ThemedText>
+              <ThemedText style={styles.infoValue}>{formatValue(localeInfo.calendar)}</ThemedText>
+            </View>
+          </>
+        ) : (
+          <ThemedText style={{ color: theme.textSecondary }}>Loading...</ThemedText>
+        )}
+      </View>
+
+      <View style={[styles.infoCard, { backgroundColor: theme.backgroundDefault }]}>
+        <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>
+          Sensor Availability
+        </ThemedText>
+        {sensorAvailability ? (
+          <>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Accelerometer:</ThemedText>
+              <ThemedText style={[styles.infoValue, { color: sensorAvailability.accelerometer ? theme.success : theme.textSecondary }]}>
+                {sensorAvailability.accelerometer ? "Available" : "Not Available"}
+              </ThemedText>
+            </View>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Gyroscope:</ThemedText>
+              <ThemedText style={[styles.infoValue, { color: sensorAvailability.gyroscope ? theme.success : theme.textSecondary }]}>
+                {sensorAvailability.gyroscope ? "Available" : "Not Available"}
+              </ThemedText>
+            </View>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Magnetometer:</ThemedText>
+              <ThemedText style={[styles.infoValue, { color: sensorAvailability.magnetometer ? theme.success : theme.textSecondary }]}>
+                {sensorAvailability.magnetometer ? "Available" : "Not Available"}
+              </ThemedText>
+            </View>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Barometer:</ThemedText>
+              <ThemedText style={[styles.infoValue, { color: sensorAvailability.barometer ? theme.success : theme.textSecondary }]}>
+                {sensorAvailability.barometer ? "Available" : "Not Available"}
+              </ThemedText>
+            </View>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Pedometer:</ThemedText>
+              <ThemedText style={[styles.infoValue, { color: sensorAvailability.pedometer ? theme.success : theme.textSecondary }]}>
+                {sensorAvailability.pedometer ? "Available" : "Not Available"}
+              </ThemedText>
+            </View>
+            <View style={styles.infoRow}>
+              <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>Light Sensor:</ThemedText>
+              <ThemedText style={[styles.infoValue, { color: sensorAvailability.lightSensor ? theme.success : theme.textSecondary }]}>
+                {sensorAvailability.lightSensor ? "Available" : "Not Available"}
+              </ThemedText>
+            </View>
+          </>
+        ) : (
+          <ThemedText style={{ color: theme.textSecondary }}>Loading...</ThemedText>
+        )}
       </View>
 
       <View style={styles.section}>
