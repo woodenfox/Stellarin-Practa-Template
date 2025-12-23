@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ScrollView, View, StyleSheet, Pressable, Alert, Platform } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { reloadAppAsync } from "expo";
+import { ScrollView, View, StyleSheet, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -116,48 +114,6 @@ export default function CommunityScreen() {
   const pulseAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulseScale.value }],
   }));
-
-  const performReset = async () => {
-    try {
-      await AsyncStorage.clear();
-      if (Platform.OS === "web") {
-        window.location.reload();
-      } else {
-        reloadAppAsync();
-      }
-    } catch (error) {
-      console.error("Failed to reset app data:", error);
-      if (Platform.OS === "web") {
-        window.alert("Failed to reset app data. Please try again.");
-      } else {
-        Alert.alert("Error", "Failed to reset app data. Please try again.");
-      }
-    }
-  };
-
-  const handleResetAppData = () => {
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm(
-        "This will clear all your meditation sessions, journal entries, and progress. This cannot be undone. Are you sure?"
-      );
-      if (confirmed) {
-        performReset();
-      }
-    } else {
-      Alert.alert(
-        "Reset App Data",
-        "This will clear all your meditation sessions, journal entries, and progress. This cannot be undone. Are you sure?",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Reset Everything",
-            style: "destructive",
-            onPress: performReset,
-          },
-        ]
-      );
-    }
-  };
 
   const formatRiceCount = (count: number) => {
     if (count >= 1000000) {
@@ -320,41 +276,6 @@ export default function CommunityScreen() {
             </ThemedText>
           </View>
         </View>
-      </View>
-
-      <View style={styles.section}>
-        <ThemedText type="h4" style={styles.sectionTitle}>
-          Developer Options
-        </ThemedText>
-        <Pressable
-          style={[styles.resetButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.error }]}
-          onPress={handleResetAppData}
-        >
-          <Feather name="trash-2" size={20} color={theme.error} />
-          <View style={styles.resetButtonText}>
-            <ThemedText style={[styles.resetButtonTitle, { color: theme.error }]}>
-              Reset App Data
-            </ThemedText>
-            <ThemedText style={[styles.resetButtonSubtitle, { color: theme.textSecondary }]}>
-              Clear all sessions, journal entries, and progress
-            </ThemedText>
-          </View>
-        </Pressable>
-
-        <Pressable
-          style={[styles.devButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
-          onPress={() => navigation.navigate("NotificationsPrompt")}
-        >
-          <Feather name="bell" size={20} color={theme.textSecondary} />
-          <View style={styles.resetButtonText}>
-            <ThemedText style={[styles.devButtonTitle, { color: theme.text }]}>
-              Test Notifications Prompt
-            </ThemedText>
-            <ThemedText style={[styles.resetButtonSubtitle, { color: theme.textSecondary }]}>
-              Show the notification permission modal
-            </ThemedText>
-          </View>
-        </Pressable>
       </View>
 
       <FooterIllustration />
@@ -539,37 +460,5 @@ const styles = StyleSheet.create({
   },
   supportDescription: {
     fontSize: 13,
-  },
-  resetButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    gap: Spacing.md,
-  },
-  resetButtonText: {
-    flex: 1,
-  },
-  resetButtonTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  resetButtonSubtitle: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  devButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    gap: Spacing.md,
-    marginTop: Spacing.md,
-  },
-  devButtonTitle: {
-    fontSize: 16,
-    fontWeight: "600",
   },
 });

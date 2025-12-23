@@ -8,9 +8,12 @@ import TimerScreen from "@/screens/TimerScreen";
 import ProgressScreen from "@/screens/ProgressScreen";
 import JournalScreen from "@/screens/JournalScreen";
 import CommunityScreen from "@/screens/CommunityScreen";
+import DevScreen from "@/screens/DevScreen";
 import { useTheme } from "@/hooks/useTheme";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { HeaderTitle } from "@/components/HeaderTitle";
+
+const isDev = __DEV__;
 
 export type MainTabParamList = {
   HomeTab: undefined;
@@ -18,6 +21,7 @@ export type MainTabParamList = {
   ProgressTab: undefined;
   JournalTab: undefined;
   CommunityTab: undefined;
+  DevTab: undefined;
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -107,6 +111,19 @@ export default function MainTabNavigator() {
           ),
         }}
       />
+      {isDev ? (
+        <Tab.Screen
+          name="DevTab"
+          component={DevScreen}
+          options={{
+            title: "Dev",
+            headerTitle: "Developer Tools",
+            tabBarIcon: ({ color, size }) => (
+              <Feather name="code" size={size} color={color} />
+            ),
+          }}
+        />
+      ) : null}
     </Tab.Navigator>
   );
 }
