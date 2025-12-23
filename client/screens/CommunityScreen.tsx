@@ -340,6 +340,21 @@ export default function CommunityScreen() {
             </ThemedText>
           </View>
         </Pressable>
+
+        <Pressable
+          style={[styles.devButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+          onPress={() => navigation.navigate("NotificationsPrompt")}
+        >
+          <Feather name="bell" size={20} color={theme.textSecondary} />
+          <View style={styles.resetButtonText}>
+            <ThemedText style={[styles.devButtonTitle, { color: theme.text }]}>
+              Test Notifications Prompt
+            </ThemedText>
+            <ThemedText style={[styles.resetButtonSubtitle, { color: theme.textSecondary }]}>
+              Show the notification permission modal
+            </ThemedText>
+          </View>
+        </Pressable>
       </View>
 
       <FooterIllustration />
@@ -543,5 +558,18 @@ const styles = StyleSheet.create({
   resetButtonSubtitle: {
     fontSize: 13,
     marginTop: 2,
+  },
+  devButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    gap: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  devButtonTitle: {
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
