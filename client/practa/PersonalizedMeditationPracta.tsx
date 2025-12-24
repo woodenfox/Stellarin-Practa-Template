@@ -140,9 +140,15 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
       } else {
         throw new Error(data.error || "Generation failed");
       }
-    } catch (err) {
-      console.error("Meditation generation error:", err);
-      setError("Unable to generate personalized meditation.");
+    } catch (err: any) {
+      const errorMessage = err?.message || "Unknown error";
+      console.error("Meditation generation error:", errorMessage);
+      
+      if (err?.name === "AbortError") {
+        setError("Generation timed out. Please try again.");
+      } else {
+        setError("Unable to generate meditation. Check your connection and try again.");
+      }
       setStage("setup");
     }
   };
@@ -485,12 +491,20 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
           </View>
         </View>
 
+        {error ? (
+          <ThemedText style={[styles.errorText, { color: theme.accent }]}>
+            {error}
+          </ThemedText>
+        ) : null}
+
         <Pressable
           onPress={handleStartMeditation}
           style={[styles.startButton, { backgroundColor: theme.primary }]}
         >
           <Feather name="play" size={20} color="#FFFFFF" />
-          <ThemedText style={styles.startButtonText}>Generate & Start</ThemedText>
+          <ThemedText style={styles.startButtonText}>
+            {error ? "Try Again" : "Generate & Start"}
+          </ThemedText>
         </Pressable>
 
         {onSkip ? (
