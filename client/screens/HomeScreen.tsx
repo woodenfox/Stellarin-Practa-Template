@@ -30,6 +30,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useMeditation } from "@/context/MeditationContext";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { PRESET_FLOWS } from "@/practa";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = (SCREEN_WIDTH - Spacing.lg * 2 - Spacing.md) / 2;
@@ -499,6 +500,10 @@ export default function HomeScreen() {
     navigation.navigate("TendCard");
   };
 
+  const handleStartFlow = () => {
+    navigation.navigate("Flow", { flow: PRESET_FLOWS.morningReflection });
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <ScrollView
@@ -552,6 +557,26 @@ export default function HomeScreen() {
             completed={hasTendedToday()}
           />
         </View>
+
+        <Animated.View entering={FadeInUp.delay(500).duration(600).springify()}>
+          <Pressable 
+            onPress={handleStartFlow}
+            style={[styles.flowCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.primary }]}
+          >
+            <View style={[styles.flowIconWrap, { backgroundColor: `${theme.primary}20` }]}>
+              <Feather name="layers" size={24} color={theme.primary} />
+            </View>
+            <View style={styles.flowTextWrap}>
+              <ThemedText style={[styles.flowTitle, { color: theme.text }]}>
+                Morning Reflection
+              </ThemedText>
+              <ThemedText style={[styles.flowSubtitle, { color: theme.textSecondary }]}>
+                Journal + Personalized Meditation
+              </ThemedText>
+            </View>
+            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+          </Pressable>
+        </Animated.View>
       </ScrollView>
     </View>
   );
@@ -728,5 +753,32 @@ const styles = StyleSheet.create({
   },
   dayLabel: {
     fontSize: 11,
+  },
+  flowCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.lg,
+    borderRadius: 20,
+    borderWidth: 2,
+    marginBottom: Spacing.lg,
+    gap: Spacing.md,
+  },
+  flowIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  flowTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  flowTitle: {
+    fontSize: 17,
+    fontWeight: "600",
+  },
+  flowSubtitle: {
+    fontSize: 13,
   },
 });
