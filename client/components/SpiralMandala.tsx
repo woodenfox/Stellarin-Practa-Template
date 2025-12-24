@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { View, StyleSheet, Dimensions, Pressable } from "react-native";
+import { View, StyleSheet, Dimensions, Pressable, Platform } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -8,6 +8,7 @@ import Animated, {
   withTiming,
   withSequence,
   withDelay,
+  withSpring,
   Easing,
   interpolate,
   runOnJS,
@@ -15,6 +16,7 @@ import Animated, {
 } from "react-native-reanimated";
 import Svg, { Circle, Line, G } from "react-native-svg";
 import * as Haptics from "expo-haptics";
+import { DeviceMotion, DeviceMotionMeasurement } from "expo-sensors";
 
 import { useTheme } from "@/hooks/useTheme";
 
@@ -357,10 +359,47 @@ export function SpiralMandala({
   const pressScale = useSharedValue(1);
   const pulseScale = useSharedValue(1);
   const armGrowthProgress = useSharedValue(1);
+  
+  const tiltX = useSharedValue(0);
+  const tiltY = useSharedValue(0);
 
   const maxRadius = MANDALA_SIZE * 0.40;
   const cx = MANDALA_SIZE / 2;
   const cy = MANDALA_SIZE / 2;
+  
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    
+    let subscription: { remove: () => void } | null = null;
+    
+    const startMotionTracking = async () => {
+      const isAvailable = await DeviceMotion.isAvailableAsync();
+      if (!isAvailable) return;
+      
+      DeviceMotion.setUpdateInterval(50);
+      
+      subscription = DeviceMotion.addListener((data: DeviceMotionMeasurement) => {
+        if (data.rotation) {
+          const { beta, gamma } = data.rotation;
+          
+          const maxTilt = 15;
+          const sensitivity = 0.4;
+          
+          const newTiltX = Math.max(-maxTilt, Math.min(maxTilt, (gamma || 0) * sensitivity * 57.3));
+          const newTiltY = Math.max(-maxTilt, Math.min(maxTilt, (beta || 0) * sensitivity * 57.3));
+          
+          tiltX.value = withSpring(newTiltX, { damping: 20, stiffness: 100 });
+          tiltY.value = withSpring(newTiltY, { damping: 20, stiffness: 100 });
+        }
+      });
+    };
+    
+    startMotionTracking();
+    
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
 
   const targetArmCount = Math.min(3 + weeklyPoints, 24);
   const previousArmCount = Math.min(3 + previousPoints, 24);
@@ -480,6 +519,9 @@ export function SpiralMandala({
     const breath = interpolate(breathValue.value, [0, 1], [1, 1.03]);
     return {
       transform: [
+        { perspective: 800 },
+        { rotateX: `${-tiltY.value}deg` },
+        { rotateY: `${tiltX.value}deg` },
         { scale: breath * pressScale.value * pulseScale.value },
         { rotate: `${rotationValue.value}deg` },
       ],
