@@ -126,9 +126,19 @@ PractaContext {
 PreviousPractaContext {
   practaId: string
   practaType: string
-  userContent?: string
-  aiContent?: string
+  content?: PractaContent
   metadata?: Record<string, any>
+}
+```
+
+---
+
+### 5.3 Practa Content
+
+```ts
+PractaContent {
+  type: "text" | "image"
+  value: string  // text content or image URI/base64
 }
 ```
 
@@ -171,39 +181,27 @@ Represents the *immediate* prior Practa's output.
 
 ---
 
-### `previous.userContent` (optional)
+### `previous.content` (optional)
 
-* Raw user-generated content
+* Flexible content from the previous Practa
+* Can be text or image, with type discriminator
 * Examples:
 
-  * Journal text
-  * Selected words
-  * Free association notes
-
----
-
-### `previous.aiContent` (optional)
-
-* AI-generated content from the previous Practa
-* Examples:
-
-  * Summaries
-  * Generated prompts
-  * Meditation scripts
-  * Extracted themes
+  * `{ type: "text", value: "Two shapes pulling apart" }`
+  * `{ type: "text", value: "I feel tension between..." }` (journal entry)
+  * `{ type: "image", value: "data:image/png;base64,..." }` (generated visual)
 
 ---
 
 ### `previous.metadata` (optional)
 
-* Flexible structured data
+* Flexible structured data for machine-readable outputs
 * Examples:
 
   * `{ themes: ["uncertainty", "pressure"] }`
   * `{ duration: 420 }`
   * `{ emotionTags: ["calm", "open"] }`
-
-Metadata is the preferred place for **machine-readable outputs**.
+  * `{ source: "user" | "ai" | "system" }` (origin tracking if needed)
 
 ---
 
@@ -241,22 +239,22 @@ GPT is typically used to:
 
 ### Example: Inkblot → Journal → Meditation
 
-**Prakta 1: Inkblot**
+**Practa 1: Inkblot**
 
 ```ts
 {
-  userContent: "Two shapes pulling apart",
+  content: { type: "text", value: "Two shapes pulling apart" },
   metadata: { symbols: ["separation", "tension"] }
 }
 ```
 
-**Prakta 2: Journal**
+**Practa 2: Journal**
 
 * Receives previous context
 * GPT generates a custom prompt using symbols
 * Outputs journal text
 
-**Prakta 3: Meditation**
+**Practa 3: Meditation**
 
 * Receives journal content
 * GPT generates a personalized meditation script
