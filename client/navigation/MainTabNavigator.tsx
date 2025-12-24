@@ -4,18 +4,17 @@ import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet } from "react-native";
 import HomeScreen from "@/screens/HomeScreen";
-import JournalScreen from "@/screens/JournalScreen";
+import TimelineScreen from "@/screens/TimelineScreen";
 import CommunityScreen from "@/screens/CommunityScreen";
 import DevScreen from "@/screens/DevScreen";
 import { useTheme } from "@/hooks/useTheme";
-import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { HeaderTitle } from "@/components/HeaderTitle";
 
 const isDev = __DEV__;
 
 export type MainTabParamList = {
   HomeTab: undefined;
-  JournalTab: undefined;
+  TimelineTab: undefined;
   CommunityTab: undefined;
   DevTab: undefined;
 };
@@ -24,13 +23,16 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export default function MainTabNavigator() {
   const { theme, isDark } = useTheme();
-  const screenOptions = useScreenOptions();
 
   return (
     <Tab.Navigator
       initialRouteName="HomeTab"
       screenOptions={{
-        ...screenOptions,
+        headerTitleAlign: "center",
+        headerTintColor: theme.text,
+        headerStyle: {
+          backgroundColor: theme.backgroundRoot,
+        },
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.tabIconDefault,
         tabBarStyle: {
@@ -64,11 +66,11 @@ export default function MainTabNavigator() {
         }}
       />
       <Tab.Screen
-        name="JournalTab"
-        component={JournalScreen}
+        name="TimelineTab"
+        component={TimelineScreen}
         options={{
-          title: "Journal",
-          headerTitle: "Daily Journal",
+          title: "Timeline",
+          headerTitle: "Your Journey",
           tabBarIcon: ({ color, size }) => (
             <Feather name="book-open" size={size} color={color} />
           ),

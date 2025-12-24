@@ -31,7 +31,7 @@ export default function FlowScreen() {
     startFlow(flow);
 
     // Wrap in arrow function to prevent React from treating it as an updater
-    setOnFlowComplete(() => (completedFlow) => {
+    setOnFlowComplete(() => (completedFlow: any) => {
       setTimeout(() => {
         navigation.goBack();
       }, 2000);
