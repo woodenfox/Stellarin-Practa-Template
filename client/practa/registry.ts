@@ -16,6 +16,11 @@ export const PRACTA_DEFINITIONS: Record<PractaType, Omit<PractaDefinition, "id">
     name: "Personalized Meditation",
     description: "AI-generated meditation based on your reflections",
   },
+  "tend": {
+    type: "tend",
+    name: "Tend Card",
+    description: "Draw a daily wellness card for mindful focus",
+  },
 };
 
 export function createPracta(type: PractaType, id?: string): PractaDefinition {
@@ -40,20 +45,36 @@ export function createFlow(
 }
 
 export const PRESET_FLOWS = {
-  morningReflection: createFlow(
-    "Morning Reflection",
-    ["journal", "personalized-meditation"],
-    {
-      id: "morning-reflection",
-      description: "Journal your thoughts, then receive a personalized meditation",
-    }
-  ),
-  quickMeditation: createFlow(
-    "Quick Meditation",
+  meditate: createFlow(
+    "Meditate",
     ["silent-meditation"],
     {
-      id: "quick-meditation",
-      description: "A simple timed meditation",
+      id: "meditate",
+      description: "A timed silent meditation",
+    }
+  ),
+  journal: createFlow(
+    "Journal",
+    ["journal"],
+    {
+      id: "journal",
+      description: "Write your thoughts and feelings",
+    }
+  ),
+  tend: createFlow(
+    "Tend",
+    ["tend"],
+    {
+      id: "tend",
+      description: "Draw a daily wellness card",
+    }
+  ),
+  morningReflection: createFlow(
+    "Morning Reflection",
+    ["tend", "journal", "personalized-meditation"],
+    {
+      id: "morning-reflection",
+      description: "Draw a tend card, journal your thoughts, then receive a personalized meditation",
     }
   ),
   deepDive: createFlow(

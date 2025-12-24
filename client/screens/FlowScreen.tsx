@@ -11,7 +11,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useFlow, useCurrentPracta } from "@/context/FlowContext";
 import { FlowDefinition, PractaOutput, PractaType, PractaContext, PractaCompleteHandler } from "@/types/flow";
-import { JournalPracta, SilentMeditationPracta, PersonalizedMeditationPracta } from "@/practa";
+import { JournalPracta, SilentMeditationPracta, PersonalizedMeditationPracta, TendPracta } from "@/practa";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useMeditation } from "@/context/MeditationContext";
 import { useTimeline } from "@/context/TimelineContext";
@@ -28,6 +28,7 @@ const PRACTA_COMPONENTS: Record<PractaType, PractaComponent> = {
   "journal": JournalPracta,
   "silent-meditation": SilentMeditationPracta,
   "personalized-meditation": PersonalizedMeditationPracta,
+  "tend": TendPracta,
 };
 
 type FlowRouteProp = RouteProp<RootStackParamList, "Flow">;
@@ -96,6 +97,20 @@ export default function FlowScreen() {
           meditationName: type === "personalized-meditation" 
             ? (output.metadata?.meditationName as string) || "Personalized Meditation"
             : "Silent Meditation",
+        },
+      });
+    } else if (type === "tend" && output.metadata?.cardTitle) {
+      await addItem({
+        type: "milestone",
+        content: {
+          type: "text",
+          value: output.metadata.cardPrompt as string,
+        },
+        metadata: {
+          source: "system",
+          cardId: output.metadata.cardId as string,
+          cardTitle: output.metadata.cardTitle as string,
+          practaType: "tend",
         },
       });
     }

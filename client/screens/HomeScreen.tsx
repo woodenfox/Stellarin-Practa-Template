@@ -485,19 +485,19 @@ export default function HomeScreen() {
   }, [sessions, journalEntries, tendCompletions]);
 
   const handleStartMeditation = () => {
-    navigation.navigate("Flow", { flow: PRESET_FLOWS.quickMeditation });
+    navigation.navigate("Flow", { flow: PRESET_FLOWS.meditate });
   };
 
   const handleStartJournal = () => {
-    navigation.navigate("Recording");
+    navigation.navigate("Flow", { flow: PRESET_FLOWS.journal });
   };
 
   const handleOrbPress = () => {
-    navigation.navigate("Flow", { flow: PRESET_FLOWS.quickMeditation });
+    navigation.navigate("Flow", { flow: PRESET_FLOWS.meditate });
   };
 
   const handleStartTend = () => {
-    navigation.navigate("TendCard");
+    navigation.navigate("Flow", { flow: PRESET_FLOWS.tend });
   };
 
   const handleStartFlow = () => {
