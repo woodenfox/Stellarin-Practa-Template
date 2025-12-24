@@ -50,6 +50,29 @@ Preferred communication style: Simple, everyday language.
 - Drizzle ORM configured for PostgreSQL (schema exists but database not actively used)
 - Main app data persisted client-side via AsyncStorage
 
+### Flow/Practa System
+
+**Purpose**: Composable wellbeing system that chains atomic actions (Practa) together with context-aware personalization.
+
+**Core Concepts**:
+- **Practa**: Self-contained, reusable atomic actions (journal, meditation, etc.) that receive context and emit output
+- **Flow**: A sequence of Practa that execute in order with automatic context passing
+- **PractaContext**: Local context from the previous Practa only (not full flow history)
+
+**Key Components**:
+- `client/types/flow.ts`: Type definitions for Practa, Flow, PractaContext, PractaContent
+- `client/context/FlowContext.tsx`: Flow engine provider managing execution state and context passing
+- `client/practa/registry.ts`: Registry of Practa definitions and preset flows
+- `client/screens/FlowScreen.tsx`: Orchestrator component that renders current Practa in sequence
+- `client/practa/*.tsx`: Individual Practa components (JournalPracta, SilentMeditationPracta, PersonalizedMeditationPracta)
+
+**Preset Flows**:
+- `morningReflection`: Journal → Personalized AI Meditation
+- `quickMeditation`: 5-minute silent meditation
+- `deepDive`: Journal → 15-minute personalized meditation
+
+**Context Passing**: When a Practa completes, its output (content + metadata) is passed to the next Practa via `context.previous`.
+
 ### Project Structure
 
 ```
@@ -57,9 +80,11 @@ client/           # React Native/Expo frontend
   ├── components/   # Reusable UI components
   ├── screens/      # Screen components
   ├── navigation/   # Navigation configuration
-  ├── context/      # React Context providers
+  ├── context/      # React Context providers (includes FlowContext)
   ├── hooks/        # Custom hooks
   ├── constants/    # Theme and config
+  ├── practa/       # Practa components and registry
+  ├── types/        # TypeScript type definitions
   └── lib/          # API client utilities
 
 server/           # Express backend
