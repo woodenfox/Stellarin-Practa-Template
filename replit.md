@@ -73,6 +73,27 @@ Preferred communication style: Simple, everyday language.
 
 **Context Passing**: When a Practa completes, its output (content + metadata) is passed to the next Practa via `context.previous`.
 
+**Architecture Design**:
+- Practa components are pure and self-contained - they emit PractaOutput without side effects
+- FlowScreen orchestrates all persistence via a central `persistPractaOutput` callback
+- This callback handles both MeditationContext persistence and Timeline publishing
+- Registry-driven component mapping (PRACTA_COMPONENTS) replaces hardcoded switch statements
+
+### Timeline System
+
+**Purpose**: Unified content feed displaying all user-generated content (journal entries, meditations, milestones).
+
+**Key Components**:
+- `client/types/timeline.ts`: Type definitions for TimelineItem
+- `client/context/TimelineContext.tsx`: Timeline provider with AsyncStorage persistence
+- `client/screens/TimelineScreen.tsx`: "Your Journey" screen with swipe-to-delete
+
+**Features**:
+- Unified feed replacing separate journal reflections view
+- Swipe-to-delete with haptic feedback
+- Audio playback for voice recordings
+- Flexible metadata for different item types (journal, meditation, milestone)
+
 ### Project Structure
 
 ```
