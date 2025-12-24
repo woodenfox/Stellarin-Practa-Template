@@ -18,7 +18,6 @@ import { DurationPicker } from "@/components/DurationPicker";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { PractaContext, PractaOutput, PractaCompleteHandler } from "@/types/flow";
-import { useMeditation } from "@/context/MeditationContext";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const STELLARIS_API_URL = process.env.EXPO_PUBLIC_STELLARIS_API_URL || "https://stellarin-meditation-backend.replit.app";
@@ -43,19 +42,20 @@ interface PersonalizedMeditationPractaProps {
   onSkip?: () => void;
 }
 
+const DEFAULT_DURATION = 180;
+
 export function PersonalizedMeditationPracta({ context, onComplete, onSkip }: PersonalizedMeditationPractaProps) {
   useKeepAwake();
 
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const { addSession, selectedDuration } = useMeditation();
 
   const journalContent = context.previous?.content?.type === "text" 
     ? context.previous.content.value 
     : "";
 
   const [stage, setStage] = useState<"setup" | "generating" | "meditating" | "complete">("setup");
-  const [localDuration, setLocalDuration] = useState(selectedDuration || 180);
+  const [localDuration, setLocalDuration] = useState(DEFAULT_DURATION);
   const [selectedVoice, setSelectedVoice] = useState("nova");
   const [generatedMeditation, setGeneratedMeditation] = useState<GeneratedMeditation | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -198,7 +198,7 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
     }
   };
 
-  const handleComplete = useCallback(async () => {
+  const handleComplete = useCallback(() => {
     if (sessionCompleted) return;
     setSessionCompleted(true);
 
@@ -216,16 +216,6 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
       intervalRef.current = null;
     }
 
-    const session = {
-      id: Date.now().toString(),
-      date: new Date().toISOString().split("T")[0],
-      duration: totalDuration,
-      riceEarned: Math.floor(totalDuration / 60) * 10,
-      completedAt: new Date().toISOString(),
-    };
-
-    await addSession(session);
-
     const output: PractaOutput = {
       metadata: {
         source: "ai",
@@ -237,7 +227,7 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
     };
 
     onComplete(output);
-  }, [totalDuration, addSession, sessionCompleted, generatedMeditation, onComplete]);
+  }, [totalDuration, sessionCompleted, generatedMeditation, onComplete]);
 
   useEffect(() => {
     return () => {

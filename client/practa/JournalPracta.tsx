@@ -9,7 +9,6 @@ import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollV
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { PractaContext, PractaOutput, PractaCompleteHandler } from "@/types/flow";
-import { useMeditation } from "@/context/MeditationContext";
 
 interface JournalPractaProps {
   context: PractaContext;
@@ -20,26 +19,14 @@ interface JournalPractaProps {
 export function JournalPracta({ context, onComplete, onSkip }: JournalPractaProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const { addJournalEntry, hasJournaledToday } = useMeditation();
   const [journalText, setJournalText] = useState("");
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!journalText.trim()) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     const journalContent = journalText.trim();
-    const today = new Date().toISOString().split("T")[0];
-    
-    const entry = {
-      id: Date.now().toString(),
-      date: today,
-      content: journalContent,
-      createdAt: new Date().toISOString(),
-      type: "text" as const,
-    };
-
-    await addJournalEntry(entry);
 
     const output: PractaOutput = {
       content: {
@@ -77,9 +64,7 @@ export function JournalPracta({ context, onComplete, onSkip }: JournalPractaProp
         </ThemedText>
 
         <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
-          {hasJournaledToday()
-            ? "Add another reflection"
-            : "Share your thoughts to personalize your experience"}
+          Share your thoughts to personalize your experience
         </ThemedText>
 
         <TextInput

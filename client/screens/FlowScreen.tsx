@@ -10,9 +10,25 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useFlow, useCurrentPracta } from "@/context/FlowContext";
-import { FlowDefinition, PractaOutput } from "@/types/flow";
+import { FlowDefinition, PractaOutput, PractaType, PractaContext, PractaCompleteHandler } from "@/types/flow";
 import { JournalPracta, SilentMeditationPracta, PersonalizedMeditationPracta } from "@/practa";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { useMeditation } from "@/context/MeditationContext";
+import { useTimeline } from "@/context/TimelineContext";
+
+interface PractaComponentProps {
+  context: PractaContext;
+  onComplete: PractaCompleteHandler;
+  onSkip?: () => void;
+}
+
+type PractaComponent = React.ComponentType<PractaComponentProps>;
+
+const PRACTA_COMPONENTS: Record<PractaType, PractaComponent> = {
+  "journal": JournalPracta,
+  "silent-meditation": SilentMeditationPracta,
+  "personalized-meditation": PersonalizedMeditationPracta,
+};
 
 type FlowRouteProp = RouteProp<RootStackParamList, "Flow">;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -24,8 +40,61 @@ export default function FlowScreen() {
   const route = useRoute<FlowRouteProp>();
   const { startFlow, currentFlow, abortFlow, setOnFlowComplete } = useFlow();
   const { practa, context, complete } = useCurrentPracta();
+  const { addJournalEntry, addSession } = useMeditation();
+  const { addItem } = useTimeline();
 
   const { flow } = route.params;
+
+  const persistPractaOutput = useCallback(async (type: PractaType, output: PractaOutput) => {
+    if (output.metadata?.skipped) return;
+
+    const today = new Date().toISOString().split("T")[0];
+    const now = new Date().toISOString();
+
+    if (type === "journal" && output.content?.type === "text") {
+      const entry = {
+        id: Date.now().toString(),
+        date: today,
+        content: output.content.value,
+        createdAt: now,
+        type: "text" as const,
+      };
+      await addJournalEntry(entry);
+
+      await addItem({
+        type: "journal",
+        title: "Journal Entry",
+        content: output.content.value,
+        metadata: output.metadata,
+      });
+    } else if (type === "silent-meditation" || type === "personalized-meditation") {
+      const duration = (output.metadata?.duration as number) || 180;
+      const riceEarned = Math.floor(duration / 60) * 10;
+
+      const session = {
+        id: Date.now().toString(),
+        date: today,
+        duration,
+        riceEarned,
+        completedAt: now,
+      };
+      await addSession(session);
+
+      await addItem({
+        type: "meditation",
+        title: type === "personalized-meditation" 
+          ? (output.metadata?.meditationName as string) || "Personalized Meditation"
+          : "Silent Meditation",
+        content: `${Math.floor(duration / 60)} minute meditation`,
+        metadata: {
+          ...output.metadata,
+          duration,
+          riceEarned,
+          meditationType: type === "personalized-meditation" ? "personalized" : "silent",
+        },
+      });
+    }
+  }, [addJournalEntry, addSession, addItem]);
 
   useEffect(() => {
     startFlow(flow);
@@ -56,9 +125,12 @@ export default function FlowScreen() {
     complete(emptyOutput);
   }, [complete]);
 
-  const handleComplete = useCallback((output: PractaOutput) => {
+  const handleComplete = useCallback(async (output: PractaOutput) => {
+    if (practa) {
+      await persistPractaOutput(practa.type, output);
+    }
     complete(output);
-  }, [complete]);
+  }, [complete, practa, persistPractaOutput]);
 
   if (!currentFlow || currentFlow.status === "aborted") {
     return null;
@@ -134,25 +206,17 @@ export default function FlowScreen() {
       </View>
 
       <View style={styles.practaContainer}>
-        {practa.type === "journal" ? (
-          <JournalPracta
-            context={context}
-            onComplete={handleComplete}
-            onSkip={totalSteps > 1 ? handleSkip : undefined}
-          />
-        ) : practa.type === "silent-meditation" ? (
-          <SilentMeditationPracta
-            context={context}
-            onComplete={handleComplete}
-            onSkip={totalSteps > 1 ? handleSkip : undefined}
-          />
-        ) : practa.type === "personalized-meditation" ? (
-          <PersonalizedMeditationPracta
-            context={context}
-            onComplete={handleComplete}
-            onSkip={totalSteps > 1 ? handleSkip : undefined}
-          />
-        ) : null}
+        {(() => {
+          const PractaComponent = PRACTA_COMPONENTS[practa.type];
+          if (!PractaComponent) return null;
+          return (
+            <PractaComponent
+              context={context}
+              onComplete={handleComplete}
+              onSkip={totalSteps > 1 ? handleSkip : undefined}
+            />
+          );
+        })()}
       </View>
     </View>
   );

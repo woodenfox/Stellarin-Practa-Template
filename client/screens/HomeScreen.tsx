@@ -485,7 +485,7 @@ export default function HomeScreen() {
   }, [sessions, journalEntries, tendCompletions]);
 
   const handleStartMeditation = () => {
-    navigation.navigate("QuickMeditation");
+    navigation.navigate("Flow", { flow: PRESET_FLOWS.quickMeditation });
   };
 
   const handleStartJournal = () => {
@@ -493,7 +493,7 @@ export default function HomeScreen() {
   };
 
   const handleOrbPress = () => {
-    navigation.navigate("QuickMeditation");
+    navigation.navigate("Flow", { flow: PRESET_FLOWS.quickMeditation });
   };
 
   const handleStartTend = () => {

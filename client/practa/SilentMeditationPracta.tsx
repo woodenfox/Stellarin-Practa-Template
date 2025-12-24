@@ -20,7 +20,6 @@ import { DurationPicker } from "@/components/DurationPicker";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { PractaContext, PractaOutput, PractaCompleteHandler } from "@/types/flow";
-import { useMeditation } from "@/context/MeditationContext";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const GONG_SOUND_URL = "https://www.orangefreesounds.com/wp-content/uploads/2015/07/Gong-sound-effect.mp3";
@@ -31,15 +30,16 @@ interface SilentMeditationPractaProps {
   onSkip?: () => void;
 }
 
+const DEFAULT_DURATION = 180;
+
 export function SilentMeditationPracta({ context, onComplete, onSkip }: SilentMeditationPractaProps) {
   useKeepAwake();
 
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const { addSession, selectedDuration } = useMeditation();
 
   const [stage, setStage] = useState<"setup" | "meditating" | "complete">("setup");
-  const [duration, setDuration] = useState(selectedDuration || 180);
+  const [duration, setDuration] = useState(DEFAULT_DURATION);
   const [timeRemaining, setTimeRemaining] = useState(duration);
   const [isPaused, setIsPaused] = useState(false);
   const [riceEarned, setRiceEarned] = useState(0);
@@ -74,20 +74,10 @@ export function SilentMeditationPracta({ context, onComplete, onSkip }: SilentMe
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const handleMeditationComplete = useCallback(async () => {
+  const handleMeditationComplete = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setStage("complete");
     playGong();
-
-    const session = {
-      id: Date.now().toString(),
-      date: new Date().toISOString().split("T")[0],
-      duration,
-      riceEarned: Math.floor(duration / 60) * 10,
-      completedAt: new Date().toISOString(),
-    };
-
-    await addSession(session);
 
     const output: PractaOutput = {
       metadata: {
@@ -99,7 +89,7 @@ export function SilentMeditationPracta({ context, onComplete, onSkip }: SilentMe
     };
 
     onComplete(output);
-  }, [duration, addSession, playGong, onComplete]);
+  }, [duration, playGong, onComplete]);
 
   useEffect(() => {
     return () => {
