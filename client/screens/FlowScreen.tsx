@@ -30,14 +30,15 @@ export default function FlowScreen() {
   useEffect(() => {
     startFlow(flow);
 
-    setOnFlowComplete((completedFlow) => {
+    // Wrap in arrow function to prevent React from treating it as an updater
+    setOnFlowComplete(() => (completedFlow) => {
       setTimeout(() => {
         navigation.goBack();
       }, 2000);
     });
 
     return () => {
-      setOnFlowComplete(undefined);
+      setOnFlowComplete(() => undefined);
     };
   }, [flow, startFlow, setOnFlowComplete, navigation]);
 
