@@ -228,7 +228,7 @@ function SwipeableTimelineItem({
       return meditationType === "personalized" ? "Personalized Meditation" : "Silent Meditation";
     }
     if (item.type === "milestone") {
-      return "Milestone";
+      return item.metadata?.cardTitle ? `Tend: ${item.metadata.cardTitle}` : "Milestone";
     }
     return "Activity";
   };
@@ -289,6 +289,8 @@ function SwipeableTimelineItem({
                   ) : null}
                 </View>
               </View>
+            ) : item.type === "milestone" && item.content?.value ? (
+              <ThemedText style={styles.itemContent}>{item.content.value}</ThemedText>
             ) : null}
           </ThemedView>
         </Animated.View>
