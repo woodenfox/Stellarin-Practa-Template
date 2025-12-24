@@ -63,6 +63,7 @@ export function PersonalizedMeditationPracta({ context, onComplete, onSkip }: Pe
   const [isPaused, setIsPaused] = useState(false);
   const [riceEarned, setRiceEarned] = useState(0);
   const [sessionCompleted, setSessionCompleted] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   const pauseScale = useSharedValue(1);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -89,9 +90,10 @@ export function PersonalizedMeditationPracta({ context, onComplete, onSkip }: Pe
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const generateMeditation = async () => {
+  const generateMeditation = async (attempt: number = 0) => {
     setStage("generating");
     setError(null);
+    setRetryCount(attempt);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 120000);
@@ -136,19 +138,29 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
           name: data.json_data?.name || "Personalized Meditation",
           description: data.json_data?.description || "",
         });
+        setRetryCount(0);
         startMeditationSession(audioUrl);
       } else {
         throw new Error(data.error || "Generation failed");
       }
     } catch (err: any) {
+      clearTimeout(timeoutId);
       const errorMessage = err?.message || "Unknown error";
       console.error("Meditation generation error:", errorMessage);
+      
+      const maxRetries = 2;
+      if (attempt < maxRetries && err?.name !== "AbortError") {
+        console.log(`Auto-retrying... attempt ${attempt + 2} of ${maxRetries + 1}`);
+        setTimeout(() => generateMeditation(attempt + 1), 2000);
+        return;
+      }
       
       if (err?.name === "AbortError") {
         setError("Generation timed out. Please try again.");
       } else {
         setError("Unable to generate meditation. Check your connection and try again.");
       }
+      setRetryCount(0);
       setStage("setup");
     }
   };
@@ -358,15 +370,12 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
           Creating Your Meditation
         </ThemedText>
         <ThemedText style={[styles.generatingSubtitle, { color: theme.textSecondary }]}>
-          {journalContent
-            ? "Generating a personalized experience based on your reflection..."
-            : "Generating your meditation experience..."}
+          {retryCount > 0
+            ? `Waking up the server... (attempt ${retryCount + 1} of 3)`
+            : journalContent
+              ? "Generating a personalized experience based on your reflection..."
+              : "Generating your meditation experience..."}
         </ThemedText>
-        {error ? (
-          <ThemedText style={[styles.errorText, { color: theme.accent }]}>
-            {error}
-          </ThemedText>
-        ) : null}
       </View>
     );
   }
