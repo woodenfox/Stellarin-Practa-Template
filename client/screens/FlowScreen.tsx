@@ -41,7 +41,7 @@ export default function FlowScreen() {
   const { startFlow, currentFlow, abortFlow, setOnFlowComplete } = useFlow();
   const { practa, context, complete } = useCurrentPracta();
   const { addJournalEntry, addSession } = useMeditation();
-  const { addItem } = useTimeline();
+  const { publish: addItem } = useTimeline();
 
   const { flow } = route.params;
 
@@ -63,8 +63,10 @@ export default function FlowScreen() {
 
       await addItem({
         type: "journal",
-        title: "Journal Entry",
-        content: output.content.value,
+        content: {
+          type: "text",
+          value: output.content.value,
+        },
         metadata: output.metadata,
       });
     } else if (type === "silent-meditation" || type === "personalized-meditation") {
@@ -82,15 +84,18 @@ export default function FlowScreen() {
 
       await addItem({
         type: "meditation",
-        title: type === "personalized-meditation" 
-          ? (output.metadata?.meditationName as string) || "Personalized Meditation"
-          : "Silent Meditation",
-        content: `${Math.floor(duration / 60)} minute meditation`,
+        content: {
+          type: "text",
+          value: `${Math.floor(duration / 60)} minute meditation`,
+        },
         metadata: {
           ...output.metadata,
           duration,
           riceEarned,
           meditationType: type === "personalized-meditation" ? "personalized" : "silent",
+          meditationName: type === "personalized-meditation" 
+            ? (output.metadata?.meditationName as string) || "Personalized Meditation"
+            : "Silent Meditation",
         },
       });
     }
