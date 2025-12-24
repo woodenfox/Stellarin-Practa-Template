@@ -8,7 +8,9 @@ import PersonalizedMeditationScreen from "@/screens/PersonalizedMeditationScreen
 import QuickMeditationScreen from "@/screens/QuickMeditationScreen";
 import TendCardScreen from "@/screens/TendCardScreen";
 import NotificationsPromptScreen from "@/screens/NotificationsPromptScreen";
+import FlowScreen from "@/screens/FlowScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
+import { FlowDefinition } from "@/types/flow";
 
 export type RootStackParamList = {
   Main: undefined;
@@ -19,6 +21,7 @@ export type RootStackParamList = {
   QuickMeditation: undefined;
   TendCard: undefined;
   NotificationsPrompt: undefined;
+  Flow: { flow: FlowDefinition };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -89,6 +92,15 @@ export default function RootStackNavigator() {
       <Stack.Screen
         name="NotificationsPrompt"
         component={NotificationsPromptScreen}
+        options={{
+          presentation: "fullScreenModal",
+          headerShown: false,
+          animation: "fade",
+        }}
+      />
+      <Stack.Screen
+        name="Flow"
+        component={FlowScreen}
         options={{
           presentation: "fullScreenModal",
           headerShown: false,
