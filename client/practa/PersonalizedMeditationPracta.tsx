@@ -90,15 +90,32 @@ export function PersonalizedMeditationPracta({ context, onComplete, onSkip }: Pe
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const generateMeditation = async (attempt: number = 0) => {
+  const generateMeditation = async () => {
     setStage("generating");
     setError(null);
-    setRetryCount(attempt);
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000);
+    setRetryCount(0);
 
     try {
+      // Ping health endpoint first to wake up autoscale server
+      setRetryCount(1);
+      const healthController = new AbortController();
+      const healthTimeout = setTimeout(() => healthController.abort(), 15000);
+      
+      try {
+        await fetch(`${STELLARIS_API_URL}/api/health`, {
+          method: "GET",
+          signal: healthController.signal,
+        });
+      } catch (healthErr) {
+        // Ignore health check errors, proceed anyway
+        console.log("Health check failed, proceeding with generation");
+      }
+      clearTimeout(healthTimeout);
+      setRetryCount(0);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
+
       const prompt = journalContent
         ? `Based on this journal reflection: "${journalContent.slice(0, 500)}"
 
@@ -144,16 +161,8 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
         throw new Error(data.error || "Generation failed");
       }
     } catch (err: any) {
-      clearTimeout(timeoutId);
       const errorMessage = err?.message || "Unknown error";
       console.error("Meditation generation error:", errorMessage);
-      
-      const maxRetries = 2;
-      if (attempt < maxRetries && err?.name !== "AbortError") {
-        console.log(`Auto-retrying... attempt ${attempt + 2} of ${maxRetries + 1}`);
-        setTimeout(() => generateMeditation(attempt + 1), 2000);
-        return;
-      }
       
       if (err?.name === "AbortError") {
         setError("Generation timed out. Please try again.");
@@ -371,7 +380,7 @@ Create a calming ${Math.floor(localDuration / 60)}-minute meditation to help pro
         </ThemedText>
         <ThemedText style={[styles.generatingSubtitle, { color: theme.textSecondary }]}>
           {retryCount > 0
-            ? `Waking up the server... (attempt ${retryCount + 1} of 3)`
+            ? "Waking up the server..."
             : journalContent
               ? "Generating a personalized experience based on your reflection..."
               : "Generating your meditation experience..."}
