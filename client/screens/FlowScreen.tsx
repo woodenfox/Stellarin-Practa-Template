@@ -150,8 +150,13 @@ export default function FlowScreen() {
     setTotalRiceEarned(0);
     startFlow(flow);
 
-    setOnFlowComplete(() => {
-      addFlowCompletion(flow.id);
+    setOnFlowComplete((flowState) => {
+      const hasCompletedPracta = flowState.practaOutputs.some(
+        (output) => !output.metadata?.skipped
+      );
+      if (hasCompletedPracta) {
+        addFlowCompletion(flow.id);
+      }
     });
 
     return () => {
