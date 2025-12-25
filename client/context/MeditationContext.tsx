@@ -3,6 +3,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getOrCreateDeviceId } from "@/lib/device-id";
 import { getApiUrl, apiRequest } from "@/lib/query-client";
 
+function getLocalDateString(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export interface MeditationSession {
   id: string;
   date: string;
@@ -194,7 +201,7 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
       const newTotalRice = state.totalRice + session.riceEarned;
       const newSessions = [session, ...state.sessions];
       
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalDateString();
       const newStreakDays = state.streakDays.includes(today)
         ? state.streakDays
         : [today, ...state.streakDays];
@@ -224,7 +231,7 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
 
   const addJournalEntry = useCallback(async (entry: JournalEntry) => {
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalDateString();
       const hasEntryToday = state.journalEntries.some(e => e.date === today);
       const riceBonus = hasEntryToday ? 0 : 10;
       
@@ -293,7 +300,7 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
 
   const addTendCompletion = useCallback(async (cardId: string) => {
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalDateString();
       const newCompletion: TendCompletion = {
         id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         date: today,
@@ -314,18 +321,18 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
   }, [state.tendCompletions]);
 
   const hasTendedToday = useCallback(() => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalDateString();
     return state.tendCompletions.some(c => c.date === today);
   }, [state.tendCompletions]);
 
   const hasJournaledToday = useCallback(() => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalDateString();
     return state.journalEntries.some(e => e.date === today);
   }, [state.journalEntries]);
 
   const addFlowCompletion = useCallback(async (flowId: string) => {
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalDateString();
       const newCompletion: FlowCompletion = {
         id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         date: today,
@@ -346,31 +353,31 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
   }, [state.flowCompletions]);
 
   const hasCompletedFlowToday = useCallback((flowId: string) => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalDateString();
     return state.flowCompletions.some(c => c.date === today && c.flowId === flowId);
   }, [state.flowCompletions]);
 
   const getTodayStreak = useCallback(() => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalDateString();
     return state.streakDays.includes(today);
   }, [state.streakDays]);
 
   const getWeekStreaks = useCallback(() => {
     const days = ["SAT", "SUN", "MON", "TUE", "WED", "THU", "FRI"];
     const today = new Date();
+    const todayStr = getLocalDateString(today);
     const currentDayIndex = today.getDay();
     const saturdayOffset = currentDayIndex === 6 ? 0 : -(currentDayIndex + 1);
     
     return days.map((day, index) => {
       const date = new Date(today);
       date.setDate(today.getDate() + saturdayOffset + index);
-      const dateStr = date.toISOString().split("T")[0];
-      const isToday = dateStr === today.toISOString().split("T")[0];
+      const dateStr = getLocalDateString(date);
       
       return {
         day,
         completed: state.streakDays.includes(dateStr),
-        isToday,
+        isToday: dateStr === todayStr,
       };
     });
   }, [state.streakDays]);
@@ -385,7 +392,7 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
     for (let i = 0; i < 7; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + saturdayOffset + i);
-      const dateStr = date.toISOString().split("T")[0];
+      const dateStr = getLocalDateString(date);
       
       // Check meditation
       if (state.streakDays.includes(dateStr)) points++;
