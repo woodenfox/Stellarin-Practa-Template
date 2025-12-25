@@ -19,9 +19,10 @@ Preferred communication style: Simple, everyday language.
 - New Architecture enabled for improved performance
 
 **Navigation**: React Navigation v7
-- Native Stack Navigator for root-level navigation with modal presentation for meditation sessions
-- Bottom Tab Navigator with 4 tabs (Timer, Progress, Community, About)
+- Native Stack Navigator for root-level navigation with modal Flow presentation
+- Bottom Tab Navigator with 4 tabs (Home, Timeline, Community, About)
 - Blur effect tab bar on iOS, solid background on Android
+- All wellbeing actions (Meditate, Journal, Tend) route through the unified Flow system
 
 **State Management**:
 - React Context (MeditationContext) for meditation state: sessions, rice earned, streaks, challenge progress
@@ -64,12 +65,20 @@ Preferred communication style: Simple, everyday language.
 - `client/context/FlowContext.tsx`: Flow engine provider managing execution state and context passing
 - `client/practa/registry.ts`: Registry of Practa definitions and preset flows
 - `client/screens/FlowScreen.tsx`: Orchestrator component that renders current Practa in sequence
-- `client/practa/*.tsx`: Individual Practa components (JournalPracta, SilentMeditationPracta, PersonalizedMeditationPracta)
+- `client/practa/*.tsx`: Individual Practa components (JournalPracta, SilentMeditationPracta, PersonalizedMeditationPracta, TendPracta)
+
+**Available Practa Types**:
+- `journal`: Write or record thoughts and feelings
+- `silent-meditation`: Timed meditation with gong
+- `personalized-meditation`: AI-generated meditation based on journal reflections
+- `tend`: Daily wellness card drawing with swipeable interface
 
 **Preset Flows**:
-- `morningReflection`: Journal → Personalized AI Meditation
-- `quickMeditation`: 5-minute silent meditation
-- `deepDive`: Journal → 15-minute personalized meditation
+- `meditate`: Single silent-meditation (used by Meditate button)
+- `journal`: Single journal entry (used by Journal button)
+- `tend`: Single tend card draw (used by Tend button)
+- `morningReflection`: Tend → Journal → Personalized AI Meditation
+- `deepDive`: Journal → Silent Meditation
 
 **Context Passing**: When a Practa completes, its output (content + metadata) is passed to the next Practa via `context.previous`.
 

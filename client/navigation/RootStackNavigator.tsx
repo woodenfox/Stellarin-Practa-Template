@@ -1,12 +1,7 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import MainTabNavigator from "@/navigation/MainTabNavigator";
-import SessionScreen from "@/screens/SessionScreen";
-import RecordingScreen from "@/screens/RecordingScreen";
 import FAQScreen from "@/screens/FAQScreen";
-import PersonalizedMeditationScreen from "@/screens/PersonalizedMeditationScreen";
-import QuickMeditationScreen from "@/screens/QuickMeditationScreen";
-import TendCardScreen from "@/screens/TendCardScreen";
 import NotificationsPromptScreen from "@/screens/NotificationsPromptScreen";
 import FlowScreen from "@/screens/FlowScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
@@ -14,12 +9,7 @@ import { FlowDefinition } from "@/types/flow";
 
 export type RootStackParamList = {
   Main: undefined;
-  Session: { duration: number };
-  Recording: undefined;
   FAQ: undefined;
-  PersonalizedMeditation: { journalContent: string; riceEarned: number };
-  QuickMeditation: undefined;
-  TendCard: undefined;
   NotificationsPrompt: undefined;
   Flow: { flow: FlowDefinition };
 };
@@ -37,56 +27,11 @@ export default function RootStackNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="Session"
-        component={SessionScreen}
-        options={{
-          presentation: "fullScreenModal",
-          headerShown: false,
-          animation: "fade",
-        }}
-      />
-      <Stack.Screen
-        name="Recording"
-        component={RecordingScreen}
-        options={{
-          presentation: "fullScreenModal",
-          headerShown: false,
-          animation: "fade",
-        }}
-      />
-      <Stack.Screen
         name="FAQ"
         component={FAQScreen}
         options={{
           presentation: "modal",
           headerTitle: "Frequently Asked Questions",
-        }}
-      />
-      <Stack.Screen
-        name="PersonalizedMeditation"
-        component={PersonalizedMeditationScreen}
-        options={{
-          presentation: "fullScreenModal",
-          headerShown: false,
-          animation: "fade",
-        }}
-      />
-      <Stack.Screen
-        name="QuickMeditation"
-        component={QuickMeditationScreen}
-        options={{
-          presentation: "fullScreenModal",
-          headerShown: false,
-          animation: "fade",
-        }}
-      />
-      <Stack.Screen
-        name="TendCard"
-        component={TendCardScreen}
-        options={{
-          presentation: "fullScreenModal",
-          headerShown: false,
-          animation: "fade",
         }}
       />
       <Stack.Screen
