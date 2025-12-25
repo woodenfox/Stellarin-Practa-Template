@@ -569,7 +569,7 @@ export default function HomeScreen() {
                 Morning Reflection
               </ThemedText>
               <ThemedText style={[styles.flowSubtitle, { color: theme.textSecondary }]}>
-                Journal + Personalized Meditation
+                Tend + Journal + Personalized Meditation
               </ThemedText>
             </View>
             <Feather name="chevron-right" size={20} color={theme.textSecondary} />
