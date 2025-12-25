@@ -85,4 +85,12 @@ export const PRESET_FLOWS = {
       description: "Journal then sit with your thoughts in silence",
     }
   ),
+  eveningWinddown: createFlow(
+    "End of Day Winddown",
+    ["journal", "tend", "silent-meditation"],
+    {
+      id: "evening-winddown",
+      description: "Reflect on your day, draw a wellness card, then unwind with meditation",
+    }
+  ),
 };

@@ -502,6 +502,10 @@ export default function HomeScreen() {
     navigation.navigate("Flow", { flow: PRESET_FLOWS.morningReflection });
   };
 
+  const handleStartEveningFlow = () => {
+    navigation.navigate("Flow", { flow: PRESET_FLOWS.eveningWinddown });
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <ScrollView
@@ -562,7 +566,7 @@ export default function HomeScreen() {
             style={[styles.flowCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.primary }]}
           >
             <View style={[styles.flowIconWrap, { backgroundColor: `${theme.primary}20` }]}>
-              <Feather name="layers" size={24} color={theme.primary} />
+              <Feather name="sunrise" size={24} color={theme.primary} />
             </View>
             <View style={styles.flowTextWrap}>
               <ThemedText style={[styles.flowTitle, { color: theme.text }]}>
@@ -570,6 +574,26 @@ export default function HomeScreen() {
               </ThemedText>
               <ThemedText style={[styles.flowSubtitle, { color: theme.textSecondary }]}>
                 Tend + Journal + Personalized Meditation
+              </ThemedText>
+            </View>
+            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+          </Pressable>
+        </Animated.View>
+
+        <Animated.View entering={FadeInUp.delay(600).duration(600).springify()}>
+          <Pressable 
+            onPress={handleStartEveningFlow}
+            style={[styles.flowCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.jade }]}
+          >
+            <View style={[styles.flowIconWrap, { backgroundColor: `${theme.jade}20` }]}>
+              <Feather name="moon" size={24} color={theme.jade} />
+            </View>
+            <View style={styles.flowTextWrap}>
+              <ThemedText style={[styles.flowTitle, { color: theme.text }]}>
+                End of Day Winddown
+              </ThemedText>
+              <ThemedText style={[styles.flowSubtitle, { color: theme.textSecondary }]}>
+                Journal + Tend + Silent Meditation
               </ThemedText>
             </View>
             <Feather name="chevron-right" size={20} color={theme.textSecondary} />
