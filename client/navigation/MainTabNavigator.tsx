@@ -8,7 +8,6 @@ import TimelineScreen from "@/screens/TimelineScreen";
 import CommunityScreen from "@/screens/CommunityScreen";
 import DevScreen from "@/screens/DevScreen";
 import { useTheme } from "@/hooks/useTheme";
-import { HeaderTitle } from "@/components/HeaderTitle";
 
 const isDev = __DEV__;
 
@@ -59,7 +58,7 @@ export default function MainTabNavigator() {
         component={HomeScreen}
         options={{
           title: "Home",
-          headerTitle: () => <HeaderTitle />,
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Feather name="home" size={size} color={color} />
           ),

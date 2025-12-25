@@ -3,7 +3,6 @@ import { View, StyleSheet, ScrollView, Pressable, Dimensions } from "react-nativ
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -26,6 +25,7 @@ import Animated, {
 
 import { ThemedText } from "@/components/ThemedText";
 import { SpiralMandala } from "@/components/SpiralMandala";
+import { HeaderTitle } from "@/components/HeaderTitle";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useMeditation } from "@/context/MeditationContext";
@@ -366,7 +366,6 @@ function WeeklyMomentum({ days, streak }: { days: any[]; streak: number }) {
 
 export default function HomeScreen() {
   const { theme, isDark } = useTheme();
-  const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
@@ -511,13 +510,17 @@ export default function HomeScreen() {
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: headerHeight + Spacing.md,
+            paddingTop: insets.top + Spacing.lg,
             paddingBottom: tabBarHeight + Spacing.xl,
           },
         ]}
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.headerRow}>
+          <HeaderTitle />
+        </View>
+
         <WeeklyMomentum days={sevenDayData} streak={currentStreak} />
 
         <SpiralMandala 
@@ -591,6 +594,9 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Spacing.lg,
+  },
+  headerRow: {
+    marginBottom: Spacing.lg,
   },
   actionsRow: {
     flexDirection: "row",
