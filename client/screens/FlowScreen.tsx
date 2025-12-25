@@ -10,7 +10,7 @@ import { FlowCelebration } from "@/components/FlowCelebration";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing } from "@/constants/theme";
 import { useFlow, useCurrentPracta } from "@/context/FlowContext";
-import { FlowDefinition, PractaOutput, PractaType, PractaContext, PractaCompleteHandler } from "@/types/flow";
+import { FlowDefinition, FlowExecutionState, PractaOutput, PractaType, PractaContext, PractaCompleteHandler } from "@/types/flow";
 import { JournalPracta, SilentMeditationPracta, PersonalizedMeditationPracta, TendPracta } from "@/practa";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useMeditation } from "@/context/MeditationContext";
@@ -150,9 +150,9 @@ export default function FlowScreen() {
     setTotalRiceEarned(0);
     startFlow(flow);
 
-    setOnFlowComplete((flowState) => {
+    setOnFlowComplete(() => (flowState: FlowExecutionState) => {
       const hasCompletedPracta = flowState.practaOutputs.some(
-        (output) => !output.metadata?.skipped
+        (output: PractaOutput) => !output.metadata?.skipped
       );
       if (hasCompletedPracta) {
         addFlowCompletion(flow.id);
