@@ -23,6 +23,19 @@ Preferred communication style: Simple, everyday language.
 - Bottom Tab Navigator with 4 tabs (Home, Timeline, Community, About)
 - Blur effect tab bar on iOS, solid background on Android
 - All wellbeing actions (Meditate, Journal, Tend) route through the unified Flow system
+- Onboarding screen shown on first launch with swipeable intro pages
+
+**Onboarding System**:
+- `client/context/OnboardingContext.tsx`: Tracks first-time user state via AsyncStorage
+- `client/screens/OnboardingScreen.tsx`: 5-page walkthrough explaining Meditate, Journal, Tend, and rice donations
+- Gesture-disabled to prevent accidental exit before completion
+- Option to start first meditation directly from onboarding
+
+**Flow Celebration**:
+- `client/components/FlowCelebration.tsx`: Celebration screen shown when flows complete
+- Animated particles and rice grains floating upward
+- Displays rice earned during the flow and current streak
+- Random motivational messages
 
 **State Management**:
 - React Context (MeditationContext) for meditation state: sessions, rice earned, streaks, challenge progress

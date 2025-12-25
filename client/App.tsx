@@ -14,27 +14,30 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { MeditationProvider } from "@/context/MeditationContext";
 import { FlowProvider } from "@/context/FlowContext";
 import { TimelineProvider } from "@/context/TimelineContext";
+import { OnboardingProvider } from "@/context/OnboardingContext";
 
 export default function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <MeditationProvider>
-          <TimelineProvider>
-            <FlowProvider>
-              <SafeAreaProvider>
-              <GestureHandlerRootView style={styles.root}>
-                <KeyboardProvider>
-                  <NavigationContainer>
-                    <RootStackNavigator />
-                  </NavigationContainer>
-                  <StatusBar style="auto" />
-                </KeyboardProvider>
-              </GestureHandlerRootView>
-            </SafeAreaProvider>
-            </FlowProvider>
-          </TimelineProvider>
-        </MeditationProvider>
+        <OnboardingProvider>
+          <MeditationProvider>
+            <TimelineProvider>
+              <FlowProvider>
+                <SafeAreaProvider>
+                  <GestureHandlerRootView style={styles.root}>
+                    <KeyboardProvider>
+                      <NavigationContainer>
+                        <RootStackNavigator />
+                      </NavigationContainer>
+                      <StatusBar style="auto" />
+                    </KeyboardProvider>
+                  </GestureHandlerRootView>
+                </SafeAreaProvider>
+              </FlowProvider>
+            </TimelineProvider>
+          </MeditationProvider>
+        </OnboardingProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

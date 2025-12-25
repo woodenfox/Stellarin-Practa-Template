@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useState, useMemo } from "react";
 import { View, StyleSheet, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -6,9 +6,9 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
-import { ThemedText } from "@/components/ThemedText";
+import { FlowCelebration } from "@/components/FlowCelebration";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing } from "@/constants/theme";
 import { useFlow, useCurrentPracta } from "@/context/FlowContext";
 import { FlowDefinition, PractaOutput, PractaType, PractaContext, PractaCompleteHandler } from "@/types/flow";
 import { JournalPracta, SilentMeditationPracta, PersonalizedMeditationPracta, TendPracta } from "@/practa";
@@ -41,16 +41,42 @@ export default function FlowScreen() {
   const route = useRoute<FlowRouteProp>();
   const { startFlow, currentFlow, abortFlow, setOnFlowComplete } = useFlow();
   const { practa, context, complete } = useCurrentPracta();
-  const { addJournalEntry, addSession } = useMeditation();
+  const { addJournalEntry, addSession, sessions, journalEntries, tendCompletions } = useMeditation();
   const { publish: addItem } = useTimeline();
+  
+  const [totalRiceEarned, setTotalRiceEarned] = useState(0);
 
   const { flow } = route.params;
+
+  const currentStreak = useMemo(() => {
+    let streak = 0;
+    const today = new Date();
+
+    for (let i = 0; i <= 365; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      const dateStr = date.toISOString().split("T")[0];
+      const hasActivity =
+        sessions.some((s) => s.date === dateStr) ||
+        journalEntries.some((e) => e.date === dateStr) ||
+        tendCompletions.some((c) => c.date === dateStr);
+
+      if (hasActivity) {
+        streak++;
+      } else if (i > 0) {
+        break;
+      }
+    }
+
+    return streak;
+  }, [sessions, journalEntries, tendCompletions]);
 
   const persistPractaOutput = useCallback(async (type: PractaType, output: PractaOutput) => {
     if (output.metadata?.skipped) return;
 
     const today = new Date().toISOString().split("T")[0];
     const now = new Date().toISOString();
+    let riceFromAction = 0;
 
     if (type === "journal" && output.content?.type === "text") {
       const entry = {
@@ -60,7 +86,7 @@ export default function FlowScreen() {
         createdAt: now,
         type: "text" as const,
       };
-      await addJournalEntry(entry);
+      riceFromAction = await addJournalEntry(entry);
 
       await addItem({
         type: "journal",
@@ -72,13 +98,13 @@ export default function FlowScreen() {
       });
     } else if (type === "silent-meditation" || type === "personalized-meditation") {
       const duration = (output.metadata?.duration as number) || 180;
-      const riceEarned = Math.floor(duration / 60) * 10;
+      riceFromAction = Math.floor(duration / 60) * 10;
 
       const session = {
         id: Date.now().toString(),
         date: today,
         duration,
-        riceEarned,
+        riceEarned: riceFromAction,
         completedAt: now,
       };
       await addSession(session);
@@ -92,7 +118,7 @@ export default function FlowScreen() {
         metadata: {
           ...output.metadata,
           duration,
-          riceEarned,
+          riceEarned: riceFromAction,
           meditationType: type === "personalized-meditation" ? "personalized" : "silent",
           meditationName: type === "personalized-meditation" 
             ? (output.metadata?.meditationName as string) || "Personalized Meditation"
@@ -114,22 +140,20 @@ export default function FlowScreen() {
         },
       });
     }
+
+    if (riceFromAction > 0) {
+      setTotalRiceEarned(prev => prev + riceFromAction);
+    }
   }, [addJournalEntry, addSession, addItem]);
 
   useEffect(() => {
+    setTotalRiceEarned(0);
     startFlow(flow);
-
-    // Wrap in arrow function to prevent React from treating it as an updater
-    setOnFlowComplete(() => (completedFlow: any) => {
-      setTimeout(() => {
-        navigation.goBack();
-      }, 2000);
-    });
 
     return () => {
       setOnFlowComplete(() => undefined);
     };
-  }, [flow, startFlow, setOnFlowComplete, navigation]);
+  }, [flow, startFlow, setOnFlowComplete]);
 
   const handleClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -156,29 +180,18 @@ export default function FlowScreen() {
     return null;
   }
 
+  const handleContinue = useCallback(() => {
+    navigation.goBack();
+  }, [navigation]);
+
   if (currentFlow.status === "completed") {
     return (
-      <View
-        style={[
-          styles.container,
-          styles.centeredContainer,
-          {
-            backgroundColor: theme.backgroundRoot,
-            paddingTop: insets.top + Spacing.xl,
-            paddingBottom: insets.bottom + Spacing.xl,
-          },
-        ]}
-      >
-        <View style={[styles.successIcon, { backgroundColor: theme.primary }]}>
-          <Feather name="check" size={48} color="#FFFFFF" />
-        </View>
-        <ThemedText type="h2" style={styles.completeTitle}>
-          Flow Complete
-        </ThemedText>
-        <ThemedText style={[styles.completeSubtitle, { color: theme.textSecondary }]}>
-          You've completed {currentFlow.flowDefinition.name}
-        </ThemedText>
-      </View>
+      <FlowCelebration
+        flow={currentFlow.flowDefinition}
+        riceEarned={totalRiceEarned}
+        streak={currentStreak}
+        onContinue={handleContinue}
+      />
     );
   }
 
@@ -246,10 +259,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  centeredContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -275,21 +284,5 @@ const styles = StyleSheet.create({
   },
   practaContainer: {
     flex: 1,
-  },
-  successIcon: {
-    width: 96,
-    height: 96,
-    borderRadius: BorderRadius.full,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: Spacing["2xl"],
-  },
-  completeTitle: {
-    marginBottom: Spacing.sm,
-  },
-  completeSubtitle: {
-    fontSize: 16,
-    textAlign: "center",
-    paddingHorizontal: Spacing.xl,
   },
 });
