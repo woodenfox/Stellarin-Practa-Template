@@ -368,7 +368,7 @@ export default function HomeScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
-  const { sessions, journalEntries, tendCompletions, getWeeklyCompletionPoints, getTodayStreak, hasJournaledToday, hasTendedToday } = useMeditation();
+  const { sessions, journalEntries, tendCompletions, getWeeklyCompletionPoints, getTodayStreak, hasJournaledToday, hasTendedToday, hasCompletedFlowToday } = useMeditation();
   const weeklyPoints = getWeeklyCompletionPoints();
   
   const [isGrowing, setIsGrowing] = useState(false);
@@ -563,40 +563,60 @@ export default function HomeScreen() {
         <Animated.View entering={FadeInUp.delay(500).duration(600).springify()}>
           <Pressable 
             onPress={handleStartFlow}
-            style={[styles.flowCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.primary }]}
+            style={[styles.flowCard, { backgroundColor: theme.backgroundSecondary, borderColor: hasCompletedFlowToday("morning-reflection") ? theme.success : theme.primary }]}
           >
-            <View style={[styles.flowIconWrap, { backgroundColor: `${theme.primary}20` }]}>
-              <Feather name="sunrise" size={24} color={theme.primary} />
+            <View style={[styles.flowIconWrap, { backgroundColor: hasCompletedFlowToday("morning-reflection") ? `${theme.success}20` : `${theme.primary}20` }]}>
+              {hasCompletedFlowToday("morning-reflection") ? (
+                <Feather name="check" size={24} color={theme.success} />
+              ) : (
+                <Feather name="sunrise" size={24} color={theme.primary} />
+              )}
             </View>
             <View style={styles.flowTextWrap}>
               <ThemedText style={[styles.flowTitle, { color: theme.text }]}>
                 Morning Reflection
               </ThemedText>
               <ThemedText style={[styles.flowSubtitle, { color: theme.textSecondary }]}>
-                Tend + Journal + Personalized Meditation
+                {hasCompletedFlowToday("morning-reflection") ? "Completed today" : "Tend + Journal + Personalized Meditation"}
               </ThemedText>
             </View>
-            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+            {hasCompletedFlowToday("morning-reflection") ? (
+              <View style={[styles.completedBadge, { backgroundColor: theme.success }]}>
+                <Feather name="check" size={14} color="#FFFFFF" />
+              </View>
+            ) : (
+              <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+            )}
           </Pressable>
         </Animated.View>
 
         <Animated.View entering={FadeInUp.delay(600).duration(600).springify()}>
           <Pressable 
             onPress={handleStartEveningFlow}
-            style={[styles.flowCard, { backgroundColor: theme.backgroundSecondary, borderColor: theme.jade }]}
+            style={[styles.flowCard, { backgroundColor: theme.backgroundSecondary, borderColor: hasCompletedFlowToday("evening-winddown") ? theme.success : theme.jade }]}
           >
-            <View style={[styles.flowIconWrap, { backgroundColor: `${theme.jade}20` }]}>
-              <Feather name="moon" size={24} color={theme.jade} />
+            <View style={[styles.flowIconWrap, { backgroundColor: hasCompletedFlowToday("evening-winddown") ? `${theme.success}20` : `${theme.jade}20` }]}>
+              {hasCompletedFlowToday("evening-winddown") ? (
+                <Feather name="check" size={24} color={theme.success} />
+              ) : (
+                <Feather name="moon" size={24} color={theme.jade} />
+              )}
             </View>
             <View style={styles.flowTextWrap}>
               <ThemedText style={[styles.flowTitle, { color: theme.text }]}>
                 End of Day Winddown
               </ThemedText>
               <ThemedText style={[styles.flowSubtitle, { color: theme.textSecondary }]}>
-                Journal + Tend + Silent Meditation
+                {hasCompletedFlowToday("evening-winddown") ? "Completed today" : "Journal + Tend + Silent Meditation"}
               </ThemedText>
             </View>
-            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+            {hasCompletedFlowToday("evening-winddown") ? (
+              <View style={[styles.completedBadge, { backgroundColor: theme.success }]}>
+                <Feather name="check" size={14} color="#FFFFFF" />
+              </View>
+            ) : (
+              <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+            )}
           </Pressable>
         </Animated.View>
       </ScrollView>
@@ -802,5 +822,12 @@ const styles = StyleSheet.create({
   },
   flowSubtitle: {
     fontSize: 13,
+  },
+  completedBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

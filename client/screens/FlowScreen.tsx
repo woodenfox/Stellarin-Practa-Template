@@ -41,7 +41,7 @@ export default function FlowScreen() {
   const route = useRoute<FlowRouteProp>();
   const { startFlow, currentFlow, abortFlow, setOnFlowComplete } = useFlow();
   const { practa, context, complete } = useCurrentPracta();
-  const { addJournalEntry, addSession, sessions, journalEntries, tendCompletions } = useMeditation();
+  const { addJournalEntry, addSession, addFlowCompletion, sessions, journalEntries, tendCompletions } = useMeditation();
   const { publish: addItem } = useTimeline();
   
   const [totalRiceEarned, setTotalRiceEarned] = useState(0);
@@ -150,10 +150,14 @@ export default function FlowScreen() {
     setTotalRiceEarned(0);
     startFlow(flow);
 
+    setOnFlowComplete(() => {
+      addFlowCompletion(flow.id);
+    });
+
     return () => {
       setOnFlowComplete(() => undefined);
     };
-  }, [flow, startFlow, setOnFlowComplete]);
+  }, [flow, startFlow, setOnFlowComplete, addFlowCompletion]);
 
   const handleClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

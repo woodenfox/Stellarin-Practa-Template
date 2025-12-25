@@ -29,6 +29,13 @@ export interface TendCompletion {
   completedAt: string;
 }
 
+export interface FlowCompletion {
+  id: string;
+  date: string;
+  flowId: string;
+  completedAt: string;
+}
+
 interface MeditationState {
   totalRice: number;
   sessions: MeditationSession[];
@@ -37,6 +44,7 @@ interface MeditationState {
   selectedDuration: number;
   journalEntries: JournalEntry[];
   tendCompletions: TendCompletion[];
+  flowCompletions: FlowCompletion[];
   isLoading: boolean;
   globalRice: number;
   globalMeditators: number;
@@ -49,8 +57,10 @@ interface MeditationContextType extends MeditationState {
   updateJournalEntry: (id: string, updates: Partial<JournalEntry>) => Promise<void>;
   deleteJournalEntry: (id: string) => Promise<void>;
   addTendCompletion: (cardId: string) => Promise<void>;
+  addFlowCompletion: (flowId: string) => Promise<void>;
   hasTendedToday: () => boolean;
   hasJournaledToday: () => boolean;
+  hasCompletedFlowToday: (flowId: string) => boolean;
   getTodayStreak: () => boolean;
   getWeekStreaks: () => { day: string; completed: boolean; isToday: boolean }[];
   getWeeklyCompletionPoints: () => number;
@@ -64,6 +74,7 @@ const STORAGE_KEYS = {
   CHALLENGE_PROGRESS: "@rice_meditation_challenge",
   JOURNAL_ENTRIES: "@rice_meditation_journal",
   TEND_COMPLETIONS: "@rice_meditation_tend_completions",
+  FLOW_COMPLETIONS: "@rice_meditation_flow_completions",
   SELECTED_DURATION: "@rice_meditation_selected_duration",
 };
 
@@ -91,6 +102,7 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
     selectedDuration: 300,
     journalEntries: [],
     tendCompletions: [],
+    flowCompletions: [],
     isLoading: true,
     globalRice: 0,
     globalMeditators: 0,
@@ -139,13 +151,14 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
 
   const loadData = async () => {
     try {
-      const [totalRice, sessions, streakDays, challengeProgress, journalEntries, tendCompletions, selectedDuration] = await Promise.all([
+      const [totalRice, sessions, streakDays, challengeProgress, journalEntries, tendCompletions, flowCompletions, selectedDuration] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.TOTAL_RICE),
         AsyncStorage.getItem(STORAGE_KEYS.SESSIONS),
         AsyncStorage.getItem(STORAGE_KEYS.STREAK_DAYS),
         AsyncStorage.getItem(STORAGE_KEYS.CHALLENGE_PROGRESS),
         AsyncStorage.getItem(STORAGE_KEYS.JOURNAL_ENTRIES),
         AsyncStorage.getItem(STORAGE_KEYS.TEND_COMPLETIONS),
+        AsyncStorage.getItem(STORAGE_KEYS.FLOW_COMPLETIONS),
         AsyncStorage.getItem(STORAGE_KEYS.SELECTED_DURATION),
       ]);
 
@@ -157,6 +170,7 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
         challengeProgress: challengeProgress ? parseInt(challengeProgress, 10) : 0,
         journalEntries: journalEntries ? JSON.parse(journalEntries) : [],
         tendCompletions: tendCompletions ? JSON.parse(tendCompletions) : [],
+        flowCompletions: flowCompletions ? JSON.parse(flowCompletions) : [],
         selectedDuration: selectedDuration ? parseInt(selectedDuration, 10) : 180,
         isLoading: false,
       }));
@@ -309,6 +323,33 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
     return state.journalEntries.some(e => e.date === today);
   }, [state.journalEntries]);
 
+  const addFlowCompletion = useCallback(async (flowId: string) => {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const newCompletion: FlowCompletion = {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        date: today,
+        flowId,
+        completedAt: new Date().toISOString(),
+      };
+
+      const newCompletions = [newCompletion, ...state.flowCompletions];
+      await AsyncStorage.setItem(STORAGE_KEYS.FLOW_COMPLETIONS, JSON.stringify(newCompletions));
+
+      setState((prev) => ({
+        ...prev,
+        flowCompletions: newCompletions,
+      }));
+    } catch (error) {
+      console.error("Failed to save flow completion:", error);
+    }
+  }, [state.flowCompletions]);
+
+  const hasCompletedFlowToday = useCallback((flowId: string) => {
+    const today = new Date().toISOString().split("T")[0];
+    return state.flowCompletions.some(c => c.date === today && c.flowId === flowId);
+  }, [state.flowCompletions]);
+
   const getTodayStreak = useCallback(() => {
     const today = new Date().toISOString().split("T")[0];
     return state.streakDays.includes(today);
@@ -367,8 +408,10 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
         updateJournalEntry,
         deleteJournalEntry,
         addTendCompletion,
+        addFlowCompletion,
         hasTendedToday,
         hasJournaledToday,
+        hasCompletedFlowToday,
         getTodayStreak,
         getWeekStreaks,
         getWeeklyCompletionPoints,
