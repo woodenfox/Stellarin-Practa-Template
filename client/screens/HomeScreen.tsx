@@ -25,7 +25,6 @@ import Animated, {
 
 import { ThemedText } from "@/components/ThemedText";
 import { SpiralMandala } from "@/components/SpiralMandala";
-import { HeaderTitle } from "@/components/HeaderTitle";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useMeditation } from "@/context/MeditationContext";
@@ -517,10 +516,6 @@ export default function HomeScreen() {
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.headerRow}>
-          <HeaderTitle />
-        </View>
-
         <WeeklyMomentum days={sevenDayData} streak={currentStreak} />
 
         <SpiralMandala 
@@ -594,9 +589,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Spacing.lg,
-  },
-  headerRow: {
-    marginBottom: Spacing.lg,
   },
   actionsRow: {
     flexDirection: "row",
