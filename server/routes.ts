@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import * as fs from "fs";
 import * as path from "path";
+import archiver from "archiver";
 
 const CONFIG_PATH = path.resolve(process.cwd(), "practa.config.json");
 
@@ -115,6 +116,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(metadata);
     } else {
       res.status(500).json({ error: "Failed to save configuration" });
+    }
+  });
+
+  app.get("/api/practa/download-zip", (req, res) => {
+    const practaDir = path.resolve(process.cwd(), "client/my-practa");
+    
+    if (!fs.existsSync(practaDir)) {
+      return res.status(404).json({ error: "Practa directory not found" });
+    }
+
+    const config = readConfig();
+    const filename = config ? `${config.type}-${config.version}.zip` : "practa.zip";
+
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    const archive = archiver("zip", { zlib: { level: 9 } });
+    
+    archive.on("error", (err) => {
+      console.error("Archive error:", err);
+      res.status(500).json({ error: "Failed to create archive" });
+    });
+
+    archive.pipe(res);
+    archive.directory(practaDir, "my-practa");
+    
+    if (fs.existsSync(CONFIG_PATH)) {
+      archive.file(CONFIG_PATH, { name: "practa.config.json" });
+    }
+    
+    archive.finalize();
+  });
+
+  app.post("/api/practa/submit", async (req, res) => {
+    const SUBMIT_URL = process.env.PRACTA_SUBMIT_URL || "https://api.stellarin.app/practa/submit";
+    
+    try {
+      const practaDir = path.resolve(process.cwd(), "client/my-practa");
+      
+      if (!fs.existsSync(practaDir)) {
+        return res.status(404).json({ error: "Practa directory not found" });
+      }
+
+      const config = readConfig();
+      if (!config) {
+        return res.status(400).json({ error: "Practa configuration not found" });
+      }
+
+      const chunks: Buffer[] = [];
+      const archive = archiver("zip", { zlib: { level: 9 } });
+      
+      archive.on("data", (chunk) => chunks.push(chunk));
+      
+      await new Promise<void>((resolve, reject) => {
+        archive.on("end", resolve);
+        archive.on("error", reject);
+        
+        archive.directory(practaDir, "my-practa");
+        archive.file(CONFIG_PATH, { name: "practa.config.json" });
+        archive.finalize();
+      });
+
+      const zipBuffer = Buffer.concat(chunks);
+      const blob = new Blob([zipBuffer], { type: "application/zip" });
+      
+      const formData = new FormData();
+      formData.append("file", blob, `${config.type}-${config.version}.zip`);
+      formData.append("metadata", JSON.stringify(config));
+
+      const response = await fetch(SUBMIT_URL, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return res.status(response.status).json({ 
+          error: "Submission failed", 
+          details: errorText 
+        });
+      }
+
+      const result = await response.json();
+      res.json({ success: true, ...result });
+    } catch (error) {
+      console.error("Submit error:", error);
+      res.status(500).json({ 
+        error: "Failed to submit practa",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

@@ -108,6 +108,11 @@ export default function PreviewScreen() {
     navigation.navigate("MetadataEditor");
   };
 
+  const handleSubmit = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    navigation.navigate("Submit");
+  };
+
   return (
     <ThemedView style={styles.container}>
       <ScrollView
@@ -264,6 +269,14 @@ export default function PreviewScreen() {
             </ThemedText>
           </View>
         </View>
+
+        <Pressable
+          onPress={handleSubmit}
+          style={[styles.submitButton, { backgroundColor: theme.primary }]}
+        >
+          <Feather name="upload" size={20} color="white" />
+          <ThemedText style={styles.submitButtonText}>Submit for Review</ThemedText>
+        </Pressable>
       </ScrollView>
     </ThemedView>
   );
@@ -440,5 +453,19 @@ const styles = StyleSheet.create({
   stepText: {
     flex: 1,
     fontSize: 14,
+  },
+  submitButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    marginTop: Spacing.xl,
+    gap: Spacing.sm,
+  },
+  submitButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
