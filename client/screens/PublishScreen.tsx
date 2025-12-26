@@ -56,6 +56,7 @@ export default function PublishScreen() {
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [submitResult, setSubmitResult] = useState<UploadPreviewResult | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [claimAttempted, setClaimAttempted] = useState(false);
 
   const { data: metadata } = useQuery<PractaMetadata>({
     queryKey: ["/api/practa/metadata"],
@@ -104,8 +105,19 @@ export default function PublishScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       await WebBrowser.openBrowserAsync(`${VERIFICATION_SERVICE_URL}/api/login`);
+      setClaimAttempted(true);
     } catch {
       Linking.openURL(`${VERIFICATION_SERVICE_URL}/api/login`);
+      setClaimAttempted(true);
+    }
+  };
+
+  const handleViewDashboard = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      await WebBrowser.openBrowserAsync(`${VERIFICATION_SERVICE_URL}/dashboard`);
+    } catch {
+      Linking.openURL(`${VERIFICATION_SERVICE_URL}/dashboard`);
     }
   };
 
@@ -205,12 +217,15 @@ export default function PublishScreen() {
             <View style={styles.successHeader}>
               <Feather name="check-circle" size={24} color={theme.success} />
               <ThemedText style={[styles.successTitle, { color: theme.success }]}>
-                Upload Complete
+                {claimAttempted ? "Claim Initiated" : "Upload Complete"}
               </ThemedText>
             </View>
             
             <ThemedText style={[styles.successText, { color: theme.textSecondary }]}>
-              Your Practa has been validated and uploaded. Sign in on Stellarin to claim your submission.
+              {claimAttempted 
+                ? "If you authorized access, your submission should now be linked to your Stellarin account. Check your dashboard to confirm."
+                : "Your Practa has been validated and uploaded. Sign in on Stellarin to claim your submission."
+              }
             </ThemedText>
 
             <View style={styles.detailRow}>
@@ -255,23 +270,43 @@ export default function PublishScreen() {
               </View>
             ) : null}
 
-            <View style={styles.buttonRow}>
-              <Pressable
-                style={[styles.resetButton, { borderColor: theme.textSecondary }]}
-                onPress={handleReset}
-              >
-                <ThemedText style={[styles.resetButtonText, { color: theme.textSecondary }]}>
-                  Submit Again
-                </ThemedText>
-              </Pressable>
-              <Pressable
-                style={[styles.claimButton, { backgroundColor: theme.primary }]}
-                onPress={handleClaimSubmission}
-              >
-                <Feather name="external-link" size={18} color="#FFFFFF" />
-                <ThemedText style={styles.claimButtonText}>Claim</ThemedText>
-              </Pressable>
-            </View>
+            {claimAttempted ? (
+              <View style={styles.buttonRow}>
+                <Pressable
+                  style={[styles.resetButton, { borderColor: theme.textSecondary }]}
+                  onPress={handleReset}
+                >
+                  <ThemedText style={[styles.resetButtonText, { color: theme.textSecondary }]}>
+                    Submit Again
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  style={[styles.claimButton, { backgroundColor: theme.primary }]}
+                  onPress={handleViewDashboard}
+                >
+                  <Feather name="external-link" size={18} color="#FFFFFF" />
+                  <ThemedText style={styles.claimButtonText}>View Dashboard</ThemedText>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.buttonRow}>
+                <Pressable
+                  style={[styles.resetButton, { borderColor: theme.textSecondary }]}
+                  onPress={handleReset}
+                >
+                  <ThemedText style={[styles.resetButtonText, { color: theme.textSecondary }]}>
+                    Submit Again
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  style={[styles.claimButton, { backgroundColor: theme.primary }]}
+                  onPress={handleClaimSubmission}
+                >
+                  <Feather name="external-link" size={18} color="#FFFFFF" />
+                  <ThemedText style={styles.claimButtonText}>Claim</ThemedText>
+                </Pressable>
+              </View>
+            )}
           </Card>
         ) : null}
 
