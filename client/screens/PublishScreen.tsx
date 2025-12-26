@@ -109,6 +109,12 @@ export default function PublishScreen() {
     }
   };
 
+  const handleDownloadZip = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const downloadUrl = new URL("/api/practa/download-zip", getApiUrl()).toString();
+    Linking.openURL(downloadUrl);
+  };
+
   const handleReset = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSubmitState("idle");
@@ -322,6 +328,13 @@ export default function PublishScreen() {
                 Fix all validation errors before submitting
               </ThemedText>
             ) : null}
+
+            <Pressable onPress={handleDownloadZip} style={styles.downloadLink}>
+              <Feather name="download" size={16} color={theme.primary} />
+              <ThemedText style={[styles.downloadLinkText, { color: theme.primary }]}>
+                Download ZIP for manual upload
+              </ThemedText>
+            </Pressable>
           </>
         ) : null}
 
@@ -556,5 +569,17 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: Spacing.md,
     fontSize: 14,
+  },
+  downloadLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.xs,
+    marginTop: Spacing.lg,
+    paddingVertical: Spacing.sm,
+  },
+  downloadLinkText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
 });
