@@ -85,7 +85,7 @@ interface PractaOutput {
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `type` | Yes | Unique identifier (lowercase, hyphens) |
+| `type` | Yes | Unique ID for your Practa (lowercase, hyphens) |
 | `name` | Yes | Display name |
 | `description` | Yes | Brief explanation |
 | `author` | Yes | Your name |

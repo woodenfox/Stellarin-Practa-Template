@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -14,7 +14,7 @@ import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollV
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
-import { apiRequest } from "@/lib/query-client";
+import { apiRequest, getApiUrl } from "@/lib/query-client";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -27,6 +27,12 @@ interface PractaMetadata {
   estimatedDuration?: number;
 }
 
+interface NameCheckResult {
+  available: boolean;
+  slug: string;
+  reason?: string;
+}
+
 function FormField({
   label,
   value,
@@ -35,6 +41,9 @@ function FormField({
   multiline,
   keyboardType,
   error,
+  onBlur,
+  status,
+  statusMessage,
 }: {
   label: string;
   value: string;
@@ -43,33 +52,63 @@ function FormField({
   multiline?: boolean;
   keyboardType?: "default" | "numeric";
   error?: string;
+  onBlur?: () => void;
+  status?: "idle" | "checking" | "available" | "taken" | "invalid";
+  statusMessage?: string | null;
 }) {
   const { theme } = useTheme();
+
+  const getStatusColor = () => {
+    if (status === "available") return "#22C55E";
+    if (status === "taken" || status === "invalid") return "#EF4444";
+    return theme.textSecondary;
+  };
 
   return (
     <View style={styles.fieldContainer}>
       <ThemedText style={[styles.label, { color: theme.textSecondary }]}>
         {label}
       </ThemedText>
-      <TextInput
-        style={[
-          styles.input,
-          multiline && styles.inputMultiline,
-          {
-            backgroundColor: theme.backgroundSecondary,
-            color: theme.text,
-            borderColor: error ? "#EF4444" : theme.border,
-          },
-        ]}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={theme.textSecondary}
-        multiline={multiline}
-        keyboardType={keyboardType}
-      />
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={[
+            styles.input,
+            multiline && styles.inputMultiline,
+            status && styles.inputWithStatus,
+            {
+              backgroundColor: theme.backgroundSecondary,
+              color: theme.text,
+              borderColor: error ? "#EF4444" : status === "available" ? "#22C55E" : status === "taken" || status === "invalid" ? "#EF4444" : theme.border,
+            },
+          ]}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={theme.textSecondary}
+          multiline={multiline}
+          keyboardType={keyboardType}
+          onBlur={onBlur}
+        />
+        {status === "checking" ? (
+          <View style={styles.statusIcon}>
+            <ActivityIndicator size="small" color={theme.textSecondary} />
+          </View>
+        ) : status === "available" ? (
+          <View style={styles.statusIcon}>
+            <Feather name="check-circle" size={18} color="#22C55E" />
+          </View>
+        ) : status === "taken" || status === "invalid" ? (
+          <View style={styles.statusIcon}>
+            <Feather name="x-circle" size={18} color="#EF4444" />
+          </View>
+        ) : null}
+      </View>
       {error ? (
         <ThemedText style={styles.errorText}>{error}</ThemedText>
+      ) : statusMessage && status !== "idle" ? (
+        <ThemedText style={[styles.statusText, { color: getStatusColor() }]}>
+          {statusMessage}
+        </ThemedText>
       ) : null}
     </View>
   );
@@ -88,6 +127,39 @@ export default function MetadataEditorScreen() {
   const [version, setVersion] = useState("");
   const [estimatedDuration, setEstimatedDuration] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  const [nameCheckStatus, setNameCheckStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
+  const [nameCheckMessage, setNameCheckMessage] = useState<string | null>(null);
+  const [originalType, setOriginalType] = useState<string>("");
+  
+  const checkNameAvailability = useCallback(async (idValue: string) => {
+    if (!idValue.trim() || idValue === originalType) {
+      setNameCheckStatus("idle");
+      setNameCheckMessage(null);
+      return;
+    }
+    
+    setNameCheckStatus("checking");
+    setNameCheckMessage(null);
+    
+    try {
+      const url = new URL("/api/practa/check-name", getApiUrl());
+      url.searchParams.set("name", idValue);
+      const response = await fetch(url.toString());
+      const result: NameCheckResult = await response.json();
+      
+      if (result.available) {
+        setNameCheckStatus("available");
+        setNameCheckMessage("This ID is available");
+      } else {
+        setNameCheckStatus(result.reason?.includes("format") ? "invalid" : "taken");
+        setNameCheckMessage(result.reason || "This ID is not available");
+      }
+    } catch {
+      setNameCheckStatus("idle");
+      setNameCheckMessage(null);
+    }
+  }, [originalType]);
 
   const { data: metadata, isLoading } = useQuery<PractaMetadata>({
     queryKey: ["/api/practa/metadata"],
@@ -96,6 +168,7 @@ export default function MetadataEditorScreen() {
   useEffect(() => {
     if (metadata) {
       setType(metadata.type || "");
+      setOriginalType(metadata.type || "");
       setName(metadata.name || "");
       setDescription(metadata.description || "");
       setAuthor(metadata.author || "");
@@ -127,9 +200,11 @@ export default function MetadataEditorScreen() {
     const newErrors: Record<string, string> = {};
 
     if (!type.trim()) {
-      newErrors.type = "Type is required";
+      newErrors.type = "ID is required";
     } else if (!/^[a-z][a-z0-9-]*$/.test(type)) {
       newErrors.type = "Use lowercase letters and hyphens only";
+    } else if (nameCheckStatus === "taken") {
+      newErrors.type = "This ID is already taken";
     }
 
     if (!name.trim()) {
@@ -158,7 +233,43 @@ export default function MetadataEditorScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (type.trim() !== originalType && nameCheckStatus === "checking") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Alert.alert("Please Wait", "Checking ID availability...");
+      return;
+    }
+    
+    if (type.trim() !== originalType && nameCheckStatus !== "available" && nameCheckStatus !== "idle") {
+      if (nameCheckStatus === "taken" || nameCheckStatus === "invalid") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert("Invalid ID", nameCheckMessage || "This ID is not available");
+        return;
+      }
+    }
+    
+    if (type.trim() !== originalType && nameCheckStatus === "idle") {
+      setNameCheckStatus("checking");
+      try {
+        const url = new URL("/api/practa/check-name", getApiUrl());
+        url.searchParams.set("name", type.trim());
+        const response = await fetch(url.toString());
+        const result: NameCheckResult = await response.json();
+        
+        if (!result.available) {
+          setNameCheckStatus(result.reason?.includes("format") ? "invalid" : "taken");
+          setNameCheckMessage(result.reason || "This ID is not available");
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert("Invalid ID", result.reason || "This ID is not available");
+          return;
+        }
+        setNameCheckStatus("available");
+        setNameCheckMessage("This ID is available");
+      } catch {
+        setNameCheckStatus("idle");
+      }
+    }
+    
     if (!validateFields()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
@@ -212,11 +323,14 @@ export default function MetadataEditorScreen() {
 
         <Card style={styles.card}>
           <FormField
-            label="Type (unique identifier)"
+            label="ID (unique identifier)"
             value={type}
             onChangeText={setType}
             placeholder="my-practa"
             error={errors.type}
+            onBlur={() => checkNameAvailability(type)}
+            status={nameCheckStatus}
+            statusMessage={nameCheckMessage}
           />
 
           <FormField
@@ -332,8 +446,25 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: "top",
   },
+  inputWrapper: {
+    position: "relative",
+  },
+  inputWithStatus: {
+    paddingRight: 40,
+  },
+  statusIcon: {
+    position: "absolute",
+    right: Spacing.sm,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+  },
   errorText: {
     color: "#EF4444",
+    fontSize: 12,
+    marginTop: Spacing.xs,
+  },
+  statusText: {
     fontSize: 12,
     marginTop: Spacing.xs,
   },

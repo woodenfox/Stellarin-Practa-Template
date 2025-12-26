@@ -38,9 +38,9 @@ function validateMetadata(data: unknown): { valid: boolean; errors: string[] } {
   const metadata = data as Record<string, unknown>;
   
   if (!metadata.type || typeof metadata.type !== "string") {
-    errors.push("type is required and must be a string");
+    errors.push("ID is required and must be a string");
   } else if (!/^[a-z][a-z0-9-]*$/.test(metadata.type)) {
-    errors.push("type must be lowercase with hyphens only (e.g., 'my-practa')");
+    errors.push("ID must be lowercase with hyphens only (e.g., 'my-practa')");
   }
   
   if (!metadata.name || typeof metadata.name !== "string") {
@@ -162,6 +162,29 @@ function validateAssets(practaDir: string): AssetValidationResult {
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  app.get("/api/practa/check-name", async (req, res) => {
+    const { name } = req.query;
+    
+    if (!name || typeof name !== "string") {
+      return res.status(400).json({ error: "Name parameter is required" });
+    }
+
+    try {
+      const checkUrl = `https://stellarin-practa-verification.replit.app/api/practa/check-name?name=${encodeURIComponent(name)}`;
+      const response = await fetch(checkUrl);
+      
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to check name availability" });
+      }
+
+      const result = await response.json();
+      res.json(result);
+    } catch (error) {
+      console.error("Check name error:", error);
+      res.status(500).json({ error: "Failed to check name availability" });
+    }
   });
 
   app.get("/api/practa/metadata", (req, res) => {
