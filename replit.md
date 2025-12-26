@@ -17,10 +17,16 @@ A Practa is a self-contained React Native component that:
 ### 1. Edit Your Practa
 Open `client/my-practa/index.tsx` and modify the example to create your own experience.
 
-### 2. Preview Your Practa
+### 2. Validate Your Practa
+The Preview screen shows real-time validation status. You can also run the CLI validator:
+```bash
+npx tsx validate-practa.ts
+```
+
+### 3. Preview Your Practa
 Run the app and tap "Preview Practa" to see your changes in action.
 
-### 3. Update Metadata
+### 4. Update Metadata
 Export a `metadata` object with your Practa details:
 ```typescript
 export const metadata = {
@@ -33,9 +39,17 @@ export const metadata = {
 };
 ```
 
-## Practa Contract
+## Practa Requirements
 
-Your Practa component must implement this interface:
+For complete requirements documentation, see [Practa Requirements](docs/practa-requirements.md).
+
+### Required Exports
+
+Your `client/my-practa/index.tsx` must export:
+1. **Default export**: Your Practa component
+2. **Named export `metadata`**: Object with Practa details
+
+### Component Props
 
 ```typescript
 interface PractaProps {
@@ -61,6 +75,36 @@ interface PractaOutput {
 }
 ```
 
+### Metadata Schema
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `type` | Yes | Unique identifier (lowercase, hyphens) |
+| `name` | Yes | Display name |
+| `description` | Yes | Brief explanation |
+| `author` | Yes | Your name |
+| `version` | Yes | Semantic version (e.g., "1.0.0") |
+| `estimatedDuration` | No | Time in seconds |
+
+## Validation
+
+The template includes automatic validation that checks:
+
+**Required (Errors)**:
+- File exists at `client/my-practa/index.tsx`
+- Default export (component) exists
+- Metadata export exists
+- All required metadata fields are present
+- Type uses valid format (lowercase, hyphens)
+- Version uses semver format
+- Component calls `onComplete`
+
+**Recommended (Warnings)**:
+- Uses `useTheme()` for colors
+- Uses haptic feedback
+- Supports `onSkip`
+- Uses safe area insets
+
 ## Available APIs
 
 Your Practa has full access to:
@@ -82,14 +126,18 @@ client/
   constants/          # Theme tokens (Colors, Spacing, etc.)
   context/            # FlowContext for execution engine
   hooks/              # useTheme, useScreenOptions, etc.
+  lib/                # Utilities including practa-validator
   navigation/         # Navigation setup
   practa/             # Registry and exports
   screens/            # Preview and Flow screens
   types/              # TypeScript definitions
 
 docs/                 # Architecture documentation
+  practa-requirements.md     # Detailed requirements spec
   practa-plugin-architecture.md
   practa-flow-system.md
+
+validate-practa.ts    # CLI validator script
 
 server/               # Express backend (minimal for preview)
 ```
@@ -105,8 +153,10 @@ server/               # Express backend (minimal for preview)
 |------|---------|
 | `client/my-practa/index.tsx` | Your Practa implementation |
 | `client/types/flow.ts` | TypeScript types for Practa |
-| `client/context/FlowContext.tsx` | Flow execution engine |
-| `docs/practa-plugin-architecture.md` | Full architecture docs |
+| `client/lib/practa-validator.ts` | Validation logic |
+| `validate-practa.ts` | CLI validator |
+| `docs/practa-requirements.md` | Full requirements spec |
+| `docs/practa-plugin-architecture.md` | Architecture docs |
 
 ## Best Practices
 
@@ -128,12 +178,14 @@ server/               # Express backend (minimal for preview)
 ## Development Workflow
 
 1. **Edit** `client/my-practa/index.tsx`
-2. **Preview** using the app's Preview button
-3. **Iterate** until your Practa feels polished
-4. **Submit** for review (coming soon)
+2. **Validate** using the Preview screen or `npx tsx validate-practa.ts`
+3. **Preview** using the app's Preview button
+4. **Iterate** until your Practa feels polished
+5. **Submit** for review (coming soon)
 
 ## Resources
 
+- [Practa Requirements](docs/practa-requirements.md) - Detailed requirements spec
 - [Practa Plugin Architecture](docs/practa-plugin-architecture.md)
 - [Flow System Documentation](docs/practa-flow-system.md)
 - [Expo Icons](https://icons.expo.fyi) - Browse available icons

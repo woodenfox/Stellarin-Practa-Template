@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import { View, StyleSheet, Pressable, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -12,14 +12,50 @@ import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
-import { metadata } from "@/my-practa";
+import MyPracta, { metadata } from "@/my-practa";
+import { validatePracta, ValidationResult } from "@/lib/practa-validator";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+function ValidationItem({ result }: { result: ValidationResult }) {
+  const { theme } = useTheme();
+  
+  const iconName = result.severity === "error" 
+    ? "x-circle" 
+    : result.severity === "warning" 
+      ? "alert-circle" 
+      : "check-circle";
+      
+  const iconColor = result.severity === "error"
+    ? "#EF4444"
+    : result.severity === "warning"
+      ? "#F59E0B"
+      : "#10B981";
+
+  return (
+    <View style={styles.validationItem}>
+      <Feather name={iconName} size={16} color={iconColor} />
+      <ThemedText 
+        style={[
+          styles.validationText, 
+          { color: result.severity === "error" ? "#EF4444" : theme.textSecondary }
+        ]}
+      >
+        {result.message}
+      </ThemedText>
+    </View>
+  );
+}
 
 export default function PreviewScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
+  const [showValidation, setShowValidation] = useState(false);
+
+  const validationReport = useMemo(() => {
+    return validatePracta(MyPracta, metadata);
+  }, []);
 
   const handlePreview = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -37,6 +73,11 @@ export default function PreviewScreen() {
         ],
       },
     });
+  };
+
+  const toggleValidation = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowValidation(!showValidation);
   };
 
   return (
@@ -99,6 +140,56 @@ export default function PreviewScreen() {
           </Pressable>
         </Card>
 
+        <Card style={styles.validationCard}>
+          <Pressable onPress={toggleValidation} style={styles.validationHeader}>
+            <View style={styles.validationHeaderLeft}>
+              <Feather 
+                name={validationReport.isValid ? "check-circle" : "alert-circle"} 
+                size={20} 
+                color={validationReport.isValid ? "#10B981" : "#EF4444"} 
+              />
+              <ThemedText style={styles.validationTitle}>
+                Validation {validationReport.isValid ? "Passed" : "Failed"}
+              </ThemedText>
+            </View>
+            <View style={styles.validationStats}>
+              {validationReport.errors.length > 0 ? (
+                <View style={[styles.statBadge, { backgroundColor: "#FEE2E2" }]}>
+                  <ThemedText style={[styles.statText, { color: "#EF4444" }]}>
+                    {validationReport.errors.length} errors
+                  </ThemedText>
+                </View>
+              ) : null}
+              {validationReport.warnings.length > 0 ? (
+                <View style={[styles.statBadge, { backgroundColor: "#FEF3C7" }]}>
+                  <ThemedText style={[styles.statText, { color: "#D97706" }]}>
+                    {validationReport.warnings.length} warnings
+                  </ThemedText>
+                </View>
+              ) : null}
+              <Feather 
+                name={showValidation ? "chevron-up" : "chevron-down"} 
+                size={20} 
+                color={theme.textSecondary} 
+              />
+            </View>
+          </Pressable>
+          
+          {showValidation ? (
+            <View style={styles.validationList}>
+              {validationReport.errors.map((result, i) => (
+                <ValidationItem key={`error-${i}`} result={result} />
+              ))}
+              {validationReport.warnings.map((result, i) => (
+                <ValidationItem key={`warning-${i}`} result={result} />
+              ))}
+              {validationReport.successes.map((result, i) => (
+                <ValidationItem key={`success-${i}`} result={result} />
+              ))}
+            </View>
+          ) : null}
+        </Card>
+
         <View style={styles.instructions}>
           <ThemedText style={styles.instructionsTitle}>How to develop</ThemedText>
           <View style={styles.step}>
@@ -114,7 +205,7 @@ export default function PreviewScreen() {
               <ThemedText style={styles.stepNumberText}>2</ThemedText>
             </View>
             <ThemedText style={[styles.stepText, { color: theme.textSecondary }]}>
-              Preview your changes using the button above
+              Check validation results above for requirements
             </ThemedText>
           </View>
           <View style={styles.step}>
@@ -122,7 +213,15 @@ export default function PreviewScreen() {
               <ThemedText style={styles.stepNumberText}>3</ThemedText>
             </View>
             <ThemedText style={[styles.stepText, { color: theme.textSecondary }]}>
-              Update the metadata export with your Practa details
+              Preview your changes using the button above
+            </ThemedText>
+          </View>
+          <View style={styles.step}>
+            <View style={[styles.stepNumber, { backgroundColor: theme.primary }]}>
+              <ThemedText style={styles.stepNumberText}>4</ThemedText>
+            </View>
+            <ThemedText style={[styles.stepText, { color: theme.textSecondary }]}>
+              Update the metadata export with your details
             </ThemedText>
           </View>
         </View>
@@ -151,7 +250,7 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: Spacing.lg,
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.lg,
   },
   cardHeader: {
     flexDirection: "row",
@@ -204,6 +303,55 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
+  },
+  validationCard: {
+    padding: Spacing.md,
+    marginBottom: Spacing.xl,
+  },
+  validationHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  validationHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  validationTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  validationStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  statBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+  },
+  statText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  validationList: {
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.1)",
+  },
+  validationItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  validationText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
   instructions: {
     marginTop: Spacing.md,
