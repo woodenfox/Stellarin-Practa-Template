@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { View, StyleSheet, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -72,6 +72,12 @@ export default function PreviewScreen() {
   const navigation = useNavigation<NavigationProp>();
   const queryClient = useQueryClient();
   const [showValidation, setShowValidation] = useState(false);
+  const [enableSyncCheck, setEnableSyncCheck] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setEnableSyncCheck(true), 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const { data: savedMetadata } = useQuery<PractaMetadata>({
     queryKey: ["/api/practa/metadata"],
@@ -80,6 +86,7 @@ export default function PreviewScreen() {
   const { data: syncStatus } = useQuery<SyncStatus>({
     queryKey: ["/api/template/sync-status"],
     staleTime: 1000 * 60 * 5,
+    enabled: enableSyncCheck,
   });
 
   const updateTemplateMutation = useMutation({
