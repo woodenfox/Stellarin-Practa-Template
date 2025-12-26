@@ -96,6 +96,8 @@ export function MyPracta({ context, onComplete, onSkip }: MyPractaProps) {
   );
 }
 
+export default MyPracta;
+
 export const metadata = {
   type: "hello-world",
   name: "Hello World",
@@ -104,8 +106,6 @@ export const metadata = {
   version: "1.0.0",
   estimatedDuration: 15,
 };
-
-export default MyPracta;
 
 const styles = StyleSheet.create({
   container: {
