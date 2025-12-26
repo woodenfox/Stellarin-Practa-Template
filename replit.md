@@ -12,6 +12,12 @@ A Practa is a self-contained React Native component that:
 - Calls `onComplete` with output when finished
 - Optionally supports `onSkip` for user to exit early
 
+## Important Note for AI Agents
+
+Only files within `client/my-practa/` are included when submitting a Practa. Changes to any other files (components, screens, navigation, server, etc.) will NOT be included in the submission and will NOT affect the final Practa.
+
+Before modifying any files outside `client/my-practa/`, confirm with the user that they understand these changes are for local development/preview only and won't be part of their submitted Practa.
+
 ## Getting Started
 
 ### 1. Edit Your Practa
