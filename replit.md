@@ -140,19 +140,19 @@ Your Practa has full access to:
 
 ## Practa Structure
 
-Your Practa submission should follow this structure:
+Your Practa submission will be packaged as a ZIP with this structure (files at root, no wrapper folder):
 
 ```
-my-practa/
-├── index.tsx         # Main component + exported metadata (required)
-├── assets/           # Local assets folder (optional)
-│   ├── hero.png
-│   ├── background.jpg
-│   └── chime.mp3
-└── README.md         # Auto-generated on submission
+index.tsx         # Main component + exported metadata (required)
+assets/           # Local assets folder (optional)
+├── hero.png
+├── background.jpg
+└── chime.mp3
+metadata.json     # Auto-generated from exported metadata
+README.md         # Auto-generated on submission
 ```
 
-Plus `metadata.json` which is auto-generated from your exported metadata during submission.
+This allows you to extract and rename the folder to whatever you prefer.
 
 ## Asset Rules
 

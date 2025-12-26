@@ -278,13 +278,13 @@ ${config.version}
     });
 
     archive.pipe(res);
-    archive.directory(practaDir, "my-practa");
+    archive.directory(practaDir, false);
     
     if (manifest) {
-      archive.append(JSON.stringify(manifest, null, 2), { name: "my-practa/metadata.json" });
+      archive.append(JSON.stringify(manifest, null, 2), { name: "metadata.json" });
     }
     if (readme) {
-      archive.append(readme, { name: "my-practa/README.md" });
+      archive.append(readme, { name: "README.md" });
     }
     
     archive.finalize();
@@ -401,9 +401,9 @@ ${config.version}
         archive.on("error", reject);
         passThrough.on("error", reject);
         
-        archive.directory(practaDir, "my-practa");
-        archive.append(JSON.stringify(manifest, null, 2), { name: "my-practa/metadata.json" });
-        archive.append(readme, { name: "my-practa/README.md" });
+        archive.directory(practaDir, false);
+        archive.append(JSON.stringify(manifest, null, 2), { name: "metadata.json" });
+        archive.append(readme, { name: "README.md" });
         archive.finalize();
       });
 
