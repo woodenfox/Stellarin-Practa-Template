@@ -30,7 +30,7 @@ const TOPOFF_DURATION = 1000;
 const EXHALE_DURATION = 6000;
 const PAUSE_BETWEEN = 500;
 
-const EXHALE_WORDS = ["All", "parts", "to-", "geth-", "er", "one"];
+const EXHALE_WORDS = ["All", "parts", "together", "as", "one"];
 
 const QUOTE = {
   text: "The present moment is filled with joy and happiness. If you are attentive, you will see it.",
@@ -53,6 +53,8 @@ export function IntegrationBreathPracta({ context, onComplete, onSkip }: Integra
   const textOpacity = useSharedValue(1);
   const cycleRef = useRef(0);
   const isRunningRef = useRef(false);
+  const hasCompletedRef = useRef(false);
+  const hasStartedRef = useRef(false);
 
   const circleStyle = useAnimatedStyle(() => ({
     transform: [{ scale: circleScale.value }],
@@ -106,18 +108,21 @@ export function IntegrationBreathPracta({ context, onComplete, onSkip }: Integra
 
     if (cycleRef.current >= TOTAL_CYCLES) {
       isRunningRef.current = false;
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setStage("complete");
-      
-      const output: PractaOutput = {
-        metadata: {
-          source: "system",
-          duration: 60,
-          riceEarned: 10,
-          type: "integration-breath",
-        },
-      };
-      onComplete(output);
+      if (!hasCompletedRef.current) {
+        hasCompletedRef.current = true;
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setStage("complete");
+        
+        const output: PractaOutput = {
+          metadata: {
+            source: "system",
+            duration: 60,
+            riceEarned: 10,
+            type: "integration-breath",
+          },
+        };
+        onComplete(output);
+      }
     } else {
       runBreathCycle();
     }
@@ -132,8 +137,13 @@ export function IntegrationBreathPracta({ context, onComplete, onSkip }: Integra
   }, [runBreathCycle]);
 
   useEffect(() => {
+    if (hasStartedRef.current || hasCompletedRef.current) return;
+    
     const timer = setTimeout(() => {
-      startBreathing();
+      if (!hasStartedRef.current && !hasCompletedRef.current) {
+        hasStartedRef.current = true;
+        startBreathing();
+      }
     }, 2000);
 
     return () => {
@@ -174,7 +184,7 @@ export function IntegrationBreathPracta({ context, onComplete, onSkip }: Integra
           </View>
           <ThemedText style={styles.completeTitle}>You are Here. Now.</ThemedText>
           <ThemedText style={[styles.completeSubtitle, { color: theme.textSecondary }]}>
-            All parts together, one.
+            All parts together as one.
           </ThemedText>
         </View>
       </View>
