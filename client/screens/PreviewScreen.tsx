@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, StyleSheet, Pressable, ScrollView, ActivityIndicator } from "react-native";
+import { View, StyleSheet, Pressable, ScrollView, ActivityIndicator, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -31,6 +31,7 @@ interface SyncStatus {
   localVersion: string | null;
   latestVersion: string;
   repoUrl: string;
+  isMasterTemplate?: boolean;
 }
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -156,34 +157,50 @@ export default function PreviewScreen() {
         </View>
 
         {syncStatus && !syncStatus.isInSync ? (
-          <View style={styles.syncBanner}>
+          <View style={[
+            styles.syncBanner, 
+            syncStatus.isMasterTemplate && styles.syncBannerMaster
+          ]}>
             <View style={styles.syncBannerContent}>
-              <Feather name="alert-triangle" size={20} color="#D97706" />
+              <Feather 
+                name={syncStatus.isMasterTemplate ? "git-commit" : "alert-triangle"} 
+                size={20} 
+                color={syncStatus.isMasterTemplate ? "#3B82F6" : "#D97706"} 
+              />
               <View style={styles.syncBannerText}>
                 <ThemedText style={styles.syncBannerTitle}>
-                  Template Out of Sync
+                  {syncStatus.isMasterTemplate 
+                    ? "Unpublished Changes" 
+                    : "Template Out of Sync"}
                 </ThemedText>
                 <ThemedText style={styles.syncBannerMessage}>
-                  The underlying Stellarin Practa Template has changed.
+                  {syncStatus.isMasterTemplate
+                    ? "Push your changes to GitHub to publish the template."
+                    : "The underlying Stellarin Practa Template has changed."}
                 </ThemedText>
               </View>
             </View>
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                updateTemplateMutation.mutate();
+                if (syncStatus.isMasterTemplate) {
+                  Linking.openURL(syncStatus.repoUrl);
+                } else {
+                  updateTemplateMutation.mutate();
+                }
               }}
-              disabled={updateTemplateMutation.isPending}
+              disabled={!syncStatus.isMasterTemplate && updateTemplateMutation.isPending}
               style={[
                 styles.syncButton,
-                updateTemplateMutation.isPending && styles.syncButtonDisabled,
+                syncStatus.isMasterTemplate && styles.syncButtonMaster,
+                updateTemplateMutation.isPending && !syncStatus.isMasterTemplate && styles.syncButtonDisabled,
               ]}
             >
-              {updateTemplateMutation.isPending ? (
+              {updateTemplateMutation.isPending && !syncStatus.isMasterTemplate ? (
                 <ActivityIndicator size="small" color="white" />
               ) : (
                 <ThemedText style={styles.syncButtonText}>
-                  Update to Latest
+                  {syncStatus.isMasterTemplate ? "Open GitHub" : "Update to Latest"}
                 </ThemedText>
               )}
             </Pressable>
@@ -571,5 +588,12 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 14,
     fontWeight: "600",
+  },
+  syncBannerMaster: {
+    backgroundColor: "#EFF6FF",
+    borderColor: "#3B82F6",
+  },
+  syncButtonMaster: {
+    backgroundColor: "#3B82F6",
   },
 });

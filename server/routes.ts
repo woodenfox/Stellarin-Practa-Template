@@ -218,17 +218,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/template/sync-status", async (req, res) => {
     try {
-      if (process.env.MASTER_TEMPLATE_KEY) {
-        return res.json({
-          isInSync: true,
-          localVersion: null,
-          latestVersion: null,
-          repoUrl: `https://github.com/${TEMPLATE_REPO}`,
-          repoAvailable: true,
-          isMasterTemplate: true,
-        });
-      }
-
+      const isMasterTemplate = !!process.env.MASTER_TEMPLATE_KEY;
+      
       const repoResponse = await fetch(
         `https://api.github.com/repos/${TEMPLATE_REPO}`,
         { headers: { "Accept": "application/vnd.github+json" } }
@@ -296,14 +287,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const isInSync = localSha === latestSha;
+      // For master template: check if local git HEAD differs from remote (unpushed changes)
+      // For forks: check if .template-sync differs from remote (updates available)
+      const isInSync = isMasterTemplate 
+        ? (gitHeadSha === latestSha)
+        : (localSha === latestSha);
       
       res.json({
         isInSync,
-        localVersion: localSha || null,
+        localVersion: isMasterTemplate ? gitHeadSha : (localSha || null),
         latestVersion: latestSha,
         repoUrl: `https://github.com/${TEMPLATE_REPO}`,
         repoAvailable: true,
+        isMasterTemplate,
       });
     } catch (error) {
       console.error("Sync check error:", error);
