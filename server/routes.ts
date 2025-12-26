@@ -224,14 +224,6 @@ ${config.version}
     const SUBMIT_URL = "https://stellarin-practa-verification.replit.app/api/submissions/upload";
     
     try {
-      const authToken = req.headers.authorization;
-      if (!authToken) {
-        return res.status(401).json({ 
-          error: "Authentication required",
-          authUrl: "https://stellarin-practa-verification.replit.app"
-        });
-      }
-
       const practaDir = path.resolve(process.cwd(), "client/my-practa");
       
       if (!fs.existsSync(practaDir)) {
@@ -338,9 +330,6 @@ ${config.version}
 
       const response = await fetch(SUBMIT_URL, {
         method: "POST",
-        headers: {
-          "Authorization": authToken,
-        },
         body: formData,
       });
 

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState } from "react";
 import { View, StyleSheet, Pressable, ScrollView, Linking, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -6,8 +6,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
-import * as SecureStore from "expo-secure-store";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -17,12 +16,9 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import MyPracta, { metadata as codeMetadata } from "@/my-practa";
 import { validatePracta, ValidationReport } from "@/lib/practa-validator";
-import { getApiUrl, apiRequest } from "@/lib/query-client";
+import { getApiUrl } from "@/lib/query-client";
 
 const VERIFICATION_SERVICE_URL = "https://stellarin-practa-verification.replit.app";
-const AUTH_TOKEN_KEY = "stellarin_auth_token";
-
-WebBrowser.maybeCompleteAuthSession();
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -52,22 +48,10 @@ export default function SubmitScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
-  const queryClient = useQueryClient();
   
-  const [authToken, setAuthToken] = useState<string | null>(null);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [submitResult, setSubmitResult] = useState<SubmissionResult | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  useEffect(() => {
-    SecureStore.getItemAsync(AUTH_TOKEN_KEY).then((token: string | null) => {
-      setAuthToken(token);
-      setIsCheckingAuth(false);
-    }).catch(() => {
-      setIsCheckingAuth(false);
-    });
-  }, []);
 
   const { data: metadata } = useQuery<PractaMetadata>({
     queryKey: ["/api/practa/metadata"],
@@ -81,37 +65,8 @@ export default function SubmitScreen() {
   const errorCount = validationReport.errors.length;
   const warningCount = validationReport.warnings.length;
 
-  const handleSignIn = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    try {
-      const result = await WebBrowser.openAuthSessionAsync(
-        `${VERIFICATION_SERVICE_URL}/auth/github`,
-        "stellarin-practa://auth"
-      );
-      
-      if (result.type === "success" && result.url) {
-        const url = new URL(result.url);
-        const token = url.searchParams.get("token");
-        if (token) {
-          await SecureStore.setItemAsync(AUTH_TOKEN_KEY, token);
-          setAuthToken(token);
-        }
-      }
-    } catch {
-      Linking.openURL(`${VERIFICATION_SERVICE_URL}/auth/github`);
-    }
-  };
-
-  const handleSignOut = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
-    setAuthToken(null);
-    setSubmitState("idle");
-    setSubmitResult(null);
-  };
-
   const handleSubmit = async () => {
-    if (!authToken || hasErrors) return;
+    if (hasErrors) return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSubmitState("submitting");
@@ -122,7 +77,6 @@ export default function SubmitScreen() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${authToken}`,
         },
       });
       
@@ -157,18 +111,7 @@ export default function SubmitScreen() {
   };
 
   const displayMetadata = metadata || codeMetadata;
-  const isAuthenticated = !!authToken;
-  const canSubmit = isAuthenticated && !hasErrors && submitState !== "submitting";
-
-  if (isCheckingAuth) {
-    return (
-      <ThemedView style={styles.container}>
-        <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
-      </ThemedView>
-    );
-  }
+  const canSubmit = !hasErrors && submitState !== "submitting";
 
   return (
     <ThemedView style={styles.container}>
@@ -236,42 +179,12 @@ export default function SubmitScreen() {
         </Card>
 
         <Card style={styles.card}>
-          <View style={styles.authHeader}>
-            <Feather 
-              name={isAuthenticated ? "check-circle" : "github"} 
-              size={20} 
-              color={isAuthenticated ? theme.success : theme.text} 
-            />
-            <ThemedText style={styles.sectionTitle}>
-              {isAuthenticated ? "Connected to Stellarin" : "Sign in to Submit"}
+          <View style={styles.infoRow}>
+            <Feather name="info" size={18} color={theme.textSecondary} />
+            <ThemedText style={[styles.infoText, { color: theme.textSecondary }]}>
+              Your Practa will be uploaded to Stellarin for review. You'll complete sign-in on the Stellarin portal.
             </ThemedText>
           </View>
-          
-          {isAuthenticated ? (
-            <View style={styles.authContent}>
-              <ThemedText style={[styles.authText, { color: theme.textSecondary }]}>
-                Your Practa will be submitted for review
-              </ThemedText>
-              <Pressable onPress={handleSignOut} style={styles.signOutLink}>
-                <ThemedText style={[styles.linkText, { color: theme.primary }]}>
-                  Sign out
-                </ThemedText>
-              </Pressable>
-            </View>
-          ) : (
-            <View style={styles.authContent}>
-              <ThemedText style={[styles.authText, { color: theme.textSecondary }]}>
-                Sign in with your GitHub account to submit your Practa for review
-              </ThemedText>
-              <Pressable
-                style={[styles.githubButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-                onPress={handleSignIn}
-              >
-                <Feather name="github" size={20} color={theme.text} />
-                <ThemedText style={styles.githubButtonText}>Sign in with GitHub</ThemedText>
-              </Pressable>
-            </View>
-          )}
         </Card>
 
         {submitState === "success" && submitResult ? (
@@ -283,7 +196,7 @@ export default function SubmitScreen() {
               </ThemedText>
             </View>
             <ThemedText style={[styles.successText, { color: theme.textSecondary }]}>
-              Your Practa has been submitted for review. You can track its status on the Stellarin portal.
+              Your Practa has been uploaded. Complete sign-in on Stellarin to finalize your submission.
             </ThemedText>
             <View style={styles.submissionDetails}>
               <ThemedText style={styles.detailLabel}>Submission ID</ThemedText>
@@ -303,7 +216,7 @@ export default function SubmitScreen() {
               style={[styles.viewStatusButton, { backgroundColor: theme.primary }]}
               onPress={handleViewStatus}
             >
-              <ThemedText style={styles.viewStatusText}>View on Stellarin</ThemedText>
+              <ThemedText style={styles.viewStatusText}>Complete on Stellarin</ThemedText>
             </Pressable>
           </Card>
         ) : null}
@@ -340,7 +253,7 @@ export default function SubmitScreen() {
               <Feather name="upload-cloud" size={20} color="#FFFFFF" />
             )}
             <ThemedText style={styles.submitButtonText}>
-              {submitState === "submitting" ? "Submitting..." : "Submit to Stellarin"}
+              {submitState === "submitting" ? "Uploading..." : "Submit to Stellarin"}
             </ThemedText>
           </Pressable>
         ) : null}
@@ -348,10 +261,6 @@ export default function SubmitScreen() {
         {hasErrors ? (
           <ThemedText style={[styles.warningText, { color: theme.error }]}>
             Fix all validation errors before submitting
-          </ThemedText>
-        ) : !isAuthenticated ? (
-          <ThemedText style={[styles.warningText, { color: theme.textSecondary }]}>
-            Sign in with GitHub to enable submission
           </ThemedText>
         ) : null}
       </ScrollView>
@@ -362,11 +271,6 @@ export default function SubmitScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
   },
   header: {
     flexDirection: "row",
@@ -433,42 +337,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500",
   },
-  authHeader: {
+  infoRow: {
     flexDirection: "row",
-    alignItems: "center",
     gap: Spacing.sm,
-    marginBottom: Spacing.md,
+    alignItems: "flex-start",
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  authContent: {
-    gap: Spacing.md,
-  },
-  authText: {
+  infoText: {
+    flex: 1,
     fontSize: 14,
     lineHeight: 20,
-  },
-  signOutLink: {
-    alignSelf: "flex-start",
-  },
-  linkText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  githubButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.sm,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-  },
-  githubButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
   },
   successHeader: {
     flexDirection: "row",
