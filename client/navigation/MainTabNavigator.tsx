@@ -6,6 +6,7 @@ import { Platform, StyleSheet } from "react-native";
 import HomeScreen from "@/screens/HomeScreen";
 import TimelineScreen from "@/screens/TimelineScreen";
 import CommunityScreen from "@/screens/CommunityScreen";
+import PractaScreen from "@/screens/PractaScreen";
 import DevScreen from "@/screens/DevScreen";
 import { useTheme } from "@/hooks/useTheme";
 
@@ -14,6 +15,7 @@ const isDev = __DEV__;
 export type MainTabParamList = {
   HomeTab: undefined;
   TimelineTab: undefined;
+  PractaTab: undefined;
   CommunityTab: undefined;
   DevTab: undefined;
 };
@@ -72,6 +74,17 @@ export default function MainTabNavigator() {
           headerTitle: "Your Journey",
           tabBarIcon: ({ color, size }) => (
             <Feather name="book-open" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="PractaTab"
+        component={PractaScreen}
+        options={{
+          title: "Practa",
+          headerTitle: "All Practa",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="layers" size={size} color={color} />
           ),
         }}
       />
