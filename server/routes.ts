@@ -205,10 +205,10 @@ ${config.version}
     archive.directory(practaDir, "my-practa");
     
     if (manifest) {
-      archive.append(JSON.stringify(manifest, null, 2), { name: "manifest.json" });
+      archive.append(JSON.stringify(manifest, null, 2), { name: "my-practa/metadata.json" });
     }
     if (readme) {
-      archive.append(readme, { name: "README.md" });
+      archive.append(readme, { name: "my-practa/README.md" });
     }
     
     archive.finalize();
@@ -300,8 +300,8 @@ ${config.version}
         passThrough.on("error", reject);
         
         archive.directory(practaDir, "my-practa");
-        archive.append(JSON.stringify(manifest, null, 2), { name: "manifest.json" });
-        archive.append(readme, { name: "README.md" });
+        archive.append(JSON.stringify(manifest, null, 2), { name: "my-practa/metadata.json" });
+        archive.append(readme, { name: "my-practa/README.md" });
         archive.finalize();
       });
 
