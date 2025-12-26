@@ -261,6 +261,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         localSha = fs.readFileSync(syncFilePath, "utf-8").trim();
       }
       
+      let gitHeadSha = "";
+      try {
+        const gitHeadPath = path.resolve(process.cwd(), ".git/HEAD");
+        if (fs.existsSync(gitHeadPath)) {
+          const headContent = fs.readFileSync(gitHeadPath, "utf-8").trim();
+          if (headContent.startsWith("ref: ")) {
+            const refPath = path.resolve(process.cwd(), ".git", headContent.substring(5));
+            if (fs.existsSync(refPath)) {
+              gitHeadSha = fs.readFileSync(refPath, "utf-8").trim();
+            }
+          } else {
+            gitHeadSha = headContent;
+          }
+        }
+      } catch {
+      }
+      
+      if (gitHeadSha && gitHeadSha === latestSha) {
+        if (localSha !== latestSha) {
+          fs.writeFileSync(syncFilePath, latestSha);
+          localSha = latestSha;
+        }
+      }
+      
       const isInSync = localSha === latestSha;
       
       res.json({
