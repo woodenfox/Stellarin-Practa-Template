@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import * as fs from "fs";
 import * as path from "path";
+import { PassThrough } from "node:stream";
 import archiver from "archiver";
 
 const CONFIG_PATH = path.resolve(process.cwd(), "practa.config.json");
@@ -166,12 +167,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const chunks: Buffer[] = [];
       const archive = archiver("zip", { zlib: { level: 9 } });
+      const passThrough = new PassThrough();
       
-      archive.on("data", (chunk) => chunks.push(chunk));
+      passThrough.on("data", (chunk) => chunks.push(chunk));
+      archive.pipe(passThrough);
       
       await new Promise<void>((resolve, reject) => {
-        archive.on("end", resolve);
+        passThrough.on("end", resolve);
         archive.on("error", reject);
+        passThrough.on("error", reject);
         
         archive.directory(practaDir, "my-practa");
         archive.file(CONFIG_PATH, { name: "practa.config.json" });
