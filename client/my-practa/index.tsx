@@ -2,12 +2,6 @@ import React, { useState } from "react";
 import { View, StyleSheet, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring,
-  withSequence,
-} from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -26,30 +20,10 @@ export function MyPracta({ context, onComplete, onSkip }: MyPractaProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [tapCount, setTapCount] = useState(0);
-  
-  const scale = useSharedValue(1);
-  const rotation = useSharedValue(0);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: scale.value },
-      { rotate: `${rotation.value}deg` },
-    ],
-  }));
+  const [isPressed, setIsPressed] = useState(false);
 
   const handleTap = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
-    scale.value = withSequence(
-      withSpring(1.2, { damping: 10 }),
-      withSpring(1, { damping: 15 })
-    );
-    rotation.value = withSequence(
-      withSpring(10, { damping: 10 }),
-      withSpring(-10, { damping: 10 }),
-      withSpring(0, { damping: 15 })
-    );
-    
     setTapCount(prev => prev + 1);
   };
 
@@ -75,17 +49,26 @@ export function MyPracta({ context, onComplete, onSkip }: MyPractaProps) {
           Welcome to your first Practa
         </ThemedText>
 
-        <Pressable onPress={handleTap}>
-          <Animated.View style={animatedStyle}>
-            <Card style={{ ...styles.tapCard, borderColor: theme.primary + "40" }}>
-              <View style={[styles.tapCircle, { backgroundColor: theme.primary + "20" }]}>
-                <ThemedText style={[styles.tapCount, { color: theme.primary }]}>
-                  {tapCount}
-                </ThemedText>
-              </View>
-              <ThemedText style={styles.tapLabel}>Tap me</ThemedText>
-            </Card>
-          </Animated.View>
+        <Pressable 
+          onPress={handleTap}
+          onPressIn={() => setIsPressed(true)}
+          onPressOut={() => setIsPressed(false)}
+          style={({ pressed }) => [
+            styles.tapPressable,
+            { transform: [{ scale: pressed ? 0.95 : 1 }] }
+          ]}
+        >
+          <Card style={{ ...styles.tapCard, borderColor: theme.primary + "40" }}>
+            <View style={[
+              styles.tapCircle, 
+              { backgroundColor: isPressed ? theme.primary + "40" : theme.primary + "20" }
+            ]}>
+              <ThemedText style={[styles.tapCount, { color: theme.primary }]}>
+                {tapCount}
+              </ThemedText>
+            </View>
+            <ThemedText style={styles.tapLabel}>Tap me</ThemedText>
+          </Card>
         </Pressable>
 
         <ThemedText style={[styles.hint, { color: theme.textSecondary }]}>
@@ -144,6 +127,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
     marginBottom: Spacing["2xl"],
+  },
+  tapPressable: {
+    // Container for tap animation
   },
   tapCard: {
     padding: Spacing.xl,
