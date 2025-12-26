@@ -6,7 +6,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withSequence,
   Easing,
 } from "react-native-reanimated";
 
@@ -16,7 +15,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { PractaContext, PractaOutput, PractaCompleteHandler } from "@/types/flow";
 
-interface ExampleAffirmationPractaProps {
+interface MyPractaProps {
   context: PractaContext;
   onComplete: PractaCompleteHandler;
   onSkip?: () => void;
@@ -33,15 +32,14 @@ const AFFIRMATIONS = [
   "I am open to new possibilities.",
 ];
 
-export function ExampleAffirmationPracta({
+export function MyPracta({
   context,
   onComplete,
   onSkip,
-}: ExampleAffirmationPractaProps) {
+}: MyPractaProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [affirmation, setAffirmation] = useState("");
-  const [hasRead, setHasRead] = useState(false);
 
   const textOpacity = useSharedValue(0);
   const textScale = useSharedValue(0.9);
@@ -69,8 +67,6 @@ export function ExampleAffirmationPracta({
       metadata: {
         source: "system",
         duration: 15,
-        riceEarned: 3,
-        practaType: "example-affirmation",
       },
     });
   };
@@ -112,16 +108,15 @@ export function ExampleAffirmationPracta({
 }
 
 export const metadata = {
-  type: "example-affirmation",
-  name: "Daily Affirmation",
-  description: "Receive a positive affirmation to start your day",
-  author: "Stellarin Community",
+  type: "my-practa",
+  name: "My Practa",
+  description: "Edit this to create your own Practa experience",
+  author: "Your Name",
   version: "1.0.0",
-  riceRange: [1, 5],
   estimatedDuration: 15,
 };
 
-export default ExampleAffirmationPracta;
+export default MyPracta;
 
 const styles = StyleSheet.create({
   container: {

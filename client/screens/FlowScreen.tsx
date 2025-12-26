@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState, useMemo } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import { View, StyleSheet, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -6,15 +6,14 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
-import { FlowCelebration } from "@/components/FlowCelebration";
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing } from "@/constants/theme";
+import { Spacing, BorderRadius } from "@/constants/theme";
 import { useFlow, useCurrentPracta } from "@/context/FlowContext";
-import { FlowDefinition, FlowExecutionState, PractaOutput, PractaType, PractaContext, PractaCompleteHandler } from "@/types/flow";
-import { JournalPracta, SilentMeditationPracta, PersonalizedMeditationPracta, TendPracta, IntegrationBreathPracta, ExampleAffirmationPracta } from "@/practa";
+import { FlowDefinition, FlowExecutionState, PractaOutput, PractaContext, PractaCompleteHandler } from "@/types/flow";
+import { MyPracta } from "@/my-practa";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
-import { useMeditation } from "@/context/MeditationContext";
-import { useTimeline } from "@/context/TimelineContext";
 
 interface PractaComponentProps {
   context: PractaContext;
@@ -25,16 +24,38 @@ interface PractaComponentProps {
 type PractaComponent = React.ComponentType<PractaComponentProps>;
 
 const PRACTA_COMPONENTS: Record<string, PractaComponent> = {
-  "journal": JournalPracta,
-  "silent-meditation": SilentMeditationPracta,
-  "personalized-meditation": PersonalizedMeditationPracta,
-  "tend": TendPracta,
-  "integration-breath": IntegrationBreathPracta,
-  "example-affirmation": ExampleAffirmationPracta,
+  "my-practa": MyPracta,
 };
 
 type FlowRouteProp = RouteProp<RootStackParamList, "Flow">;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+function CompletionScreen({ onContinue }: { onContinue: () => void }) {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  return (
+    <ThemedView style={styles.completionContainer}>
+      <View style={styles.completionContent}>
+        <View style={[styles.checkCircle, { backgroundColor: theme.primary }]}>
+          <Feather name="check" size={48} color="white" />
+        </View>
+        <ThemedText style={styles.completionTitle}>Practa Complete</ThemedText>
+        <ThemedText style={[styles.completionSubtitle, { color: theme.textSecondary }]}>
+          Your Practa ran successfully!
+        </ThemedText>
+      </View>
+      <View style={[styles.completionFooter, { paddingBottom: insets.bottom + Spacing.lg }]}>
+        <Pressable
+          onPress={onContinue}
+          style={[styles.continueButton, { backgroundColor: theme.primary }]}
+        >
+          <ThemedText style={styles.continueButtonText}>Back to Preview</ThemedText>
+        </Pressable>
+      </View>
+    </ThemedView>
+  );
+}
 
 export default function FlowScreen() {
   const { theme } = useTheme();
@@ -43,128 +64,20 @@ export default function FlowScreen() {
   const route = useRoute<FlowRouteProp>();
   const { startFlow, currentFlow, abortFlow, setOnFlowComplete } = useFlow();
   const { practa, context, complete } = useCurrentPracta();
-  const { addJournalEntry, addSession, addFlowCompletion, sessions, journalEntries, tendCompletions } = useMeditation();
-  const { publish: addItem } = useTimeline();
-  
-  const [totalRiceEarned, setTotalRiceEarned] = useState(0);
 
   const { flow } = route.params;
 
-  const currentStreak = useMemo(() => {
-    let streak = 0;
-    const today = new Date();
-
-    for (let i = 0; i <= 365; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - i);
-      const dateStr = date.toISOString().split("T")[0];
-      const hasActivity =
-        sessions.some((s) => s.date === dateStr) ||
-        journalEntries.some((e) => e.date === dateStr) ||
-        tendCompletions.some((c) => c.date === dateStr);
-
-      if (hasActivity) {
-        streak++;
-      } else if (i > 0) {
-        break;
-      }
-    }
-
-    return streak;
-  }, [sessions, journalEntries, tendCompletions]);
-
-  const persistPractaOutput = useCallback(async (type: PractaType, output: PractaOutput) => {
-    if (output.metadata?.skipped) return;
-
-    const today = new Date().toISOString().split("T")[0];
-    const now = new Date().toISOString();
-    let riceFromAction = 0;
-
-    if (type === "journal" && output.content?.type === "text") {
-      const entry = {
-        id: Date.now().toString(),
-        date: today,
-        content: output.content.value,
-        createdAt: now,
-        type: "text" as const,
-      };
-      riceFromAction = await addJournalEntry(entry);
-
-      await addItem({
-        type: "journal",
-        content: {
-          type: "text",
-          value: output.content.value,
-        },
-        metadata: output.metadata,
-      });
-    } else if (type === "silent-meditation" || type === "personalized-meditation") {
-      const duration = (output.metadata?.duration as number) || 180;
-      riceFromAction = Math.floor(duration / 60) * 10;
-
-      const session = {
-        id: Date.now().toString(),
-        date: today,
-        duration,
-        riceEarned: riceFromAction,
-        completedAt: now,
-      };
-      await addSession(session);
-
-      await addItem({
-        type: "meditation",
-        content: {
-          type: "text",
-          value: `${Math.floor(duration / 60)} minute meditation`,
-        },
-        metadata: {
-          ...output.metadata,
-          duration,
-          riceEarned: riceFromAction,
-          meditationType: type === "personalized-meditation" ? "personalized" : "silent",
-          meditationName: type === "personalized-meditation" 
-            ? (output.metadata?.meditationName as string) || "Personalized Meditation"
-            : "Silent Meditation",
-        },
-      });
-    } else if (type === "tend" && output.metadata?.cardTitle) {
-      await addItem({
-        type: "milestone",
-        content: {
-          type: "text",
-          value: output.metadata.cardPrompt as string,
-        },
-        metadata: {
-          source: "system",
-          cardId: output.metadata.cardId as string,
-          cardTitle: output.metadata.cardTitle as string,
-          practaType: "tend",
-        },
-      });
-    }
-
-    if (riceFromAction > 0) {
-      setTotalRiceEarned(prev => prev + riceFromAction);
-    }
-  }, [addJournalEntry, addSession, addItem]);
-
   useEffect(() => {
-    setTotalRiceEarned(0);
     startFlow(flow);
 
     setOnFlowComplete(() => (flowState: FlowExecutionState) => {
-      const hasCompletedPracta = flowState.practaOutputs.some(
-        (output: PractaOutput) => !output.metadata?.skipped
-      );
-      if (hasCompletedPracta) {
-        addFlowCompletion(flow.id);
-      }
+      console.log("Flow completed:", flowState);
     });
 
     return () => {
       setOnFlowComplete(() => undefined);
     };
-  }, [flow, startFlow, setOnFlowComplete, addFlowCompletion]);
+  }, [flow, startFlow, setOnFlowComplete]);
 
   const handleClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -180,30 +93,21 @@ export default function FlowScreen() {
     complete(emptyOutput);
   }, [complete]);
 
-  const handleComplete = useCallback(async (output: PractaOutput) => {
-    if (practa) {
-      await persistPractaOutput(practa.type, output);
-    }
+  const handleComplete = useCallback((output: PractaOutput) => {
+    console.log("Practa output:", output);
     complete(output);
-  }, [complete, practa, persistPractaOutput]);
-
-  if (!currentFlow || currentFlow.status === "aborted") {
-    return null;
-  }
+  }, [complete]);
 
   const handleContinue = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
 
+  if (!currentFlow || currentFlow.status === "aborted") {
+    return null;
+  }
+
   if (currentFlow.status === "completed") {
-    return (
-      <FlowCelebration
-        flow={currentFlow.flowDefinition}
-        riceEarned={totalRiceEarned}
-        streak={currentStreak}
-        onContinue={handleContinue}
-      />
-    );
+    return <CompletionScreen onContinue={handleContinue} />;
   }
 
   if (!practa || !context) {
@@ -252,7 +156,13 @@ export default function FlowScreen() {
       <View style={styles.practaContainer}>
         {(() => {
           const PractaComponent = PRACTA_COMPONENTS[practa.type];
-          if (!PractaComponent) return null;
+          if (!PractaComponent) {
+            return (
+              <ThemedView style={styles.errorContainer}>
+                <ThemedText>Unknown Practa type: {practa.type}</ThemedText>
+              </ThemedView>
+            );
+          }
           return (
             <PractaComponent
               context={context}
@@ -295,5 +205,50 @@ const styles = StyleSheet.create({
   },
   practaContainer: {
     flex: 1,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  completionContainer: {
+    flex: 1,
+  },
+  completionContent: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: Spacing.xl,
+  },
+  checkCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.xl,
+  },
+  completionTitle: {
+    fontSize: 28,
+    fontWeight: "700",
+    marginBottom: Spacing.sm,
+    textAlign: "center",
+  },
+  completionSubtitle: {
+    fontSize: 16,
+    textAlign: "center",
+  },
+  completionFooter: {
+    paddingHorizontal: Spacing.lg,
+  },
+  continueButton: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+  },
+  continueButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

@@ -1,1 +1,0 @@
-export { registerTranscriptionRoutes } from "./routes";

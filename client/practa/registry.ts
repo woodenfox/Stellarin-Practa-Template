@@ -1,66 +1,33 @@
-import { PractaType, FlowDefinition, PractaDefinition } from "@/types/flow";
+import { FlowDefinition, PractaDefinition } from "@/types/flow";
 
-export interface CommunityPractaMetadata {
+export interface PractaMetadata {
   type: string;
   name: string;
   description: string;
   author: string;
   version: string;
-  riceRange?: [number, number];
   estimatedDuration?: number;
 }
 
-export const PRACTA_DEFINITIONS: Record<PractaType, Omit<PractaDefinition, "id">> = {
-  "journal": {
-    type: "journal",
-    name: "Journal",
-    description: "Write or record your thoughts and feelings",
-  },
-  "silent-meditation": {
-    type: "silent-meditation",
-    name: "Silent Meditation",
-    description: "A timed meditation session with a gong",
-  },
-  "personalized-meditation": {
-    type: "personalized-meditation",
-    name: "Personalized Meditation",
-    description: "AI-generated meditation based on your reflections",
-  },
-  "tend": {
-    type: "tend",
-    name: "Tend Card",
-    description: "Draw a daily wellness card for mindful focus",
-  },
-  "integration-breath": {
-    type: "integration-breath",
-    name: "Integration Breath",
-    description: "A one-minute breath to arrive in Self and unify your inner system",
+export const PRACTA_DEFINITIONS: Record<string, Omit<PractaDefinition, "id">> = {
+  "my-practa": {
+    type: "my-practa" as any,
+    name: "My Practa",
+    description: "Your custom Practa - edit my-practa/index.tsx",
   },
 };
 
-export const COMMUNITY_PRACTA: Record<string, CommunityPractaMetadata> = {
-  "example-affirmation": {
-    type: "example-affirmation",
-    name: "Daily Affirmation",
-    description: "Receive a positive affirmation to start your day",
-    author: "Stellarin Community",
-    version: "1.0.0",
-    riceRange: [1, 5],
-    estimatedDuration: 15,
-  },
-};
-
-export function createPracta(type: PractaType, id?: string): PractaDefinition {
+export function createPracta(type: string, id?: string): PractaDefinition {
   const definition = PRACTA_DEFINITIONS[type];
   return {
     ...definition,
     id: id || `${type}_${Date.now()}`,
-  };
+  } as PractaDefinition;
 }
 
 export function createFlow(
   name: string,
-  practaTypes: PractaType[],
+  practaTypes: string[],
   options?: { id?: string; description?: string }
 ): FlowDefinition {
   return {
@@ -70,62 +37,3 @@ export function createFlow(
     practas: practaTypes.map((type, index) => createPracta(type, `${type}_${index}`)),
   };
 }
-
-export const PRESET_FLOWS = {
-  meditate: createFlow(
-    "Meditate",
-    ["silent-meditation"],
-    {
-      id: "meditate",
-      description: "A timed silent meditation",
-    }
-  ),
-  journal: createFlow(
-    "Journal",
-    ["journal"],
-    {
-      id: "journal",
-      description: "Write your thoughts and feelings",
-    }
-  ),
-  tend: createFlow(
-    "Tend",
-    ["tend"],
-    {
-      id: "tend",
-      description: "Draw a daily wellness card",
-    }
-  ),
-  morningReflection: createFlow(
-    "Morning Reflection",
-    ["tend", "journal", "personalized-meditation"],
-    {
-      id: "morning-reflection",
-      description: "Draw a tend card, journal your thoughts, then receive a personalized meditation",
-    }
-  ),
-  deepDive: createFlow(
-    "Deep Dive",
-    ["journal", "silent-meditation"],
-    {
-      id: "deep-dive",
-      description: "Journal then sit with your thoughts in silence",
-    }
-  ),
-  eveningWinddown: createFlow(
-    "End of Day Winddown",
-    ["journal", "tend", "silent-meditation"],
-    {
-      id: "evening-winddown",
-      description: "Reflect on your day, draw a wellness card, then unwind with meditation",
-    }
-  ),
-  integrationBreath: createFlow(
-    "Integration Breath",
-    ["integration-breath"],
-    {
-      id: "integration-breath",
-      description: "A one-minute breath to arrive in Self and unify your inner system",
-    }
-  ),
-};

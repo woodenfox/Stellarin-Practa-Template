@@ -11,33 +11,24 @@ import { queryClient } from "@/lib/query-client";
 
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { MeditationProvider } from "@/context/MeditationContext";
 import { FlowProvider } from "@/context/FlowContext";
-import { TimelineProvider } from "@/context/TimelineContext";
-import { OnboardingProvider } from "@/context/OnboardingContext";
 
 export default function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <OnboardingProvider>
-          <MeditationProvider>
-            <TimelineProvider>
-              <FlowProvider>
-                <SafeAreaProvider>
-                  <GestureHandlerRootView style={styles.root}>
-                    <KeyboardProvider>
-                      <NavigationContainer>
-                        <RootStackNavigator />
-                      </NavigationContainer>
-                      <StatusBar style="auto" />
-                    </KeyboardProvider>
-                  </GestureHandlerRootView>
-                </SafeAreaProvider>
-              </FlowProvider>
-            </TimelineProvider>
-          </MeditationProvider>
-        </OnboardingProvider>
+        <FlowProvider>
+          <SafeAreaProvider>
+            <GestureHandlerRootView style={styles.root}>
+              <KeyboardProvider>
+                <NavigationContainer>
+                  <RootStackNavigator />
+                </NavigationContainer>
+                <StatusBar style="auto" />
+              </KeyboardProvider>
+            </GestureHandlerRootView>
+          </SafeAreaProvider>
+        </FlowProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

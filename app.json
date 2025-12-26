@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "Stellarin",
-    "slug": "stellarin",
+    "name": "Practa Starter",
+    "slug": "practa-starter",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "stellarin",
+    "scheme": "practa-starter",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ricemeditation.app"
+      "bundleIdentifier": "com.practa.starter"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +21,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.ricemeditation.app"
+      "package": "com.practa.starter"
     },
     "web": {
       "output": "single",
