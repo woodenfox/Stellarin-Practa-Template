@@ -10,18 +10,19 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { PRACTA_DEFINITIONS, createFlow } from "@/practa/registry";
-import { PractaType } from "@/types/flow";
+import { PRACTA_DEFINITIONS, COMMUNITY_PRACTA, createFlow } from "@/practa/registry";
+import { PractaType, FlowDefinition, PractaDefinition } from "@/types/flow";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const PRACTA_ICONS: Record<PractaType, keyof typeof Feather.glyphMap> = {
+const PRACTA_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   "journal": "edit-3",
   "silent-meditation": "moon",
   "personalized-meditation": "headphones",
   "tend": "heart",
   "integration-breath": "wind",
+  "example-affirmation": "sun",
 };
 
 export default function PractaScreen() {
@@ -29,15 +30,33 @@ export default function PractaScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
 
-  const practaTypes = Object.keys(PRACTA_DEFINITIONS) as PractaType[];
+  const corePractaTypes = Object.keys(PRACTA_DEFINITIONS) as PractaType[];
+  const communityPractaTypes = Object.keys(COMMUNITY_PRACTA);
 
-  const handlePractaPress = (type: PractaType) => {
+  const handleCorePractaPress = (type: PractaType) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const definition = PRACTA_DEFINITIONS[type];
     const flow = createFlow(definition.name, [type], {
       id: `test-${type}`,
       description: definition.description,
     });
+    navigation.navigate("Flow", { flow });
+  };
+
+  const handleCommunityPractaPress = (type: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const definition = COMMUNITY_PRACTA[type];
+    const flow: FlowDefinition = {
+      id: `test-community-${type}`,
+      name: definition.name,
+      description: definition.description,
+      practas: [{
+        id: `${type}_0`,
+        type: type as PractaType,
+        name: definition.name,
+        description: definition.description,
+      }],
+    };
     navigation.navigate("Flow", { flow });
   };
 
@@ -50,18 +69,19 @@ export default function PractaScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <ThemedText style={styles.subtitle}>
-          Test individual practa components
+        <ThemedText style={styles.sectionTitle}>Core Practa</ThemedText>
+        <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
+          Built-in wellbeing experiences
         </ThemedText>
 
-        {practaTypes.map((type) => {
+        {corePractaTypes.map((type) => {
           const definition = PRACTA_DEFINITIONS[type];
           const icon = PRACTA_ICONS[type] || "circle";
 
           return (
             <Pressable
               key={type}
-              onPress={() => handlePractaPress(type)}
+              onPress={() => handleCorePractaPress(type)}
               style={({ pressed }) => [
                 styles.practaCard,
                 { backgroundColor: theme.backgroundDefault },
@@ -81,6 +101,55 @@ export default function PractaScreen() {
             </Pressable>
           );
         })}
+
+        {communityPractaTypes.length > 0 ? (
+          <>
+            <ThemedText style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>
+              Community Practa
+            </ThemedText>
+            <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
+              Created by trusted developers
+            </ThemedText>
+
+            {communityPractaTypes.map((type) => {
+              const definition = COMMUNITY_PRACTA[type];
+              const icon = PRACTA_ICONS[type] || "users";
+
+              return (
+                <Pressable
+                  key={type}
+                  onPress={() => handleCommunityPractaPress(type)}
+                  style={({ pressed }) => [
+                    styles.practaCard,
+                    { backgroundColor: theme.backgroundDefault },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <View style={[styles.iconContainer, { backgroundColor: theme.accent + "20" }]}>
+                    <Feather name={icon} size={24} color={theme.accent} />
+                  </View>
+                  <View style={styles.textContainer}>
+                    <View style={styles.nameRow}>
+                      <ThemedText style={styles.practaName}>{definition.name}</ThemedText>
+                      <View style={[styles.communityBadge, { backgroundColor: theme.accent + "20" }]}>
+                        <ThemedText style={[styles.badgeText, { color: theme.accent }]}>
+                          Community
+                        </ThemedText>
+                      </View>
+                    </View>
+                    <ThemedText style={[styles.practaDescription, { color: theme.textSecondary }]}>
+                      {definition.description}
+                    </ThemedText>
+                    <ThemedText style={[styles.authorText, { color: theme.textSecondary }]}>
+                      by {definition.author}
+                    </ThemedText>
+                  </View>
+                  <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+                </Pressable>
+              );
+            })}
+          </>
+        ) : null}
       </ScrollView>
     </ThemedView>
   );
@@ -94,9 +163,12 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     gap: Spacing.md,
   },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
   subtitle: {
     fontSize: 14,
-    opacity: 0.7,
     marginBottom: Spacing.sm,
   },
   practaCard: {
@@ -120,12 +192,30 @@ const styles = StyleSheet.create({
   textContainer: {
     flex: 1,
   },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    marginBottom: 2,
+  },
   practaName: {
     fontSize: 17,
     fontWeight: "600",
-    marginBottom: 2,
   },
   practaDescription: {
     fontSize: 14,
+  },
+  authorText: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  communityBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "600",
   },
 });

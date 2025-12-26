@@ -1,0 +1,13 @@
+# Community Practa Directory
+# 
+# This folder contains third-party practa submitted by trusted developers.
+# Each practa lives in its own subfolder with an index.tsx and exported metadata.
+#
+# Example structure:
+#   community/
+#     gratitude-reflection/
+#       index.tsx
+#     body-scan/
+#       index.tsx
+#
+# See docs/practa-plugin-architecture.md for contribution guidelines.

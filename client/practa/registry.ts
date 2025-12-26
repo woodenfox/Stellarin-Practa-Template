@@ -1,5 +1,15 @@
 import { PractaType, FlowDefinition, PractaDefinition } from "@/types/flow";
 
+export interface CommunityPractaMetadata {
+  type: string;
+  name: string;
+  description: string;
+  author: string;
+  version: string;
+  riceRange?: [number, number];
+  estimatedDuration?: number;
+}
+
 export const PRACTA_DEFINITIONS: Record<PractaType, Omit<PractaDefinition, "id">> = {
   "journal": {
     type: "journal",
@@ -25,6 +35,18 @@ export const PRACTA_DEFINITIONS: Record<PractaType, Omit<PractaDefinition, "id">
     type: "integration-breath",
     name: "Integration Breath",
     description: "A one-minute breath to arrive in Self and unify your inner system",
+  },
+};
+
+export const COMMUNITY_PRACTA: Record<string, CommunityPractaMetadata> = {
+  "example-affirmation": {
+    type: "example-affirmation",
+    name: "Daily Affirmation",
+    description: "Receive a positive affirmation to start your day",
+    author: "Stellarin Community",
+    version: "1.0.0",
+    riceRange: [1, 5],
+    estimatedDuration: 15,
   },
 };
 

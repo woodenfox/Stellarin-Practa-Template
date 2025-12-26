@@ -11,7 +11,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing } from "@/constants/theme";
 import { useFlow, useCurrentPracta } from "@/context/FlowContext";
 import { FlowDefinition, FlowExecutionState, PractaOutput, PractaType, PractaContext, PractaCompleteHandler } from "@/types/flow";
-import { JournalPracta, SilentMeditationPracta, PersonalizedMeditationPracta, TendPracta, IntegrationBreathPracta } from "@/practa";
+import { JournalPracta, SilentMeditationPracta, PersonalizedMeditationPracta, TendPracta, IntegrationBreathPracta, ExampleAffirmationPracta } from "@/practa";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useMeditation } from "@/context/MeditationContext";
 import { useTimeline } from "@/context/TimelineContext";
@@ -24,12 +24,13 @@ interface PractaComponentProps {
 
 type PractaComponent = React.ComponentType<PractaComponentProps>;
 
-const PRACTA_COMPONENTS: Record<PractaType, PractaComponent> = {
+const PRACTA_COMPONENTS: Record<string, PractaComponent> = {
   "journal": JournalPracta,
   "silent-meditation": SilentMeditationPracta,
   "personalized-meditation": PersonalizedMeditationPracta,
   "tend": TendPracta,
   "integration-breath": IntegrationBreathPracta,
+  "example-affirmation": ExampleAffirmationPracta,
 };
 
 type FlowRouteProp = RouteProp<RootStackParamList, "Flow">;
