@@ -91,6 +91,23 @@ interface PractaOutput {
 | `author` | Yes | Your name |
 | `version` | Yes | Semantic version (e.g., "1.0.0") |
 | `estimatedDuration` | No | Time in seconds |
+| `assets` | No | Object mapping asset names to filenames in assets/ folder |
+
+#### Assets Example
+
+```typescript
+export const metadata = {
+  type: "gratitude-reflection",
+  name: "Gratitude Reflection",
+  // ... other fields
+  assets: {
+    background: "forest.png",
+    chime: "bell.mp3",
+  },
+};
+```
+
+Asset URLs are resolved at runtime by the Stellarin app. Use filenames only (no paths) - all assets must be in the flat `assets/` folder.
 
 ## Validation
 

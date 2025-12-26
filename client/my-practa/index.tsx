@@ -105,6 +105,11 @@ export const metadata = {
   author: "Stellarin",
   version: "1.0.0",
   estimatedDuration: 15,
+  // Optional: Reference local assets from the assets/ folder
+  // assets: {
+  //   background: "forest.png",
+  //   chime: "bell.mp3",
+  // },
 };
 
 const styles = StyleSheet.create({

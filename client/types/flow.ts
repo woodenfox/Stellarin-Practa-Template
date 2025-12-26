@@ -1,5 +1,9 @@
 export type PractaType = string;
 
+export interface PractaAssets {
+  [key: string]: string; // Maps asset name to filename in assets/ folder
+}
+
 export interface PractaContent {
   type: "text" | "image";
   value: string;
@@ -10,6 +14,7 @@ export interface PractaMetadata {
   themes?: string[];
   duration?: number;
   emotionTags?: string[];
+  assets?: PractaAssets;
   [key: string]: unknown;
 }
 
