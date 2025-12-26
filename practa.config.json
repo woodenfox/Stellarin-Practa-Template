@@ -1,8 +1,8 @@
 {
-  "type": "my-practa",
-  "name": "My Practa",
-  "description": "Edit this to create your own Practa experience",
-  "author": "Your Name",
+  "type": "my-practa-123",
+  "name": "Test Practa 123",
+  "description": "This is it woot",
+  "author": "Mike M",
   "version": "1.0.0",
   "estimatedDuration": 15
 }
