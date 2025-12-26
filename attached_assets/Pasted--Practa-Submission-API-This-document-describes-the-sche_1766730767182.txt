@@ -1,0 +1,285 @@
+# Practa Submission API
+
+This document describes the schema and process for submitting a Practa component to the Stellarin community repository via the Practa Validator Service.
+
+## Overview
+
+Publishers submit their Practa components as ZIP files. The system validates the package structure, security, and quality before human review. Approved components are published to the Stellarin repository.
+
+## Authentication
+
+Before submitting, publishers must authenticate via GitHub OAuth to:
+- Verify their identity
+- Link submissions to their GitHub account
+- Manage their published Practas (update/delete)
+
+### Authentication Flow
+
+1. Navigate to the Practa Validator Service
+2. Click "Sign in with GitHub"
+3. Authorize the application
+4. Your publisher profile is automatically created
+
+## ZIP Package Structure
+
+Your Practa ZIP file must contain the following structure:
+
+```
+my-practa/
+├── index.tsx          # Required: Main component file
+├── manifest.json      # Required: Package metadata
+├── README.md          # Required: Documentation
+├── styles.css         # Optional: Component styles
+└── assets/            # Optional: Static assets
+    └── icon.svg
+```
+
+## Manifest Schema
+
+The `manifest.json` file defines your Practa's metadata:
+
+```json
+{
+  "name": "my-practa-component",
+  "version": "1.0.0",
+  "displayName": "My Practa Component",
+  "description": "A brief description of what this Practa does",
+  "author": {
+    "name": "Your Name",
+    "github": "your-github-username",
+    "email": "optional@email.com"
+  },
+  "type": "widget",
+  "category": "productivity",
+  "tags": ["utility", "dashboard"],
+  "props": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "description": "The title displayed in the component"
+    },
+    "theme": {
+      "type": "string",
+      "enum": ["light", "dark"],
+      "default": "light",
+      "description": "Color theme for the component"
+    }
+  },
+  "permissions": [],
+  "minStellarin": "2.0.0"
+}
+```
+
+### Manifest Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Unique package identifier (lowercase, hyphens allowed) |
+| `version` | string | Yes | Semantic version (e.g., "1.0.0") |
+| `displayName` | string | Yes | Human-readable name |
+| `description` | string | Yes | Brief description (max 200 chars) |
+| `author` | object | Yes | Author information |
+| `author.name` | string | Yes | Author's display name |
+| `author.github` | string | Yes | GitHub username (verified on submission) |
+| `author.email` | string | No | Contact email |
+| `type` | string | Yes | One of: "widget", "panel", "tool", "integration" |
+| `category` | string | Yes | Category for discovery |
+| `tags` | array | No | Search tags (max 5) |
+| `props` | object | No | Component prop definitions |
+| `permissions` | array | No | Required permissions |
+| `minStellarin` | string | No | Minimum Stellarin version |
+
+### Prop Definition Schema
+
+Each prop in the `props` object:
+
+```json
+{
+  "propName": {
+    "type": "string | number | boolean | array | object",
+    "required": true,
+    "default": "optional default value",
+    "description": "What this prop does",
+    "enum": ["option1", "option2"]
+  }
+}
+```
+
+## Component Requirements
+
+### index.tsx
+
+Your main component must:
+
+1. Export a default React component
+2. Accept a `props` object matching your manifest
+3. Not use prohibited patterns (eval, Function constructor, etc.)
+
+```tsx
+interface MyPractaProps {
+  title: string;
+  theme?: "light" | "dark";
+}
+
+export default function MyPracta({ title, theme = "light" }: MyPractaProps) {
+  return (
+    <div className={`practa-container ${theme}`}>
+      <h2>{title}</h2>
+      {/* Your component content */}
+    </div>
+  );
+}
+```
+
+### README.md
+
+Documentation must include:
+
+1. Component description
+2. Installation/usage instructions
+3. Props documentation
+4. At least one usage example
+
+## Base URL
+
+```
+https://stellarin-practa-verification.replit.app
+```
+
+## API Endpoints
+
+### Submit Practa
+
+```
+POST https://stellarin-practa-verification.replit.app/api/submissions/upload
+Content-Type: multipart/form-data
+Authorization: Required (GitHub OAuth session)
+```
+
+**Request Body:**
+- `file`: ZIP file (max 10MB)
+
+**Response:**
+
+```json
+{
+  "id": "sub_abc123",
+  "practaName": "my-practa-component",
+  "practaType": "widget",
+  "version": "1.0.0",
+  "status": "pending",
+  "validationScore": 85,
+  "validationChecks": [
+    {
+      "category": "structure",
+      "name": "Has index.tsx",
+      "passed": true
+    },
+    {
+      "category": "security",
+      "name": "No eval() usage",
+      "passed": true
+    }
+  ],
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+
+### Check Submission Status
+
+```
+GET /api/submissions/:id
+Authorization: Required
+```
+
+### List My Submissions
+
+```
+GET /api/submissions
+Authorization: Required
+```
+
+### Delete Submission
+
+```
+DELETE /api/submissions/:id
+Authorization: Required (must be owner)
+```
+
+## Validation Checks
+
+Submissions are automatically validated for:
+
+### Structure (Required)
+- Has `index.tsx` file
+- Has `manifest.json` file
+- Has `README.md` file
+- Valid JSON in manifest
+
+### Security (Required)
+- No `eval()` usage
+- No `Function()` constructor
+- No obfuscated code patterns
+- No external script loading
+- ZIP slip protection
+
+### Contract Compliance
+- Default export in index.tsx
+- Props match manifest definition
+- Valid TypeScript/JSX syntax
+
+### Quality
+- README has content (min 100 chars)
+- Manifest has description
+- Version follows semver
+
+## Submission States
+
+| Status | Description |
+|--------|-------------|
+| `pending` | Awaiting human review |
+| `analyzing` | Validation in progress or failed checks |
+| `approved` | Approved, ready for publishing |
+| `rejected` | Rejected by reviewer |
+| `published` | Live in Stellarin repository |
+
+## Trust Levels
+
+Publishers build trust through successful submissions:
+
+| Level | Name | Requirements |
+|-------|------|--------------|
+| 0 | New | First-time publisher |
+| 1 | Contributor | 1+ approved submissions |
+| 2 | Verified | 3+ approved submissions |
+| 3 | Trusted | 10+ approved submissions |
+
+Higher trust levels may receive expedited review.
+
+## Managing Your Practas
+
+Once authenticated, you can:
+
+1. **View submissions** - See all your past and pending submissions
+2. **Track status** - Monitor review progress
+3. **Delete submissions** - Remove pending submissions
+4. **Request removal** - Ask to unpublish approved Practas
+
+## Error Responses
+
+```json
+{
+  "error": "VALIDATION_FAILED",
+  "message": "Missing required file: manifest.json",
+  "details": {
+    "missingFiles": ["manifest.json"]
+  }
+}
+```
+
+Common errors:
+- `FILE_TOO_LARGE` - ZIP exceeds 10MB limit
+- `INVALID_ZIP` - Corrupted or invalid ZIP file
+- `VALIDATION_FAILED` - Failed validation checks
+- `UNAUTHORIZED` - Not authenticated
+- `FORBIDDEN` - Not owner of submission

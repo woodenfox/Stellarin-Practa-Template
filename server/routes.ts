@@ -133,6 +133,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const config = readConfig();
     const filename = config ? `${config.type}-${config.version}.zip` : "practa.zip";
 
+    const manifest = config ? {
+      name: config.type,
+      version: config.version,
+      displayName: config.name,
+      description: config.description,
+      author: {
+        name: config.author,
+        github: config.author.toLowerCase().replace(/\s+/g, "-"),
+      },
+      type: "widget",
+      category: "wellbeing",
+      tags: ["practa", "meditation", "wellbeing"],
+      props: {},
+      permissions: [],
+      minStellarin: "2.0.0",
+    } : null;
+
+    const readme = config ? `# ${config.name}
+
+${config.description}
+
+## Installation
+
+This Practa component is designed for the Stellarin app.
+
+## Usage
+
+\`\`\`tsx
+import ${config.type.replace(/-/g, "")} from "@stellarin/practa-${config.type}";
+
+<${config.type.replace(/-/g, "")} />
+\`\`\`
+
+## Props
+
+This component accepts the standard Practa props:
+- \`context\`: Flow context from previous Practa
+- \`onComplete\`: Callback when the Practa completes
+- \`onSkip\`: Optional callback to skip the Practa
+
+## Author
+
+Created by ${config.author}
+
+## Version
+
+${config.version}
+` : null;
+
     res.setHeader("Content-Type", "application/zip");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
 
@@ -146,17 +195,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     archive.pipe(res);
     archive.directory(practaDir, "my-practa");
     
-    if (fs.existsSync(CONFIG_PATH)) {
-      archive.file(CONFIG_PATH, { name: "practa.config.json" });
+    if (manifest) {
+      archive.append(JSON.stringify(manifest, null, 2), { name: "manifest.json" });
+    }
+    if (readme) {
+      archive.append(readme, { name: "README.md" });
     }
     
     archive.finalize();
   });
 
   app.post("/api/practa/submit", async (req, res) => {
-    const SUBMIT_URL = process.env.PRACTA_SUBMIT_URL || "https://api.stellarin.app/practa/submit";
+    const SUBMIT_URL = "https://stellarin-practa-verification.replit.app/api/submissions/upload";
     
     try {
+      const authToken = req.headers.authorization;
+      if (!authToken) {
+        return res.status(401).json({ 
+          error: "Authentication required",
+          authUrl: "https://stellarin-practa-verification.replit.app"
+        });
+      }
+
       const practaDir = path.resolve(process.cwd(), "client/my-practa");
       
       if (!fs.existsSync(practaDir)) {
@@ -167,6 +227,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!config) {
         return res.status(400).json({ error: "Practa configuration not found" });
       }
+
+      const manifest = {
+        name: config.type,
+        version: config.version,
+        displayName: config.name,
+        description: config.description,
+        author: {
+          name: config.author,
+          github: req.body.githubUsername || config.author.toLowerCase().replace(/\s+/g, "-"),
+        },
+        type: "widget",
+        category: "wellbeing",
+        tags: ["practa", "meditation", "wellbeing"],
+        props: {},
+        permissions: [],
+        minStellarin: "2.0.0",
+      };
+
+      const readme = `# ${config.name}
+
+${config.description}
+
+## Installation
+
+This Practa component is designed for the Stellarin app.
+
+## Usage
+
+\`\`\`tsx
+import ${config.type.replace(/-/g, "")} from "@stellarin/practa-${config.type}";
+
+<${config.type.replace(/-/g, "")} />
+\`\`\`
+
+## Props
+
+This component accepts the standard Practa props:
+- \`context\`: Flow context from previous Practa
+- \`onComplete\`: Callback when the Practa completes
+- \`onSkip\`: Optional callback to skip the Practa
+
+## Author
+
+Created by ${config.author}
+
+## Version
+
+${config.version}
+`;
 
       const chunks: Buffer[] = [];
       const archive = archiver("zip", { zlib: { level: 9 } });
@@ -181,7 +290,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         passThrough.on("error", reject);
         
         archive.directory(practaDir, "my-practa");
-        archive.file(CONFIG_PATH, { name: "practa.config.json" });
+        archive.append(JSON.stringify(manifest, null, 2), { name: "manifest.json" });
+        archive.append(readme, { name: "README.md" });
         archive.finalize();
       });
 
@@ -190,10 +300,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const formData = new FormData();
       formData.append("file", blob, `${config.type}-${config.version}.zip`);
-      formData.append("metadata", JSON.stringify(config));
 
       const response = await fetch(SUBMIT_URL, {
         method: "POST",
+        headers: {
+          "Authorization": authToken,
+        },
         body: formData,
       });
 
