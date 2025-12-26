@@ -1,6 +1,6 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import PreviewScreen from "@/screens/PreviewScreen";
+import TabNavigator from "@/navigation/TabNavigator";
 import FlowScreen from "@/screens/FlowScreen";
 import MetadataEditorScreen from "@/screens/MetadataEditorScreen";
 import SubmitScreen from "@/screens/SubmitScreen";
@@ -8,7 +8,7 @@ import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { FlowDefinition } from "@/types/flow";
 
 export type RootStackParamList = {
-  Preview: undefined;
+  Main: undefined;
   Flow: { flow: FlowDefinition };
   MetadataEditor: undefined;
   Submit: undefined;
@@ -22,8 +22,8 @@ export default function RootStackNavigator() {
   return (
     <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen
-        name="Preview"
-        component={PreviewScreen}
+        name="Main"
+        component={TabNavigator}
         options={{ headerShown: false }}
       />
       <Stack.Screen
