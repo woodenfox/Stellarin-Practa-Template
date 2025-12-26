@@ -121,12 +121,48 @@ Your Practa has full access to:
 - ThemedText and ThemedView components
 - React Native Reanimated for animations
 
-## Project Structure
+## Practa Structure
+
+Your Practa submission should follow this structure:
+
+```
+my-practa/
+├── index.tsx         # Main component + exported metadata (required)
+├── assets/           # Local assets folder (optional)
+│   ├── hero.png
+│   ├── background.jpg
+│   └── chime.mp3
+└── README.md         # Auto-generated on submission
+```
+
+Plus `metadata.json` which is auto-generated from your exported metadata during submission.
+
+## Asset Rules
+
+- All assets go in a flat `assets/` folder
+- Use relative paths only - NEVER use absolute URLs or external links
+- Reference assets by filename in your component
+- **Per-file limit**: 5MB maximum per asset
+- **Total package limit**: 25MB maximum for entire Practa
+- **Supported formats**: Images (png, jpg, jpeg, gif, webp, svg), Audio (mp3, wav, m4a, ogg), Video (mp4, webm), Data (json, txt)
+
+Asset URLs are resolved at runtime by the Stellarin app.
+
+## Code Rules
+
+- **Prefer single file**: Keep all code in `index.tsx` when possible
+- **Helper files allowed**: For complex Practa, additional `.tsx` files are permitted
+- **Use allowed APIs**: Expo SDK modules (haptics, audio, sensors, etc.) are available
+- **Stay self-contained**: Do not make external network requests - use provided context/API
+- **Export requirements**: Default component export + named `metadata` export
+
+## Project Structure (Full Template)
 
 ```
 client/
   my-practa/          # YOUR PRACTA - EDIT THIS
     index.tsx         # Your Practa component + metadata
+    assets/           # Your local assets
   
   components/         # Shared UI components
   constants/          # Theme tokens (Colors, Spacing, etc.)

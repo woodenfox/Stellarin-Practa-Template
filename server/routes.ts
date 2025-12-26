@@ -10,6 +10,15 @@ const CONFIG_PATH = path.resolve(process.cwd(), "practa.config.json");
 const TEMPLATE_REPO = "woodenfox/Stellarin-Practa-Template";
 const PROTECTED_PATHS = ["client/my-practa", "practa.config.json"];
 
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB per file
+const MAX_TOTAL_SIZE_BYTES = 25 * 1024 * 1024; // 25MB total
+const ALLOWED_ASSET_EXTENSIONS = [
+  ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg",
+  ".mp3", ".wav", ".m4a", ".ogg",
+  ".mp4", ".webm",
+  ".json", ".txt"
+];
+
 interface PractaMetadata {
   type: string;
   name: string;
@@ -81,6 +90,73 @@ function writeConfig(metadata: PractaMetadata): boolean {
     console.error("Error writing practa.config.json:", error);
     return false;
   }
+}
+
+interface AssetValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  totalSize: number;
+  fileCount: number;
+}
+
+function validateAssets(practaDir: string): AssetValidationResult {
+  const result: AssetValidationResult = {
+    valid: true,
+    errors: [],
+    warnings: [],
+    totalSize: 0,
+    fileCount: 0,
+  };
+
+  const assetsDir = path.join(practaDir, "assets");
+  
+  if (!fs.existsSync(assetsDir)) {
+    return result;
+  }
+
+  function scanDirectory(dir: string) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      const relativePath = path.relative(practaDir, fullPath);
+      
+      if (entry.isDirectory()) {
+        scanDirectory(fullPath);
+      } else if (entry.isFile()) {
+        result.fileCount++;
+        const stats = fs.statSync(fullPath);
+        const ext = path.extname(entry.name).toLowerCase();
+        
+        result.totalSize += stats.size;
+        
+        if (stats.size > MAX_FILE_SIZE_BYTES) {
+          result.errors.push(
+            `File "${relativePath}" exceeds 5MB limit (${(stats.size / 1024 / 1024).toFixed(2)}MB)`
+          );
+          result.valid = false;
+        }
+        
+        if (!ALLOWED_ASSET_EXTENSIONS.includes(ext)) {
+          result.warnings.push(
+            `File "${relativePath}" has unsupported extension "${ext}"`
+          );
+        }
+      }
+    }
+  }
+
+  scanDirectory(assetsDir);
+
+  if (result.totalSize > MAX_TOTAL_SIZE_BYTES) {
+    result.errors.push(
+      `Total package size exceeds 25MB limit (${(result.totalSize / 1024 / 1024).toFixed(2)}MB)`
+    );
+    result.valid = false;
+  }
+
+  return result;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -214,6 +290,22 @@ ${config.version}
     archive.finalize();
   });
 
+  app.get("/api/practa/validate-assets", (req, res) => {
+    const practaDir = path.resolve(process.cwd(), "client/my-practa");
+    
+    if (!fs.existsSync(practaDir)) {
+      return res.status(404).json({ error: "Practa directory not found" });
+    }
+
+    const result = validateAssets(practaDir);
+    res.json({
+      ...result,
+      totalSizeMB: (result.totalSize / 1024 / 1024).toFixed(2),
+      maxFileSizeMB: MAX_FILE_SIZE_BYTES / 1024 / 1024,
+      maxTotalSizeMB: MAX_TOTAL_SIZE_BYTES / 1024 / 1024,
+    });
+  });
+
   app.post("/api/practa/submit", async (req, res) => {
     const SUBMIT_URL = "https://stellarin-practa-verification.replit.app/api/submissions/upload-preview";
     
@@ -222,6 +314,16 @@ ${config.version}
       
       if (!fs.existsSync(practaDir)) {
         return res.status(404).json({ error: "Practa directory not found" });
+      }
+
+      const assetValidation = validateAssets(practaDir);
+      if (!assetValidation.valid) {
+        return res.status(400).json({ 
+          error: "Asset validation failed", 
+          errors: assetValidation.errors,
+          warnings: assetValidation.warnings,
+          totalSizeMB: (assetValidation.totalSize / 1024 / 1024).toFixed(2),
+        });
       }
 
       const config = readConfig();

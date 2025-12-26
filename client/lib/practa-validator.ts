@@ -3,6 +3,16 @@
  * 
  * Validates that a Practa component meets all requirements for submission.
  * Run-time validation that can be displayed in the PreviewScreen.
+ * 
+ * Note: Asset validation (file sizes, formats) is done server-side via
+ * the /api/practa/validate-assets endpoint since client-side code cannot
+ * access the file system.
+ * 
+ * Asset Rules (enforced by server):
+ * - Per-file limit: 5MB maximum per asset
+ * - Total package limit: 25MB maximum for entire Practa
+ * - Supported formats: Images (png, jpg, jpeg, gif, webp, svg), 
+ *   Audio (mp3, wav, m4a, ogg), Video (mp4, webm), Data (json, txt)
  */
 
 export interface ValidationResult {
