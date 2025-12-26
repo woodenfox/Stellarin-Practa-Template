@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, StyleSheet, Pressable } from "react-native";
+import { View, StyleSheet, Pressable, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 
@@ -9,6 +9,8 @@ import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { PractaContext, PractaCompleteHandler } from "@/types/flow";
+
+const zenCircleImage = require("./assets/zen-circle.png");
 
 interface MyPractaProps {
   context: PractaContext;
@@ -44,6 +46,8 @@ export function MyPracta({ context, onComplete, onSkip }: MyPractaProps) {
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top + Spacing.xl }]}>
       <View style={styles.content}>
+        <Image source={zenCircleImage} style={styles.heroImage} />
+        
         <ThemedText style={styles.title}>Hello World</ThemedText>
         <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
           Welcome to your first Practa
@@ -105,11 +109,9 @@ export const metadata = {
   author: "Stellarin",
   version: "1.0.0",
   estimatedDuration: 15,
-  // Optional: Reference local assets from the assets/ folder
-  // assets: {
-  //   background: "forest.png",
-  //   chime: "bell.mp3",
-  // },
+  assets: {
+    heroImage: "zen-circle.png",
+  },
 };
 
 const styles = StyleSheet.create({
@@ -121,6 +123,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: Spacing.xl,
+  },
+  heroImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    marginBottom: Spacing.lg,
   },
   title: {
     fontSize: 32,
