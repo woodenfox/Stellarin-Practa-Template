@@ -1,10 +1,17 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, StyleSheet, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring,
+  withSequence,
+} from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { PractaContext, PractaCompleteHandler } from "@/types/flow";
@@ -18,21 +25,71 @@ interface MyPractaProps {
 export function MyPracta({ context, onComplete, onSkip }: MyPractaProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const [tapCount, setTapCount] = useState(0);
+  
+  const scale = useSharedValue(1);
+  const rotation = useSharedValue(0);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: scale.value },
+      { rotate: `${rotation.value}deg` },
+    ],
+  }));
+
+  const handleTap = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    scale.value = withSequence(
+      withSpring(1.2, { damping: 10 }),
+      withSpring(1, { damping: 15 })
+    );
+    rotation.value = withSequence(
+      withSpring(10, { damping: 10 }),
+      withSpring(-10, { damping: 10 }),
+      withSpring(0, { damping: 15 })
+    );
+    
+    setTapCount(prev => prev + 1);
+  };
 
   const handleComplete = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onComplete({
-      content: { type: "text", value: "Completed!" },
-      metadata: { completedAt: Date.now() },
+      content: { 
+        type: "text", 
+        value: `Hello World! Tapped ${tapCount} times.` 
+      },
+      metadata: { 
+        tapCount,
+        completedAt: Date.now(),
+      },
     });
   };
 
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top + Spacing.xl }]}>
       <View style={styles.content}>
-        <ThemedText style={styles.title}>My Practa</ThemedText>
+        <ThemedText style={styles.title}>Hello World</ThemedText>
         <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
-          Edit client/my-practa/index.tsx to create your experience
+          Welcome to your first Practa
+        </ThemedText>
+
+        <Pressable onPress={handleTap}>
+          <Animated.View style={animatedStyle}>
+            <Card style={{ ...styles.tapCard, borderColor: theme.primary + "40" }}>
+              <View style={[styles.tapCircle, { backgroundColor: theme.primary + "20" }]}>
+                <ThemedText style={[styles.tapCount, { color: theme.primary }]}>
+                  {tapCount}
+                </ThemedText>
+              </View>
+              <ThemedText style={styles.tapLabel}>Tap me</ThemedText>
+            </Card>
+          </Animated.View>
+        </Pressable>
+
+        <ThemedText style={[styles.hint, { color: theme.textSecondary }]}>
+          Tap the card above, then complete the Practa
         </ThemedText>
       </View>
 
@@ -57,12 +114,12 @@ export function MyPracta({ context, onComplete, onSkip }: MyPractaProps) {
 }
 
 export const metadata = {
-  type: "my-practa",
-  name: "My Practa",
-  description: "A minimal Practa starter template",
-  author: "Your Name",
+  type: "hello-world",
+  name: "Hello World",
+  description: "A simple interactive Practa that counts taps",
+  author: "Stellarin",
   version: "1.0.0",
-  estimatedDuration: 10,
+  estimatedDuration: 15,
 };
 
 export default MyPracta;
@@ -78,14 +135,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "600",
+    fontSize: 32,
+    fontWeight: "700",
     textAlign: "center",
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   subtitle: {
     fontSize: 16,
     textAlign: "center",
+    marginBottom: Spacing["2xl"],
+  },
+  tapCard: {
+    padding: Spacing.xl,
+    alignItems: "center",
+    borderWidth: 2,
+  },
+  tapCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  tapCount: {
+    fontSize: 36,
+    fontWeight: "700",
+  },
+  tapLabel: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  hint: {
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: Spacing.xl,
   },
   footer: {
     paddingHorizontal: Spacing.lg,
