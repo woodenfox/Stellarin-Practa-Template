@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { View, StyleSheet, Pressable, ScrollView } from "react-native";
+import { View, StyleSheet, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -15,6 +15,7 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import MyPracta, { metadata as codeMetadata } from "@/my-practa";
 import { validatePracta, ValidationResult } from "@/lib/practa-validator";
+import { apiRequest } from "@/lib/query-client";
 
 interface PractaMetadata {
   type: string;
@@ -23,6 +24,13 @@ interface PractaMetadata {
   author: string;
   version: string;
   estimatedDuration?: number;
+}
+
+interface SyncStatus {
+  isInSync: boolean;
+  localVersion: string | null;
+  latestVersion: string;
+  repoUrl: string;
 }
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -66,6 +74,25 @@ export default function PreviewScreen() {
 
   const { data: savedMetadata } = useQuery<PractaMetadata>({
     queryKey: ["/api/practa/metadata"],
+  });
+
+  const { data: syncStatus } = useQuery<SyncStatus>({
+    queryKey: ["/api/template/sync-status"],
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const updateTemplateMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/template/update");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/template/sync-status"] });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+    onError: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    },
   });
 
   useFocusEffect(
@@ -127,6 +154,41 @@ export default function PreviewScreen() {
             Build and test your Practa
           </ThemedText>
         </View>
+
+        {syncStatus && !syncStatus.isInSync ? (
+          <View style={styles.syncBanner}>
+            <View style={styles.syncBannerContent}>
+              <Feather name="alert-triangle" size={20} color="#D97706" />
+              <View style={styles.syncBannerText}>
+                <ThemedText style={styles.syncBannerTitle}>
+                  Template Out of Sync
+                </ThemedText>
+                <ThemedText style={styles.syncBannerMessage}>
+                  The underlying Stellarin Practa Template has changed.
+                </ThemedText>
+              </View>
+            </View>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                updateTemplateMutation.mutate();
+              }}
+              disabled={updateTemplateMutation.isPending}
+              style={[
+                styles.syncButton,
+                updateTemplateMutation.isPending && styles.syncButtonDisabled,
+              ]}
+            >
+              {updateTemplateMutation.isPending ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <ThemedText style={styles.syncButtonText}>
+                  Update to Latest
+                </ThemedText>
+              )}
+            </Pressable>
+          </View>
+        ) : null}
 
         <Card style={styles.card}>
           <View style={styles.cardHeader}>
@@ -466,6 +528,48 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: "white",
     fontSize: 16,
+    fontWeight: "600",
+  },
+  syncBanner: {
+    backgroundColor: "#FEF3C7",
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+    borderWidth: 1,
+    borderColor: "#F59E0B",
+  },
+  syncBannerContent: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  syncBannerText: {
+    flex: 1,
+  },
+  syncBannerTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#92400E",
+    marginBottom: 2,
+  },
+  syncBannerMessage: {
+    fontSize: 13,
+    color: "#92400E",
+  },
+  syncButton: {
+    backgroundColor: "#D97706",
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+  },
+  syncButtonDisabled: {
+    opacity: 0.7,
+  },
+  syncButtonText: {
+    color: "white",
+    fontSize: 14,
     fontWeight: "600",
   },
 });

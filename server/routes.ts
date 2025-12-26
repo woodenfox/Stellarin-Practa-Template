@@ -4,8 +4,11 @@ import * as fs from "fs";
 import * as path from "path";
 import { PassThrough } from "node:stream";
 import archiver from "archiver";
+import AdmZip from "adm-zip";
 
 const CONFIG_PATH = path.resolve(process.cwd(), "practa.config.json");
+const TEMPLATE_REPO = "woodenfox/Stellarin-Practa-Template";
+const PROTECTED_PATHS = ["client/my-practa", "practa.config.json"];
 
 interface PractaMetadata {
   type: string;
@@ -208,6 +211,172 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Submit error:", error);
       res.status(500).json({ 
         error: "Failed to submit practa",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.get("/api/template/sync-status", async (req, res) => {
+    try {
+      const repoResponse = await fetch(
+        `https://api.github.com/repos/${TEMPLATE_REPO}`,
+        { headers: { "Accept": "application/vnd.github+json" } }
+      );
+      
+      if (!repoResponse.ok) {
+        return res.json({
+          isInSync: true,
+          localVersion: null,
+          latestVersion: null,
+          repoUrl: `https://github.com/${TEMPLATE_REPO}`,
+          repoAvailable: false,
+        });
+      }
+      
+      const repoData = await repoResponse.json();
+      const defaultBranch = repoData.default_branch || "main";
+      
+      const branchResponse = await fetch(
+        `https://api.github.com/repos/${TEMPLATE_REPO}/branches/${defaultBranch}`,
+        { headers: { "Accept": "application/vnd.github+json" } }
+      );
+      
+      if (!branchResponse.ok) {
+        return res.json({
+          isInSync: true,
+          localVersion: null,
+          latestVersion: null,
+          repoUrl: `https://github.com/${TEMPLATE_REPO}`,
+          repoAvailable: false,
+        });
+      }
+      
+      const branchData = await branchResponse.json();
+      const latestSha = branchData.commit.sha;
+      
+      const syncFilePath = path.resolve(process.cwd(), ".template-sync");
+      let localSha = "";
+      
+      if (fs.existsSync(syncFilePath)) {
+        localSha = fs.readFileSync(syncFilePath, "utf-8").trim();
+      }
+      
+      const isInSync = localSha === latestSha;
+      
+      res.json({
+        isInSync,
+        localVersion: localSha || null,
+        latestVersion: latestSha,
+        repoUrl: `https://github.com/${TEMPLATE_REPO}`,
+        repoAvailable: true,
+      });
+    } catch (error) {
+      console.error("Sync check error:", error);
+      res.json({
+        isInSync: true,
+        localVersion: null,
+        latestVersion: null,
+        repoUrl: `https://github.com/${TEMPLATE_REPO}`,
+        repoAvailable: false,
+      });
+    }
+  });
+
+  app.post("/api/template/update", async (req, res) => {
+    try {
+      const repoResponse = await fetch(
+        `https://api.github.com/repos/${TEMPLATE_REPO}`,
+        { headers: { "Accept": "application/vnd.github+json" } }
+      );
+      
+      if (!repoResponse.ok) {
+        return res.status(500).json({ 
+          error: "Template repository not available" 
+        });
+      }
+      
+      const repoData = await repoResponse.json();
+      const defaultBranch = repoData.default_branch || "main";
+      
+      const branchResponse = await fetch(
+        `https://api.github.com/repos/${TEMPLATE_REPO}/branches/${defaultBranch}`,
+        { headers: { "Accept": "application/vnd.github+json" } }
+      );
+      
+      if (!branchResponse.ok) {
+        return res.status(500).json({ 
+          error: "Failed to fetch template info" 
+        });
+      }
+      
+      const branchData = await branchResponse.json();
+      const latestSha = branchData.commit.sha;
+      
+      const archiveUrl = `https://api.github.com/repos/${TEMPLATE_REPO}/zipball/${defaultBranch}`;
+      const archiveResponse = await fetch(archiveUrl, {
+        headers: { "Accept": "application/vnd.github+json" }
+      });
+      
+      if (!archiveResponse.ok) {
+        return res.status(500).json({ 
+          error: "Failed to download template" 
+        });
+      }
+      
+      const arrayBuffer = await archiveResponse.arrayBuffer();
+      const zipBuffer = Buffer.from(arrayBuffer);
+      
+      const zip = new AdmZip(zipBuffer);
+      const zipEntries = zip.getEntries();
+      
+      if (zipEntries.length === 0) {
+        return res.status(500).json({ error: "Invalid template archive" });
+      }
+      
+      const firstEntry = zipEntries[0].entryName;
+      const rootFolder = firstEntry.split("/")[0];
+      const projectRoot = process.cwd();
+      
+      const SKIP_PATTERNS = [".git/", "node_modules/", ".template-update-temp/"];
+      
+      for (const entry of zipEntries) {
+        if (entry.isDirectory) continue;
+        
+        const entryPath = entry.entryName;
+        const relativePath = entryPath.substring(rootFolder.length + 1);
+        
+        if (!relativePath) continue;
+        
+        const isProtected = PROTECTED_PATHS.some(
+          (p) => relativePath === p || relativePath.startsWith(p + "/")
+        );
+        if (isProtected) continue;
+        
+        const shouldSkip = SKIP_PATTERNS.some((p) => relativePath.startsWith(p));
+        if (shouldSkip) continue;
+        
+        const destPath = path.join(projectRoot, relativePath);
+        const destDir = path.dirname(destPath);
+        
+        if (!fs.existsSync(destDir)) {
+          fs.mkdirSync(destDir, { recursive: true });
+        }
+        
+        fs.writeFileSync(destPath, entry.getData());
+      }
+      
+      const syncFilePath = path.resolve(projectRoot, ".template-sync");
+      fs.writeFileSync(syncFilePath, latestSha);
+      
+      res.json({
+        success: true,
+        updatedTo: latestSha,
+        message: "Template updated successfully. Restart the app to see changes."
+      });
+    } catch (error) {
+      console.error("Template update error:", error);
+      res.status(500).json({
+        error: "Failed to update template",
         details: error instanceof Error ? error.message : "Unknown error"
       });
     }
