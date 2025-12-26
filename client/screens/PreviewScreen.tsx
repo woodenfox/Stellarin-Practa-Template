@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from "react";
 import { View, StyleSheet, Pressable, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -12,8 +13,17 @@ import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
-import MyPracta, { metadata } from "@/my-practa";
+import MyPracta, { metadata as codeMetadata } from "@/my-practa";
 import { validatePracta, ValidationResult } from "@/lib/practa-validator";
+
+interface PractaMetadata {
+  type: string;
+  name: string;
+  description: string;
+  author: string;
+  version: string;
+  estimatedDuration?: number;
+}
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -51,10 +61,23 @@ export default function PreviewScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
+  const queryClient = useQueryClient();
   const [showValidation, setShowValidation] = useState(false);
 
+  const { data: savedMetadata } = useQuery<PractaMetadata>({
+    queryKey: ["/api/practa/metadata"],
+  });
+
+  useFocusEffect(
+    React.useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: ["/api/practa/metadata"] });
+    }, [queryClient])
+  );
+
+  const metadata = savedMetadata || codeMetadata;
+
   const validationReport = useMemo(() => {
-    return validatePracta(MyPracta, metadata);
+    return validatePracta(MyPracta, codeMetadata);
   }, []);
 
   const handlePreview = () => {
@@ -78,6 +101,11 @@ export default function PreviewScreen() {
   const toggleValidation = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setShowValidation(!showValidation);
+  };
+
+  const handleEditMetadata = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    navigation.navigate("MetadataEditor");
   };
 
   return (
@@ -131,13 +159,24 @@ export default function PreviewScreen() {
             </View>
           </View>
 
-          <Pressable
-            onPress={handlePreview}
-            style={[styles.previewButton, { backgroundColor: theme.primary }]}
-          >
-            <Feather name="play" size={20} color="white" />
-            <ThemedText style={styles.previewButtonText}>Preview Practa</ThemedText>
-          </Pressable>
+          <View style={styles.buttonRow}>
+            <Pressable
+              onPress={handleEditMetadata}
+              style={[styles.editButton, { borderColor: theme.primary }]}
+            >
+              <Feather name="edit-2" size={18} color={theme.primary} />
+              <ThemedText style={[styles.editButtonText, { color: theme.primary }]}>
+                Edit Info
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={handlePreview}
+              style={[styles.previewButton, { backgroundColor: theme.primary }]}
+            >
+              <Feather name="play" size={20} color="white" />
+              <ThemedText style={styles.previewButtonText}>Preview</ThemedText>
+            </Pressable>
+          </View>
         </Card>
 
         <Card style={styles.validationCard}>
@@ -291,7 +330,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
+  buttonRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  editButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    gap: Spacing.xs,
+  },
+  editButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
   previewButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
