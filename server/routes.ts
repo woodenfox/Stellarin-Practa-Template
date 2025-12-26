@@ -15,6 +15,7 @@ interface PractaMetadata {
   name: string;
   description: string;
   author: string;
+  githubUsername?: string;
   version: string;
   estimatedDuration?: number;
 }
@@ -112,6 +113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       name: req.body.name,
       description: req.body.description,
       author: req.body.author,
+      githubUsername: req.body.githubUsername,
       version: req.body.version,
       estimatedDuration: req.body.estimatedDuration,
     };
@@ -133,6 +135,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const config = readConfig();
     const filename = config ? `${config.type}-${config.version}.zip` : "practa.zip";
 
+    const componentName = config ? config.name.replace(/[^a-zA-Z0-9]/g, "") : "MyPracta";
+    
     const manifest = config ? {
       name: config.type,
       version: config.version,
@@ -140,7 +144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       description: config.description,
       author: {
         name: config.author,
-        github: config.author.toLowerCase().replace(/\s+/g, "-"),
+        github: config.githubUsername || "",
       },
       type: "widget",
       category: "wellbeing",
@@ -161,21 +165,32 @@ This Practa component is designed for the Stellarin app.
 ## Usage
 
 \`\`\`tsx
-import ${config.type.replace(/-/g, "")} from "@stellarin/practa-${config.type}";
+import ${componentName} from "@stellarin/practa-${config.type}";
 
-<${config.type.replace(/-/g, "")} />
+function MyFlow() {
+  return (
+    <${componentName}
+      context={{ flowId: "my-flow", practaIndex: 0 }}
+      onComplete={(output) => console.log("Completed:", output)}
+      onSkip={() => console.log("Skipped")}
+    />
+  );
+}
 \`\`\`
 
 ## Props
 
 This component accepts the standard Practa props:
-- \`context\`: Flow context from previous Practa
-- \`onComplete\`: Callback when the Practa completes
-- \`onSkip\`: Optional callback to skip the Practa
+
+| Prop | Type | Required | Description |
+|------|------|----------|-------------|
+| \`context\` | PractaContext | Yes | Flow context from previous Practa |
+| \`onComplete\` | (output: PractaOutput) => void | Yes | Callback when the Practa completes |
+| \`onSkip\` | () => void | No | Optional callback to skip the Practa |
 
 ## Author
 
-Created by ${config.author}
+Created by ${config.author}${config.githubUsername ? ` ([@${config.githubUsername}](https://github.com/${config.githubUsername}))` : ""}
 
 ## Version
 
@@ -228,6 +243,15 @@ ${config.version}
         return res.status(400).json({ error: "Practa configuration not found" });
       }
 
+      if (!config.githubUsername) {
+        return res.status(400).json({ 
+          error: "GitHub username required",
+          details: "Please add your GitHub username in the metadata editor before submitting."
+        });
+      }
+
+      const componentName = config.name.replace(/[^a-zA-Z0-9]/g, "");
+
       const manifest = {
         name: config.type,
         version: config.version,
@@ -235,7 +259,7 @@ ${config.version}
         description: config.description,
         author: {
           name: config.author,
-          github: req.body.githubUsername || config.author.toLowerCase().replace(/\s+/g, "-"),
+          github: config.githubUsername,
         },
         type: "widget",
         category: "wellbeing",
@@ -256,21 +280,32 @@ This Practa component is designed for the Stellarin app.
 ## Usage
 
 \`\`\`tsx
-import ${config.type.replace(/-/g, "")} from "@stellarin/practa-${config.type}";
+import ${componentName} from "@stellarin/practa-${config.type}";
 
-<${config.type.replace(/-/g, "")} />
+function MyFlow() {
+  return (
+    <${componentName}
+      context={{ flowId: "my-flow", practaIndex: 0 }}
+      onComplete={(output) => console.log("Completed:", output)}
+      onSkip={() => console.log("Skipped")}
+    />
+  );
+}
 \`\`\`
 
 ## Props
 
 This component accepts the standard Practa props:
-- \`context\`: Flow context from previous Practa
-- \`onComplete\`: Callback when the Practa completes
-- \`onSkip\`: Optional callback to skip the Practa
+
+| Prop | Type | Required | Description |
+|------|------|----------|-------------|
+| \`context\` | PractaContext | Yes | Flow context from previous Practa |
+| \`onComplete\` | (output: PractaOutput) => void | Yes | Callback when the Practa completes |
+| \`onSkip\` | () => void | No | Optional callback to skip the Practa |
 
 ## Author
 
-Created by ${config.author}
+Created by ${config.author} ([@${config.githubUsername}](https://github.com/${config.githubUsername}))
 
 ## Version
 

@@ -3,6 +3,7 @@
   "name": "My Practa",
   "description": "A minimal Practa starter template",
   "author": "Your Name",
+  "githubUsername": "",
   "version": "1.0.0",
   "estimatedDuration": 10
 }

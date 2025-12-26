@@ -202,7 +202,7 @@ export default function SubmitScreen() {
           </View>
         </Card>
 
-        <Card style={[styles.card, styles.packageCard]}>
+        <Card style={{ ...styles.card, ...styles.packageCard }}>
           <View style={styles.packageHeader}>
             <Feather name="package" size={24} color={theme.primary} />
             <ThemedText style={styles.packageTitle}>Your Package</ThemedText>
