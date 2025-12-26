@@ -218,6 +218,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/template/sync-status", async (req, res) => {
     try {
+      if (process.env.MASTER_TEMPLATE_KEY) {
+        return res.json({
+          isInSync: true,
+          localVersion: null,
+          latestVersion: null,
+          repoUrl: `https://github.com/${TEMPLATE_REPO}`,
+          repoAvailable: true,
+          isMasterTemplate: true,
+        });
+      }
+
       const repoResponse = await fetch(
         `https://api.github.com/repos/${TEMPLATE_REPO}`,
         { headers: { "Accept": "application/vnd.github+json" } }
