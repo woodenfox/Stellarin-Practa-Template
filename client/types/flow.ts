@@ -1,4 +1,4 @@
-export type PractaType = "journal" | "silent-meditation" | "personalized-meditation" | "tend";
+export type PractaType = "journal" | "silent-meditation" | "personalized-meditation" | "tend" | "integration-breath";
 
 export interface PractaContent {
   type: "text" | "image";

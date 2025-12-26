@@ -21,6 +21,11 @@ export const PRACTA_DEFINITIONS: Record<PractaType, Omit<PractaDefinition, "id">
     name: "Tend Card",
     description: "Draw a daily wellness card for mindful focus",
   },
+  "integration-breath": {
+    type: "integration-breath",
+    name: "Integration Breath",
+    description: "A one-minute breath to arrive in Self and unify your inner system",
+  },
 };
 
 export function createPracta(type: PractaType, id?: string): PractaDefinition {
@@ -91,6 +96,14 @@ export const PRESET_FLOWS = {
     {
       id: "evening-winddown",
       description: "Reflect on your day, draw a wellness card, then unwind with meditation",
+    }
+  ),
+  integrationBreath: createFlow(
+    "Integration Breath",
+    ["integration-breath"],
+    {
+      id: "integration-breath",
+      description: "A one-minute breath to arrive in Self and unify your inner system",
     }
   ),
 };
