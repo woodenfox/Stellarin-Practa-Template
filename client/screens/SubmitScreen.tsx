@@ -1,11 +1,13 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { View, StyleSheet, Pressable, ScrollView, Alert, Linking, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import * as WebBrowser from "expo-web-browser";
+import { useQuery } from "@tanstack/react-query";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -15,7 +17,10 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import MyPracta, { metadata as codeMetadata } from "@/my-practa";
 import { validatePracta, ValidationReport } from "@/lib/practa-validator";
-import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { getApiUrl } from "@/lib/query-client";
+
+const VERIFICATION_SERVICE_URL = "https://stellarin-practa-verification.replit.app";
+const AUTH_TOKEN_KEY = "stellarin_auth_token";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -32,6 +37,13 @@ export default function SubmitScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(AUTH_TOKEN_KEY).then((token) => {
+      setIsAuthenticated(!!token);
+    });
+  }, []);
 
   const { data: metadata } = useQuery<PractaMetadata>({
     queryKey: ["/api/practa/metadata"],
@@ -45,49 +57,13 @@ export default function SubmitScreen() {
   const errorCount = validationReport.errors.length;
   const warningCount = validationReport.warnings.length;
 
-  const submitMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/practa/submit");
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.details || error.error || "Submission failed");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(
-        "Submitted",
-        "Your Practa has been submitted for review. You'll receive a notification when it's approved.",
-        [{ text: "OK", onPress: () => navigation.goBack() }]
-      );
-    },
-    onError: (error: Error) => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Submission Failed", error.message);
-    },
-  });
-
-  const handleSubmit = () => {
-    if (hasErrors) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      Alert.alert(
-        "Cannot Submit",
-        "Please fix all validation errors before submitting.",
-        [{ text: "OK" }]
-      );
-      return;
-    }
-
+  const handleSignIn = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(
-      "Submit Practa",
-      `Submit "${metadata?.name || codeMetadata.name}" v${metadata?.version || codeMetadata.version} for review?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Submit", onPress: () => submitMutation.mutate() },
-      ]
-    );
+    try {
+      await WebBrowser.openBrowserAsync(VERIFICATION_SERVICE_URL);
+    } catch {
+      Linking.openURL(VERIFICATION_SERVICE_URL);
+    }
   };
 
   const handleDownload = async () => {
@@ -102,6 +78,15 @@ export default function SubmitScreen() {
       } catch {
         Alert.alert("Download", "Open the download link in a browser to get your ZIP file.");
       }
+    }
+  };
+
+  const handleUploadManually = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      await WebBrowser.openBrowserAsync(`${VERIFICATION_SERVICE_URL}/submit`);
+    } catch {
+      Linking.openURL(`${VERIFICATION_SERVICE_URL}/submit`);
     }
   };
 
@@ -178,61 +163,98 @@ export default function SubmitScreen() {
         </Card>
 
         <Card style={styles.card}>
-          <ThemedText style={styles.sectionTitle}>What happens next?</ThemedText>
+          <ThemedText style={styles.sectionTitle}>How to Submit</ThemedText>
+          
           <View style={styles.stepRow}>
             <View style={[styles.stepNumber, { backgroundColor: theme.primary }]}>
               <ThemedText style={styles.stepNumberText}>1</ThemedText>
             </View>
-            <ThemedText style={[styles.stepText, { color: theme.textSecondary }]}>
-              Your Practa is uploaded for review
-            </ThemedText>
+            <View style={styles.stepContent}>
+              <ThemedText style={styles.stepTitle}>Download Your Practa</ThemedText>
+              <ThemedText style={[styles.stepText, { color: theme.textSecondary }]}>
+                Get the ZIP file with your component, manifest, and README
+              </ThemedText>
+            </View>
           </View>
+          
           <View style={styles.stepRow}>
             <View style={[styles.stepNumber, { backgroundColor: theme.primary }]}>
               <ThemedText style={styles.stepNumberText}>2</ThemedText>
             </View>
-            <ThemedText style={[styles.stepText, { color: theme.textSecondary }]}>
-              We verify it meets all requirements
-            </ThemedText>
+            <View style={styles.stepContent}>
+              <ThemedText style={styles.stepTitle}>Sign in with GitHub</ThemedText>
+              <ThemedText style={[styles.stepText, { color: theme.textSecondary }]}>
+                Authenticate on the Stellarin Practa Validator
+              </ThemedText>
+            </View>
           </View>
+          
           <View style={styles.stepRow}>
             <View style={[styles.stepNumber, { backgroundColor: theme.primary }]}>
               <ThemedText style={styles.stepNumberText}>3</ThemedText>
             </View>
-            <ThemedText style={[styles.stepText, { color: theme.textSecondary }]}>
-              Once approved, it appears in Stellarin
-            </ThemedText>
+            <View style={styles.stepContent}>
+              <ThemedText style={styles.stepTitle}>Upload for Review</ThemedText>
+              <ThemedText style={[styles.stepText, { color: theme.textSecondary }]}>
+                Submit your ZIP and wait for approval
+              </ThemedText>
+            </View>
           </View>
+        </Card>
+
+        <Card style={[styles.card, styles.packageCard]}>
+          <View style={styles.packageHeader}>
+            <Feather name="package" size={24} color={theme.primary} />
+            <ThemedText style={styles.packageTitle}>Your Package</ThemedText>
+          </View>
+          <ThemedText style={[styles.packageDescription, { color: theme.textSecondary }]}>
+            ZIP includes: index.tsx, manifest.json, README.md
+          </ThemedText>
+          
+          <Pressable
+            style={[
+              styles.downloadButton,
+              { backgroundColor: theme.primary },
+            ]}
+            onPress={handleDownload}
+          >
+            <Feather name="download" size={20} color="#FFFFFF" />
+            <ThemedText style={styles.downloadButtonText}>Download ZIP</ThemedText>
+          </Pressable>
         </Card>
 
         <Pressable
           style={[
-            styles.downloadButton,
+            styles.submitButton,
             { backgroundColor: theme.card, borderColor: theme.border },
           ]}
-          onPress={handleDownload}
+          onPress={handleSignIn}
         >
-          <Feather name="download" size={20} color={theme.text} />
-          <ThemedText style={styles.downloadText}>Download ZIP</ThemedText>
+          <Feather name="github" size={20} color={theme.text} />
+          <ThemedText style={[styles.submitText, { color: theme.text }]}>
+            Open Validator Portal
+          </ThemedText>
         </Pressable>
 
         <Pressable
           style={[
-            styles.submitButton,
+            styles.uploadButton,
             { backgroundColor: hasErrors ? theme.textSecondary : theme.primary },
           ]}
-          onPress={handleSubmit}
-          disabled={submitMutation.isPending}
+          onPress={handleUploadManually}
+          disabled={hasErrors}
         >
-          {submitMutation.isPending ? (
-            <ThemedText style={styles.submitText}>Submitting...</ThemedText>
-          ) : (
-            <>
-              <Feather name="upload" size={20} color="#FFFFFF" />
-              <ThemedText style={styles.submitText}>Submit for Review</ThemedText>
-            </>
-          )}
+          <Feather name="upload-cloud" size={20} color="#FFFFFF" />
+          <ThemedText style={styles.uploadButtonText}>
+            Submit on Stellarin
+          </ThemedText>
         </Pressable>
+
+        {hasErrors ? (
+          <ThemedText style={[styles.warningText, { color: theme.error }]}>
+            Fix all validation errors before submitting
+          </ThemedText>
+        ) : null}
       </ScrollView>
     </ThemedView>
   );
@@ -299,13 +321,13 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   statBadge: {
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
+    borderRadius: BorderRadius.sm,
   },
   statText: {
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   sectionTitle: {
     fontSize: 16,
@@ -314,9 +336,9 @@ const styles = StyleSheet.create({
   },
   stepRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: Spacing.md,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
   },
   stepNumber: {
     width: 24,
@@ -328,22 +350,46 @@ const styles = StyleSheet.create({
   stepNumberText: {
     color: "#FFFFFF",
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
+  },
+  stepContent: {
+    flex: 1,
+  },
+  stepTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 2,
   },
   stepText: {
-    fontSize: 14,
-    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  packageCard: {
+    gap: Spacing.sm,
+  },
+  packageHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  packageTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  packageDescription: {
+    fontSize: 13,
   },
   downloadButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: Spacing.sm,
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.sm,
   },
-  downloadText: {
+  downloadButtonText: {
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
   },
@@ -352,12 +398,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: Spacing.sm,
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
   },
   submitText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  uploadButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+  },
+  uploadButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+  },
+  warningText: {
+    fontSize: 13,
+    textAlign: "center",
   },
 });
