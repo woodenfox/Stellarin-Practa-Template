@@ -23,7 +23,6 @@ interface PractaMetadata {
   name: string;
   description: string;
   author: string;
-  githubUsername?: string;
   version: string;
   estimatedDuration?: number;
 }
@@ -86,7 +85,6 @@ export default function MetadataEditorScreen() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [author, setAuthor] = useState("");
-  const [githubUsername, setGithubUsername] = useState("");
   const [version, setVersion] = useState("");
   const [estimatedDuration, setEstimatedDuration] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -101,7 +99,6 @@ export default function MetadataEditorScreen() {
       setName(metadata.name || "");
       setDescription(metadata.description || "");
       setAuthor(metadata.author || "");
-      setGithubUsername(metadata.githubUsername || "");
       setVersion(metadata.version || "");
       setEstimatedDuration(
         metadata.estimatedDuration ? String(metadata.estimatedDuration) : ""
@@ -147,12 +144,6 @@ export default function MetadataEditorScreen() {
       newErrors.author = "Author is required";
     }
 
-    if (!githubUsername.trim()) {
-      newErrors.githubUsername = "GitHub username is required for submission";
-    } else if (!/^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$/.test(githubUsername)) {
-      newErrors.githubUsername = "Invalid GitHub username format";
-    }
-
     if (!version.trim()) {
       newErrors.version = "Version is required";
     } else if (!/^\d+\.\d+\.\d+/.test(version)) {
@@ -178,7 +169,6 @@ export default function MetadataEditorScreen() {
       name: name.trim(),
       description: description.trim(),
       author: author.trim(),
-      githubUsername: githubUsername.trim() || undefined,
       version: version.trim(),
       estimatedDuration: estimatedDuration
         ? Number(estimatedDuration)
@@ -252,14 +242,6 @@ export default function MetadataEditorScreen() {
             onChangeText={setAuthor}
             placeholder="Your Name"
             error={errors.author}
-          />
-
-          <FormField
-            label="GitHub Username"
-            value={githubUsername}
-            onChangeText={setGithubUsername}
-            placeholder="your-github-username"
-            error={errors.githubUsername}
           />
 
           <FormField

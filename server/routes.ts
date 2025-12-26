@@ -15,7 +15,6 @@ interface PractaMetadata {
   name: string;
   description: string;
   author: string;
-  githubUsername?: string;
   version: string;
   estimatedDuration?: number;
 }
@@ -113,7 +112,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       name: req.body.name,
       description: req.body.description,
       author: req.body.author,
-      githubUsername: req.body.githubUsername,
       version: req.body.version,
       estimatedDuration: req.body.estimatedDuration,
     };
@@ -142,16 +140,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       version: config.version,
       displayName: config.name,
       description: config.description,
-      author: {
-        name: config.author,
-        github: config.githubUsername || "",
-      },
+      author: config.author,
       type: "widget",
       category: "wellbeing",
       tags: ["practa", "meditation", "wellbeing"],
-      props: {},
-      permissions: [],
-      minStellarin: "2.0.0",
+      estimatedDuration: config.estimatedDuration,
+      requiredPermissions: [],
     } : null;
 
     const readme = config ? `# ${config.name}
@@ -190,7 +184,7 @@ This component accepts the standard Practa props:
 
 ## Author
 
-Created by ${config.author}${config.githubUsername ? ` ([@${config.githubUsername}](https://github.com/${config.githubUsername}))` : ""}
+Created by ${config.author}
 
 ## Version
 
@@ -221,7 +215,7 @@ ${config.version}
   });
 
   app.post("/api/practa/submit", async (req, res) => {
-    const SUBMIT_URL = "https://stellarin-practa-verification.replit.app/api/submissions/upload";
+    const SUBMIT_URL = "https://stellarin-practa-verification.replit.app/api/submissions/upload-preview";
     
     try {
       const practaDir = path.resolve(process.cwd(), "client/my-practa");
@@ -235,13 +229,6 @@ ${config.version}
         return res.status(400).json({ error: "Practa configuration not found" });
       }
 
-      if (!config.githubUsername) {
-        return res.status(400).json({ 
-          error: "GitHub username required",
-          details: "Please add your GitHub username in the metadata editor before submitting."
-        });
-      }
-
       const componentName = config.name.replace(/[^a-zA-Z0-9]/g, "");
 
       const manifest = {
@@ -249,16 +236,12 @@ ${config.version}
         version: config.version,
         displayName: config.name,
         description: config.description,
-        author: {
-          name: config.author,
-          github: config.githubUsername,
-        },
+        author: config.author,
         type: "widget",
         category: "wellbeing",
         tags: ["practa", "meditation", "wellbeing"],
-        props: {},
-        permissions: [],
-        minStellarin: "2.0.0",
+        estimatedDuration: config.estimatedDuration,
+        requiredPermissions: [],
       };
 
       const readme = `# ${config.name}
@@ -297,7 +280,7 @@ This component accepts the standard Practa props:
 
 ## Author
 
-Created by ${config.author} ([@${config.githubUsername}](https://github.com/${config.githubUsername}))
+Created by ${config.author}
 
 ## Version
 

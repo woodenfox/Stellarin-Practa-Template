@@ -27,19 +27,27 @@ interface PractaMetadata {
   name: string;
   description: string;
   author: string;
-  githubUsername?: string;
   version: string;
   estimatedDuration?: number;
 }
 
-interface SubmissionResult {
-  id: string;
+interface ValidationCheck {
+  name: string;
+  category: string;
+  passed: boolean;
+  message: string;
+}
+
+interface UploadPreviewResult {
+  token: string;
   practaName: string;
   practaType: string;
   version: string;
-  status: string;
-  validationScore?: number;
-  createdAt: string;
+  validationScore: number;
+  validationChecks: ValidationCheck[];
+  valid: boolean;
+  expiresAt: string;
+  requiresAuth: boolean;
 }
 
 type SubmitState = "idle" | "submitting" | "success" | "error";
@@ -50,7 +58,7 @@ export default function SubmitScreen() {
   const navigation = useNavigation<NavigationProp>();
   
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
-  const [submitResult, setSubmitResult] = useState<SubmissionResult | null>(null);
+  const [submitResult, setSubmitResult] = useState<UploadPreviewResult | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const { data: metadata } = useQuery<PractaMetadata>({
@@ -83,7 +91,7 @@ export default function SubmitScreen() {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || data.details || "Submission failed");
+        throw new Error(data.error || data.message || data.details || "Submission failed");
       }
       
       setSubmitResult(data);
@@ -96,18 +104,26 @@ export default function SubmitScreen() {
     }
   };
 
-  const handleViewStatus = async () => {
+  const handleClaimSubmission = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      await WebBrowser.openBrowserAsync(`${VERIFICATION_SERVICE_URL}/submissions`);
+      await WebBrowser.openBrowserAsync(`${VERIFICATION_SERVICE_URL}/api/login`);
     } catch {
-      Linking.openURL(`${VERIFICATION_SERVICE_URL}/submissions`);
+      Linking.openURL(`${VERIFICATION_SERVICE_URL}/api/login`);
     }
   };
 
   const handleClose = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     navigation.goBack();
+  };
+
+  const formatExpiryTime = (expiresAt: string) => {
+    const expiry = new Date(expiresAt);
+    const now = new Date();
+    const diffMs = expiry.getTime() - now.getTime();
+    const diffMins = Math.max(0, Math.floor(diffMs / 60000));
+    return `${diffMins} min`;
   };
 
   const displayMetadata = metadata || codeMetadata;
@@ -182,7 +198,7 @@ export default function SubmitScreen() {
           <View style={styles.infoRow}>
             <Feather name="info" size={18} color={theme.textSecondary} />
             <ThemedText style={[styles.infoText, { color: theme.textSecondary }]}>
-              Your Practa will be uploaded to Stellarin for review. You'll complete sign-in on the Stellarin portal.
+              Your Practa will be validated and uploaded. Sign in on Stellarin to claim your submission.
             </ThemedText>
           </View>
         </Card>
@@ -192,31 +208,62 @@ export default function SubmitScreen() {
             <View style={styles.successHeader}>
               <Feather name="check-circle" size={24} color={theme.success} />
               <ThemedText style={[styles.successTitle, { color: theme.success }]}>
-                Submitted Successfully
+                Upload Complete
               </ThemedText>
             </View>
+            
             <ThemedText style={[styles.successText, { color: theme.textSecondary }]}>
-              Your Practa has been uploaded. Complete sign-in on Stellarin to finalize your submission.
+              Your Practa has been validated and uploaded. Sign in on Stellarin to claim your submission.
             </ThemedText>
+
             <View style={styles.submissionDetails}>
-              <ThemedText style={styles.detailLabel}>Submission ID</ThemedText>
-              <ThemedText style={[styles.detailValue, { color: theme.textSecondary }]}>
-                {submitResult.id}
-              </ThemedText>
-            </View>
-            <View style={styles.submissionDetails}>
-              <ThemedText style={styles.detailLabel}>Status</ThemedText>
-              <View style={[styles.statusBadge, { backgroundColor: theme.warning + "20" }]}>
-                <ThemedText style={[styles.statusBadgeText, { color: theme.warning }]}>
-                  {submitResult.status}
+              <ThemedText style={styles.detailLabel}>Validation Score</ThemedText>
+              <View style={[
+                styles.scoreBadge, 
+                { backgroundColor: submitResult.validationScore >= 70 ? theme.success + "20" : theme.warning + "20" }
+              ]}>
+                <ThemedText style={[
+                  styles.scoreText, 
+                  { color: submitResult.validationScore >= 70 ? theme.success : theme.warning }
+                ]}>
+                  {submitResult.validationScore}/100
                 </ThemedText>
               </View>
             </View>
+
+            <View style={styles.submissionDetails}>
+              <ThemedText style={styles.detailLabel}>Claim Token Expires</ThemedText>
+              <ThemedText style={[styles.detailValue, { color: theme.textSecondary }]}>
+                {formatExpiryTime(submitResult.expiresAt)}
+              </ThemedText>
+            </View>
+
+            {submitResult.validationChecks.length > 0 ? (
+              <View style={styles.checksContainer}>
+                <ThemedText style={[styles.checksTitle, { color: theme.textSecondary }]}>
+                  Validation Checks
+                </ThemedText>
+                {submitResult.validationChecks.slice(0, 5).map((check, index) => (
+                  <View key={index} style={styles.checkRow}>
+                    <Feather
+                      name={check.passed ? "check" : "x"}
+                      size={14}
+                      color={check.passed ? theme.success : theme.error}
+                    />
+                    <ThemedText style={[styles.checkText, { color: theme.textSecondary }]}>
+                      {check.name}
+                    </ThemedText>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
             <Pressable
-              style={[styles.viewStatusButton, { backgroundColor: theme.primary }]}
-              onPress={handleViewStatus}
+              style={[styles.claimButton, { backgroundColor: theme.primary }]}
+              onPress={handleClaimSubmission}
             >
-              <ThemedText style={styles.viewStatusText}>Complete on Stellarin</ThemedText>
+              <Feather name="external-link" size={18} color="#FFFFFF" />
+              <ThemedText style={styles.claimButtonText}>Sign in to Claim</ThemedText>
             </Pressable>
           </Card>
         ) : null}
@@ -253,7 +300,7 @@ export default function SubmitScreen() {
               <Feather name="upload-cloud" size={20} color="#FFFFFF" />
             )}
             <ThemedText style={styles.submitButtonText}>
-              {submitState === "submitting" ? "Uploading..." : "Submit to Stellarin"}
+              {submitState === "submitting" ? "Validating..." : "Submit to Stellarin"}
             </ThemedText>
           </Pressable>
         ) : null}
@@ -375,23 +422,45 @@ const styles = StyleSheet.create({
   detailValue: {
     fontSize: 14,
   },
-  statusBadge: {
+  scoreBadge: {
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.sm,
   },
-  statusBadgeText: {
+  scoreText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  checksContainer: {
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(128, 128, 128, 0.2)",
+  },
+  checksTitle: {
     fontSize: 13,
     fontWeight: "500",
+    marginBottom: Spacing.sm,
   },
-  viewStatusButton: {
+  checkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  checkText: {
+    fontSize: 13,
+  },
+  claimButton: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: Spacing.sm,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
-    marginTop: Spacing.md,
+    marginTop: Spacing.lg,
   },
-  viewStatusText: {
+  claimButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",

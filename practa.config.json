@@ -1,9 +1,8 @@
 {
-  "type": "test",
-  "name": "test",
-  "description": "A minimal Practa starter template",
+  "type": "hello-world",
+  "name": "Hello World",
+  "description": "A minimal Practa starter template with interactive tap counter",
   "author": "Your Name",
-  "githubUsername": "woodenfox",
   "version": "1.0.0",
-  "estimatedDuration": 10
+  "estimatedDuration": 15
 }
