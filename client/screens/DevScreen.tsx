@@ -131,7 +131,7 @@ export default function DevScreen() {
       queryClient.invalidateQueries({ queryKey: ["/api/practa/metadata"] });
       showAlert(
         "Reset Complete",
-        "Your Practa has been reset to the demo state. Restart the app to see the changes."
+        "Your Practa has been reset to the demo state. The app will restart shortly."
       );
     },
     onError: (error: Error) => {

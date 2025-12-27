@@ -646,6 +646,11 @@ ${config.version}
       writeConfig(demoMetadata);
 
       res.json({ success: true, message: "Practa reset to demo state" });
+
+      setTimeout(() => {
+        console.log("[Reset] Restarting server to apply changes...");
+        process.exit(0);
+      }, 500);
     } catch (error) {
       console.error("Reset error:", error);
       res.status(500).json({
