@@ -608,42 +608,25 @@ ${config.version}
 
   app.post("/api/practa/reset-to-demo", async (req, res) => {
     try {
+      const { execSync } = require("child_process");
       const demoDir = path.resolve(process.cwd(), "demo-template");
       const practaDir = path.resolve(process.cwd(), "client/my-practa");
+      const configPath = path.resolve(process.cwd(), "practa.config.json");
 
       if (!fs.existsSync(demoDir)) {
         return res.status(404).json({ error: "Demo template not found" });
       }
 
-      function copyDirRecursive(src: string, dest: string) {
-        if (!fs.existsSync(dest)) {
-          fs.mkdirSync(dest, { recursive: true });
-        }
+      // Use shell commands for better Replit IDE file sync
+      execSync(`rm -rf "${practaDir}"`, { stdio: "inherit" });
+      execSync(`cp -r "${demoDir}" "${practaDir}"`, { stdio: "inherit" });
 
-        const entries = fs.readdirSync(src, { withFileTypes: true });
-        for (const entry of entries) {
-          const srcPath = path.join(src, entry.name);
-          const destPath = path.join(dest, entry.name);
+      // Also reset practa.config.json using shell
+      const demoMetadataPath = path.join(demoDir, "metadata.json");
+      execSync(`cp "${demoMetadataPath}" "${configPath}"`, { stdio: "inherit" });
 
-          if (entry.isDirectory()) {
-            copyDirRecursive(srcPath, destPath);
-          } else {
-            fs.copyFileSync(srcPath, destPath);
-          }
-        }
-      }
-
-      if (fs.existsSync(practaDir)) {
-        fs.rmSync(practaDir, { recursive: true, force: true });
-      }
-      fs.mkdirSync(practaDir, { recursive: true });
-
-      copyDirRecursive(demoDir, practaDir);
-
-      const demoMetadata = JSON.parse(
-        fs.readFileSync(path.join(demoDir, "metadata.json"), "utf-8")
-      );
-      writeConfig(demoMetadata);
+      // Touch files to ensure file watcher picks up changes
+      execSync(`touch "${practaDir}/metadata.json" "${practaDir}/index.tsx" "${configPath}"`, { stdio: "inherit" });
 
       res.json({ success: true, message: "Practa reset to demo state" });
 
