@@ -1,7 +1,9 @@
 import React from "react";
-import { View, StyleSheet, ScrollView, Linking, Pressable } from "react-native";
+import { View, StyleSheet, ScrollView, Linking, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
@@ -10,6 +12,11 @@ import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { demoPractas, DemoPractaInfo } from "@/demo-practa";
+import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { FlowDefinition } from "@/types/flow";
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface StepProps {
   number: number;
@@ -59,14 +66,65 @@ function Tip({ icon, title, description }: TipProps) {
   );
 }
 
+interface DemoCardProps {
+  demo: DemoPractaInfo;
+  onPress: () => void;
+}
+
+function DemoCard({ demo, onPress }: DemoCardProps) {
+  const { theme } = useTheme();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.demoCard, { backgroundColor: theme.backgroundSecondary }]}
+    >
+      <View style={[styles.demoIcon, { backgroundColor: theme.primary + "20" }]}>
+        <Feather name={demo.icon as any} size={24} color={theme.primary} />
+      </View>
+      <View style={styles.demoContent}>
+        <ThemedText style={styles.demoTitle}>{demo.name}</ThemedText>
+        <ThemedText style={[styles.demoDescription, { color: theme.textSecondary }]}>
+          {demo.description}
+        </ThemedText>
+      </View>
+      <Feather name="play-circle" size={24} color={theme.primary} />
+    </Pressable>
+  );
+}
+
 export default function HowToScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const navigation = useNavigation<NavigationProp>();
 
   const handleOpenDocs = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     Linking.openURL("https://github.com/woodenfox/Stellarin-Practa-Template");
+  };
+
+  const handleTryDemo = (demo: DemoPractaInfo) => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    
+    const flow: FlowDefinition = {
+      id: `demo-${demo.id}`,
+      name: demo.name,
+      practas: [
+        {
+          id: demo.id,
+          type: demo.id,
+          name: demo.name,
+          description: demo.description,
+        },
+      ],
+    };
+    
+    navigation.navigate("Flow", { flow });
   };
 
   return (
@@ -86,12 +144,27 @@ export default function HowToScreen() {
         </View>
 
         <Card style={styles.card}>
+          <ThemedText style={styles.sectionTitle}>Try Demo Practas</ThemedText>
+          <ThemedText style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+            Explore these examples to see what's possible
+          </ThemedText>
+          
+          {demoPractas.map((demo) => (
+            <DemoCard
+              key={demo.id}
+              demo={demo}
+              onPress={() => handleTryDemo(demo)}
+            />
+          ))}
+        </Card>
+
+        <Card style={styles.card}>
           <ThemedText style={styles.sectionTitle}>Getting Started</ThemedText>
           
           <Step
             number={1}
-            title="Edit your Practa code"
-            description="Open client/my-practa/index.tsx and modify the component to create your experience."
+            title="Describe your idea to Replit AI"
+            description="Tell the AI what kind of wellbeing experience you want to create. Be specific about interactions, visuals, and duration."
           />
           
           <Step
@@ -215,6 +288,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
+    marginBottom: Spacing.xs,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
     marginBottom: Spacing.lg,
   },
   step: {
@@ -292,5 +369,31 @@ const styles = StyleSheet.create({
   docsButtonText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  demoCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.sm,
+  },
+  demoIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.md,
+  },
+  demoContent: {
+    flex: 1,
+  },
+  demoTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  demoDescription: {
+    fontSize: 13,
   },
 });

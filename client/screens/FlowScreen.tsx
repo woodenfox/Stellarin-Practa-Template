@@ -13,6 +13,7 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 import { useFlow, useCurrentPracta } from "@/context/FlowContext";
 import { FlowDefinition, FlowExecutionState, PractaOutput, PractaContext, PractaCompleteHandler } from "@/types/flow";
 import MyPracta from "@/my-practa";
+import { demoPractas } from "@/demo-practa";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 interface PractaComponentProps {
@@ -25,6 +26,7 @@ type PractaComponent = React.ComponentType<PractaComponentProps>;
 
 const PRACTA_COMPONENTS: Record<string, PractaComponent> = {
   "my-practa": MyPracta,
+  ...Object.fromEntries(demoPractas.map((p) => [p.id, p.component])),
 };
 
 type FlowRouteProp = RouteProp<RootStackParamList, "Flow">;

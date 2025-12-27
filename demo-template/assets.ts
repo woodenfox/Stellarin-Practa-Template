@@ -23,8 +23,11 @@ type AssetSource = number | { uri: string } | object;
 /**
  * Asset keys - add your asset keys here for type safety and autocomplete.
  * This prevents typos and helps AI agents discover available assets.
+ * 
+ * Example:
+ *   export type AssetKey = "hero-image" | "background-music" | "success-chime";
  */
-export type AssetKey = "breathing-orb" | "chime";
+export type AssetKey = string;
 
 /**
  * Register your assets here.
@@ -35,10 +38,16 @@ export type AssetKey = "breathing-orb" | "chime";
  * - Video: mp4, webm
  * - Data: json, txt
  * - Lottie: json (animation files)
+ * 
+ * Example:
+ *   const localAssets: Record<AssetKey, AssetSource> = {
+ *     "hero-image": require("./assets/hero.png"),
+ *     "background-music": require("./assets/music.mp3"),
+ *     "success-chime": require("./assets/chime.mp3"),
+ *   };
  */
 const localAssets: Record<AssetKey, AssetSource> = {
-  "breathing-orb": require("./assets/breathing-orb.png"),
-  "chime": require("./assets/chime.mp3"),
+  // Add your assets here
 };
 
 type AudioSource = number | { uri: string } | null;

@@ -1,252 +1,70 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { View, StyleSheet, Pressable, Image, Platform } from "react-native";
+import React, { useState } from "react";
+import { View, StyleSheet, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { useAudioPlayer } from "expo-audio";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-  cancelAnimation,
-} from "react-native-reanimated";
+import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { PractaContext, PractaCompleteHandler } from "@/types/flow";
-import { assets } from "./assets";
 
-const BREATH_CYCLES = 3;
-const INHALE_DURATION = 4000;
-const HOLD_DURATION = 2000;
-const EXHALE_DURATION = 4000;
-const CYCLE_DURATION = INHALE_DURATION + HOLD_DURATION + EXHALE_DURATION;
-
-interface BreathingPauseProps {
+interface MyPractaProps {
   context: PractaContext;
   onComplete: PractaCompleteHandler;
   onSkip?: () => void;
 }
 
-export default function BreathingPause({ context, onComplete, onSkip }: BreathingPauseProps) {
+export default function MyPracta({ context, onComplete, onSkip }: MyPractaProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  
-  const [phase, setPhase] = useState<"ready" | "breathing" | "complete">("ready");
-  const [breathPhase, setBreathPhase] = useState<"inhale" | "hold" | "exhale">("inhale");
-  const [cycleCount, setCycleCount] = useState(0);
-  
-  const scale = useSharedValue(1);
-  const opacity = useSharedValue(0.3);
-  const progress = useSharedValue(0);
-  
-  const cycleRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const holdTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const exhaleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const completionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isMountedRef = useRef(true);
+  const [isStarted, setIsStarted] = useState(false);
 
-  const chimeSource = assets.getAudioSource("chime");
-  const player = useAudioPlayer(chimeSource);
-
-  const playChime = useCallback(() => {
-    if (player) {
-      try {
-        player.seekTo(0);
-        player.play();
-      } catch (error) {
-        console.warn("Failed to play chime:", error);
-      }
-    }
-  }, [player]);
-
-  const triggerHaptic = useCallback(() => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-  }, []);
-
-  const clearAllTimers = useCallback(() => {
-    if (cycleRef.current) {
-      clearInterval(cycleRef.current);
-      cycleRef.current = null;
-    }
-    if (holdTimeoutRef.current) {
-      clearTimeout(holdTimeoutRef.current);
-      holdTimeoutRef.current = null;
-    }
-    if (exhaleTimeoutRef.current) {
-      clearTimeout(exhaleTimeoutRef.current);
-      exhaleTimeoutRef.current = null;
-    }
-    if (completionTimeoutRef.current) {
-      clearTimeout(completionTimeoutRef.current);
-      completionTimeoutRef.current = null;
-    }
-  }, []);
-
-  const startBreathCycle = useCallback(() => {
-    if (!isMountedRef.current) return;
-    
-    if (holdTimeoutRef.current) clearTimeout(holdTimeoutRef.current);
-    if (exhaleTimeoutRef.current) clearTimeout(exhaleTimeoutRef.current);
-    
-    setBreathPhase("inhale");
-    triggerHaptic();
-    
-    scale.value = withTiming(1.4, { 
-      duration: INHALE_DURATION, 
-      easing: Easing.inOut(Easing.ease) 
-    });
-    opacity.value = withTiming(0.8, { 
-      duration: INHALE_DURATION, 
-      easing: Easing.inOut(Easing.ease) 
-    });
-
-    holdTimeoutRef.current = setTimeout(() => {
-      if (!isMountedRef.current) return;
-      setBreathPhase("hold");
-      triggerHaptic();
-      
-      exhaleTimeoutRef.current = setTimeout(() => {
-        if (!isMountedRef.current) return;
-        setBreathPhase("exhale");
-        triggerHaptic();
-        
-        scale.value = withTiming(1, { 
-          duration: EXHALE_DURATION, 
-          easing: Easing.inOut(Easing.ease) 
-        });
-        opacity.value = withTiming(0.3, { 
-          duration: EXHALE_DURATION, 
-          easing: Easing.inOut(Easing.ease) 
-        });
-      }, HOLD_DURATION);
-    }, INHALE_DURATION);
-  }, [scale, opacity, triggerHaptic]);
-
-  const startBreathing = useCallback(() => {
-    setPhase("breathing");
-    setCycleCount(0);
-    
-    progress.value = withTiming(1, { duration: BREATH_CYCLES * CYCLE_DURATION });
-    
-    startBreathCycle();
-    
-    let currentCycle = 1;
-    cycleRef.current = setInterval(() => {
-      if (!isMountedRef.current) return;
-      
-      currentCycle++;
-      if (currentCycle <= BREATH_CYCLES) {
-        setCycleCount(prev => prev + 1);
-        startBreathCycle();
-      } else {
-        clearAllTimers();
-        
-        completionTimeoutRef.current = setTimeout(() => {
-          if (!isMountedRef.current) return;
-          playChime();
-          setPhase("complete");
-          if (Platform.OS !== "web") {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          }
-        }, EXHALE_DURATION);
-      }
-    }, CYCLE_DURATION);
-  }, [startBreathCycle, clearAllTimers, playChime, progress]);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      clearAllTimers();
-      cancelAnimation(scale);
-      cancelAnimation(opacity);
-      cancelAnimation(progress);
-    };
-  }, [scale, opacity, progress, clearAllTimers]);
-
-  const handleComplete = () => {
+  const triggerHaptic = () => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
+  };
+
+  const handleStart = () => {
+    triggerHaptic();
+    setIsStarted(true);
+  };
+
+  const handleComplete = () => {
+    triggerHaptic();
     onComplete({
       content: { 
         type: "text", 
-        value: `Completed ${BREATH_CYCLES} breathing cycles. Feeling centered and calm.` 
+        value: "Practa completed successfully!"
       },
       metadata: { 
-        breathCycles: BREATH_CYCLES,
-        totalDuration: BREATH_CYCLES * CYCLE_DURATION / 1000,
         completedAt: Date.now(),
       },
     });
   };
 
-  const animatedOrbStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }));
-
-  const animatedProgressStyle = useAnimatedStyle(() => ({
-    width: `${progress.value * 100}%`,
-  }));
-
-  const getPhaseText = () => {
-    if (phase === "ready") return "Take a moment to pause";
-    if (phase === "complete") return "Well done";
-    switch (breathPhase) {
-      case "inhale": return "Breathe in...";
-      case "hold": return "Hold...";
-      case "exhale": return "Breathe out...";
-    }
-  };
-
-  const getSubtext = () => {
-    if (phase === "ready") return "A brief breathing exercise to center yourself";
-    if (phase === "complete") return "You completed your breathing pause";
-    return `Cycle ${cycleCount + 1} of ${BREATH_CYCLES}`;
-  };
-
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top + Spacing.xl }]}>
       <View style={styles.content}>
-        <View style={styles.orbContainer}>
-          <Animated.View style={[styles.orbWrapper, animatedOrbStyle]}>
-            <Image 
-              source={assets.getImageSource("breathing-orb") || undefined} 
-              style={styles.orbImage}
-              resizeMode="cover"
-            />
-          </Animated.View>
-          
-          {phase === "breathing" ? (
-            <View style={styles.phaseIndicator}>
-              <ThemedText style={[styles.phaseText, { color: theme.primary }]}>
-                {breathPhase.toUpperCase()}
-              </ThemedText>
-            </View>
-          ) : null}
+        <View style={[styles.iconContainer, { backgroundColor: theme.primary + "20" }]}>
+          <Feather name="star" size={48} color={theme.primary} />
         </View>
 
-        <ThemedText style={styles.title}>{getPhaseText()}</ThemedText>
+        <ThemedText style={styles.title}>
+          {isStarted ? "Great!" : "Welcome"}
+        </ThemedText>
+        
         <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
-          {getSubtext()}
+          {isStarted 
+            ? "You've started your Practa experience."
+            : "This is a starter template. Customize it to create your own wellbeing experience."}
         </ThemedText>
       </View>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.lg }]}>
-        {phase === "ready" ? (
-          <Pressable
-            onPress={startBreathing}
-            style={[styles.button, { backgroundColor: theme.primary }]}
-          >
-            <ThemedText style={styles.buttonText}>Begin</ThemedText>
-          </Pressable>
-        ) : phase === "complete" ? (
+        {isStarted ? (
           <Pressable
             onPress={handleComplete}
             style={[styles.button, { backgroundColor: theme.primary }]}
@@ -254,18 +72,15 @@ export default function BreathingPause({ context, onComplete, onSkip }: Breathin
             <ThemedText style={styles.buttonText}>Complete</ThemedText>
           </Pressable>
         ) : (
-          <View style={[styles.progressContainer, { backgroundColor: theme.backgroundSecondary }]}>
-            <Animated.View 
-              style={[
-                styles.progressBar, 
-                { backgroundColor: theme.primary },
-                animatedProgressStyle
-              ]} 
-            />
-          </View>
+          <Pressable
+            onPress={handleStart}
+            style={[styles.button, { backgroundColor: theme.primary }]}
+          >
+            <ThemedText style={styles.buttonText}>Start</ThemedText>
+          </Pressable>
         )}
 
-        {onSkip && phase !== "breathing" ? (
+        {onSkip ? (
           <Pressable onPress={onSkip} style={styles.skipButton}>
             <ThemedText style={[styles.skipText, { color: theme.textSecondary }]}>
               Skip
@@ -287,34 +102,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: Spacing.xl,
   },
-  orbContainer: {
-    width: 200,
-    height: 200,
-    justifyContent: "center",
+  iconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     alignItems: "center",
-    marginBottom: Spacing["2xl"],
-  },
-  orbWrapper: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    overflow: "hidden",
-  },
-  orbImage: {
-    width: "100%",
-    height: "100%",
-  },
-  phaseIndicator: {
-    position: "absolute",
-    bottom: -10,
-  },
-  phaseText: {
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 2,
+    justifyContent: "center",
+    marginBottom: Spacing.xl,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "700",
     textAlign: "center",
     marginBottom: Spacing.sm,
@@ -322,6 +119,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     textAlign: "center",
+    lineHeight: 24,
   },
   footer: {
     paddingHorizontal: Spacing.lg,
@@ -335,15 +133,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "600",
     fontSize: 16,
-  },
-  progressContainer: {
-    height: 8,
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  progressBar: {
-    height: "100%",
-    borderRadius: 4,
   },
   skipButton: {
     padding: Spacing.md,

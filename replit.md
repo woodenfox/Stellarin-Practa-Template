@@ -281,6 +281,20 @@ const allKeys = assets.keys();
 - **Stay self-contained**: Do not make external network requests - use provided context/API
 - **Export requirements**: Default component export only (metadata in separate JSON file)
 
+## Demo Practas
+
+The template includes example Practas in `client/demo-practa/` that demonstrate common patterns:
+
+| Demo | Description | Techniques Shown |
+|------|-------------|------------------|
+| **Breathing Pause** | Guided breathing exercise | Animations, audio, progress bar, haptics |
+| **Gratitude Prompt** | Text input for reflection | Keyboard handling, text input, state management |
+| **Tap Counter** | Interactive tap counter | Gesture feedback, progress tracking, animations |
+
+Try them from the **How To** tab in the app to see how they work.
+
+**For AI Agents:** Reference these demos when building new Practas. They show best practices for assets, animations, and user interactions.
+
 ## Project Structure (Full Template)
 
 ```
@@ -290,6 +304,12 @@ client/
     metadata.json     # Your Practa metadata
     assets.ts         # Asset resolver (use this to load assets)
     assets/           # Your local assets
+  
+  demo-practa/        # EXAMPLE PRACTAS - REFERENCE THESE
+    breathing-pause/  # Breathing exercise with animations & audio
+    gratitude-prompt/ # Text input for gratitude reflection
+    tap-counter/      # Interactive tap counter
+    index.ts          # Demo registry
   
   components/         # Shared UI components
   constants/          # Theme tokens (Colors, Spacing, etc.)
@@ -323,6 +343,7 @@ server/               # Express backend (minimal for preview)
 |------|---------|
 | `client/my-practa/index.tsx` | Your Practa implementation |
 | `client/my-practa/metadata.json` | Your Practa metadata |
+| `client/demo-practa/` | Example Practas for reference |
 | `client/types/flow.ts` | TypeScript types for Practa |
 | `client/lib/practa-validator.ts` | Validation logic |
 | `validate-practa.ts` | CLI validator |
