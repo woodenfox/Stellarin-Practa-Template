@@ -617,33 +617,41 @@ ${config.version}
         return res.status(404).json({ error: "Demo template not found" });
       }
 
-      // Overwrite files in-place instead of deleting folder (preserves IDE file handles)
-      // First, ensure the assets directory exists
+      // Read demo files content
+      const demoIndexContent = fs.readFileSync(path.join(demoDir, "index.tsx"), "utf-8");
+      const demoMetadataContent = fs.readFileSync(path.join(demoDir, "metadata.json"), "utf-8");
+
+      // Ensure directories exist
+      if (!fs.existsSync(practaDir)) {
+        fs.mkdirSync(practaDir, { recursive: true });
+      }
       const assetsDir = path.join(practaDir, "assets");
       if (!fs.existsSync(assetsDir)) {
         fs.mkdirSync(assetsDir, { recursive: true });
       }
 
-      // Clear any extra files in assets that aren't in demo
+      // Write files by truncating and writing (keeps same inode)
+      fs.writeFileSync(path.join(practaDir, "index.tsx"), demoIndexContent, { flag: "w" });
+      fs.writeFileSync(path.join(practaDir, "metadata.json"), demoMetadataContent, { flag: "w" });
+      fs.writeFileSync(configPath, demoMetadataContent, { flag: "w" });
+
+      // Copy assets
       const demoAssetsDir = path.join(demoDir, "assets");
-      if (fs.existsSync(assetsDir)) {
-        const currentAssets = fs.existsSync(assetsDir) ? fs.readdirSync(assetsDir) : [];
-        const demoAssets = fs.existsSync(demoAssetsDir) ? fs.readdirSync(demoAssetsDir) : [];
-        for (const file of currentAssets) {
-          if (!demoAssets.includes(file)) {
-            fs.unlinkSync(path.join(assetsDir, file));
-          }
+      if (fs.existsSync(demoAssetsDir)) {
+        const demoAssets = fs.readdirSync(demoAssetsDir);
+        for (const asset of demoAssets) {
+          const srcPath = path.join(demoAssetsDir, asset);
+          const destPath = path.join(assetsDir, asset);
+          fs.copyFileSync(srcPath, destPath);
         }
       }
 
-      // Copy demo files using rsync for better sync (overwrites in place)
-      execSync(`rsync -av --delete "${demoDir}/" "${practaDir}/"`, { stdio: "inherit" });
-      
-      // Copy config
-      execSync(`cat "${demoDir}/metadata.json" > "${configPath}"`, { stdio: "inherit" });
-
       // Force sync filesystem
-      execSync(`sync`, { stdio: "inherit" });
+      try {
+        execSync(`sync`, { stdio: "pipe" });
+      } catch (e) {
+        // sync may not be available, ignore
+      }
 
       res.json({ success: true, message: "Practa reset to demo state" });
 
