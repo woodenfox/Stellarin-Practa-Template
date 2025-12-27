@@ -1,15 +1,13 @@
 {
-  "id": "breathing-pause",
-  "name": "Breathing Pause",
-  "version": "1.0.2",
-  "description": "A guided breathing exercise to help you find calm and center yourself",
-  "author": "Stellarin",
+  "id": "my-practa",
+  "name": "My Practa",
+  "version": "1.0.1",
+  "description": "A starter template for your custom wellbeing experience",
+  "author": "Your Name",
   "estimatedDuration": 30,
-  "category": "mindfulness",
+  "category": "wellness",
   "tags": [
-    "breathing",
-    "meditation",
-    "calm",
-    "wellness"
+    "starter",
+    "template"
   ]
 }
