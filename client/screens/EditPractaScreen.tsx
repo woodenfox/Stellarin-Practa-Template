@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Alert, ScrollView } from "react-native";
+import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
@@ -15,12 +15,14 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
 interface PractaMetadata {
-  type: string;
+  id: string;
   name: string;
+  version: string;
   description: string;
   author: string;
-  version: string;
   estimatedDuration?: number;
+  category?: string;
+  tags?: string[];
 }
 
 function FormField({
@@ -77,12 +79,15 @@ export default function EditPractaScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const queryClient = useQueryClient();
 
-  const [type, setType] = useState("");
+  // Fields in same order as metadata.json: id, name, version, description, author, estimatedDuration, category, tags
+  const [id, setId] = useState("");
   const [name, setName] = useState("");
+  const [version, setVersion] = useState("");
   const [description, setDescription] = useState("");
   const [author, setAuthor] = useState("");
-  const [version, setVersion] = useState("");
   const [estimatedDuration, setEstimatedDuration] = useState("");
+  const [category, setCategory] = useState("");
+  const [tags, setTags] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
@@ -92,14 +97,16 @@ export default function EditPractaScreen() {
 
   useEffect(() => {
     if (metadata) {
-      setType(metadata.type || "");
+      setId(metadata.id || "");
       setName(metadata.name || "");
+      setVersion(metadata.version || "");
       setDescription(metadata.description || "");
       setAuthor(metadata.author || "");
-      setVersion(metadata.version || "");
       setEstimatedDuration(
         metadata.estimatedDuration ? String(metadata.estimatedDuration) : ""
       );
+      setCategory(metadata.category || "");
+      setTags(metadata.tags?.join(", ") || "");
       setHasUnsavedChanges(false);
     }
   }, [metadata]);
@@ -107,6 +114,10 @@ export default function EditPractaScreen() {
   const saveMutation = useMutation({
     mutationFn: async (data: PractaMetadata) => {
       const res = await apiRequest("PUT", "/api/practa/metadata", data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to save");
+      }
       return res.json() as Promise<PractaMetadata>;
     },
     onSuccess: (savedData) => {
@@ -114,12 +125,18 @@ export default function EditPractaScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setHasUnsavedChanges(false);
     },
-    onError: (error: Error & { errors?: string[] }) => {
+    onError: (error: Error) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      const message = error.errors?.join("\n") || error.message || "Failed to save";
-      Alert.alert("Save Failed", message);
+      Alert.alert("Save Failed", error.message || "Failed to save");
     },
   });
+
+  const handleIdChange = (text: string) => {
+    const sanitized = text.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    setId(sanitized);
+    setErrors(prev => ({ ...prev, id: "" }));
+    setHasUnsavedChanges(true);
+  };
 
   const handleFieldChange = (setter: (value: string) => void) => (value: string) => {
     setter(value);
@@ -128,15 +145,24 @@ export default function EditPractaScreen() {
 
   const validateFields = (): boolean => {
     const newErrors: Record<string, string> = {};
+    const idPattern = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
-    if (!type.trim()) {
-      newErrors.type = "Type is required";
-    } else if (!/^[a-z][a-z0-9-]*$/.test(type)) {
-      newErrors.type = "Use lowercase letters and hyphens only";
+    if (!id.trim()) {
+      newErrors.id = "Practa ID is required";
+    } else if (id.length < 3 || id.length > 50) {
+      newErrors.id = "Must be 3-50 characters";
+    } else if (!idPattern.test(id)) {
+      newErrors.id = "Use lowercase letters, numbers, hyphens only";
     }
 
     if (!name.trim()) {
       newErrors.name = "Name is required";
+    }
+
+    if (!version.trim()) {
+      newErrors.version = "Version is required";
+    } else if (!/^\d+\.\d+\.\d+$/.test(version)) {
+      newErrors.version = "Use format: 1.0.0";
     }
 
     if (!description.trim()) {
@@ -145,12 +171,6 @@ export default function EditPractaScreen() {
 
     if (!author.trim()) {
       newErrors.author = "Author is required";
-    }
-
-    if (!version.trim()) {
-      newErrors.version = "Version is required";
-    } else if (!/^\d+\.\d+\.\d+/.test(version)) {
-      newErrors.version = "Use format: 1.0.0";
     }
 
     if (estimatedDuration && isNaN(Number(estimatedDuration))) {
@@ -167,15 +187,19 @@ export default function EditPractaScreen() {
       return;
     }
 
+    const tagsArray = tags.trim()
+      ? tags.split(",").map(t => t.trim()).filter(Boolean)
+      : undefined;
+
     const data: PractaMetadata = {
-      type: type.trim(),
+      id: id.trim(),
       name: name.trim(),
+      version: version.trim(),
       description: description.trim(),
       author: author.trim(),
-      version: version.trim(),
-      estimatedDuration: estimatedDuration
-        ? Number(estimatedDuration)
-        : undefined,
+      estimatedDuration: estimatedDuration ? Number(estimatedDuration) : undefined,
+      category: category.trim() || undefined,
+      tags: tagsArray,
     };
 
     saveMutation.mutate(data);
@@ -209,19 +233,27 @@ export default function EditPractaScreen() {
 
         <Card style={styles.card}>
           <FormField
-            label="ID (unique identifier)"
-            value={type}
-            onChangeText={handleFieldChange(setType)}
-            placeholder="my-practa"
-            error={errors.type}
+            label="Practa ID"
+            value={id}
+            onChangeText={handleIdChange}
+            placeholder="my-practa-id"
+            error={errors.id}
           />
 
           <FormField
-            label="Name"
+            label="Display Name"
             value={name}
             onChangeText={handleFieldChange(setName)}
             placeholder="My Practa"
             error={errors.name}
+          />
+
+          <FormField
+            label="Version"
+            value={version}
+            onChangeText={handleFieldChange(setVersion)}
+            placeholder="1.0.0"
+            error={errors.version}
           />
 
           <FormField
@@ -242,14 +274,6 @@ export default function EditPractaScreen() {
           />
 
           <FormField
-            label="Version"
-            value={version}
-            onChangeText={handleFieldChange(setVersion)}
-            placeholder="1.0.0"
-            error={errors.version}
-          />
-
-          <FormField
             label="Estimated Duration (seconds)"
             value={estimatedDuration}
             onChangeText={handleFieldChange(setEstimatedDuration)}
@@ -257,11 +281,24 @@ export default function EditPractaScreen() {
             keyboardType="numeric"
             error={errors.estimatedDuration}
           />
+
+          <FormField
+            label="Category (optional)"
+            value={category}
+            onChangeText={handleFieldChange(setCategory)}
+            placeholder="wellness"
+          />
+
+          <FormField
+            label="Tags (optional, comma-separated)"
+            value={tags}
+            onChangeText={handleFieldChange(setTags)}
+            placeholder="meditation, calm, breathing"
+          />
         </Card>
 
         <ThemedText style={[styles.hint, { color: theme.textSecondary }]}>
-          Changes are saved to practa.config.json. Update the metadata export
-          in your component to match.
+          Changes are saved to metadata.json in your Practa folder.
         </ThemedText>
 
         <Pressable

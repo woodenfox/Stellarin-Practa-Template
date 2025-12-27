@@ -7,6 +7,7 @@ import archiver from "archiver";
 import AdmZip from "adm-zip";
 
 const CONFIG_PATH = path.resolve(process.cwd(), "practa.config.json");
+const METADATA_PATH = path.resolve(process.cwd(), "client/my-practa/metadata.json");
 const TEMPLATE_REPO = "woodenfox/Stellarin-Practa-Template";
 const PROTECTED_PATHS = ["client/my-practa", "practa.config.json"];
 
@@ -89,6 +90,16 @@ function validateMetadata(data: unknown): { valid: boolean; errors: string[] } {
 }
 
 function readConfig(): PractaMetadata | null {
+  // Read from metadata.json as the source of truth
+  try {
+    if (fs.existsSync(METADATA_PATH)) {
+      const content = fs.readFileSync(METADATA_PATH, "utf-8");
+      return JSON.parse(content);
+    }
+  } catch (error) {
+    console.error("Error reading metadata.json:", error);
+  }
+  // Fallback to practa.config.json for backward compatibility
   try {
     if (fs.existsSync(CONFIG_PATH)) {
       const content = fs.readFileSync(CONFIG_PATH, "utf-8");
@@ -101,11 +112,27 @@ function readConfig(): PractaMetadata | null {
 }
 
 function writeConfig(metadata: PractaMetadata): boolean {
+  // Write to both files to keep them in sync
+  // Order fields consistently: id, name, version, description, author, estimatedDuration, category, tags
+  const orderedMetadata = {
+    id: metadata.id,
+    name: metadata.name,
+    version: metadata.version,
+    description: metadata.description,
+    author: metadata.author,
+    ...(metadata.estimatedDuration !== undefined && { estimatedDuration: metadata.estimatedDuration }),
+    ...(metadata.category && { category: metadata.category }),
+    ...(metadata.tags && metadata.tags.length > 0 && { tags: metadata.tags }),
+  };
+  
   try {
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(metadata, null, 2) + "\n");
+    // Write to metadata.json (source of truth)
+    fs.writeFileSync(METADATA_PATH, JSON.stringify(orderedMetadata, null, 2) + "\n");
+    // Also write to practa.config.json for backward compatibility
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(orderedMetadata, null, 2) + "\n");
     return true;
   } catch (error) {
-    console.error("Error writing practa.config.json:", error);
+    console.error("Error writing config files:", error);
     return false;
   }
 }

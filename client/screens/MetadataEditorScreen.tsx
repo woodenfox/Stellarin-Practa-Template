@@ -261,6 +261,14 @@ export default function MetadataEditorScreen() {
           />
 
           <FormField
+            label="Version"
+            value={version}
+            onChangeText={setVersion}
+            placeholder="1.0.0"
+            error={errors.version}
+          />
+
+          <FormField
             label="Description"
             value={description}
             onChangeText={setDescription}
@@ -275,14 +283,6 @@ export default function MetadataEditorScreen() {
             onChangeText={setAuthor}
             placeholder="Your Name"
             error={errors.author}
-          />
-
-          <FormField
-            label="Version"
-            value={version}
-            onChangeText={setVersion}
-            placeholder="1.0.0"
-            error={errors.version}
           />
 
           <FormField
@@ -310,7 +310,7 @@ export default function MetadataEditorScreen() {
         </Card>
 
         <ThemedText style={[styles.hint, { color: theme.textSecondary }]}>
-          Changes are saved to practa.config.json and sync with metadata.json.
+          Changes are saved to metadata.json in your Practa folder.
         </ThemedText>
 
         <Pressable
