@@ -3,6 +3,12 @@ import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import * as fs from "fs";
 import * as path from "path";
+import {
+  bumpMetadataPatch,
+  getLastProcessedCommit,
+  setLastProcessedCommit,
+  getCurrentCommitSha,
+} from "../scripts/bump-version";
 
 const app = express();
 const log = console.log;
@@ -217,6 +223,55 @@ function setupErrorHandler(app: express.Application) {
   });
 }
 
+function startGitVersionWatcher() {
+  const gitHeadPath = path.resolve(process.cwd(), ".git/HEAD");
+  const gitLogsHeadPath = path.resolve(process.cwd(), ".git/logs/HEAD");
+  
+  if (!fs.existsSync(gitHeadPath)) {
+    log("[Version Watcher] No .git directory found, skipping auto-version");
+    return;
+  }
+
+  const checkAndBump = () => {
+    const currentSha = getCurrentCommitSha();
+    if (!currentSha) return;
+
+    const lastProcessed = getLastProcessedCommit();
+    
+    if (!lastProcessed) {
+      log(`[Version Watcher] Initializing commit tracking at ${currentSha.slice(0, 7)}`);
+      setLastProcessedCommit(currentSha);
+      return;
+    }
+    
+    if (currentSha === lastProcessed) return;
+
+    log(`[Version Watcher] New commit detected: ${currentSha.slice(0, 7)}`);
+    const result = bumpMetadataPatch();
+    
+    if (result.success) {
+      setLastProcessedCommit(currentSha);
+    } else if (result.error) {
+      log(`[Version Watcher] Bump failed: ${result.error}`);
+    }
+  };
+
+  checkAndBump();
+
+  const watchPath = fs.existsSync(gitLogsHeadPath) ? gitLogsHeadPath : gitHeadPath;
+  
+  try {
+    fs.watch(watchPath, { persistent: false }, (eventType) => {
+      if (eventType === "change") {
+        setTimeout(checkAndBump, 100);
+      }
+    });
+    log("[Version Watcher] Watching for commits to auto-increment version");
+  } catch (error) {
+    log("[Version Watcher] Could not start watcher:", error);
+  }
+}
+
 (async () => {
   setupCors(app);
   setupBodyParsing(app);
@@ -227,6 +282,8 @@ function setupErrorHandler(app: express.Application) {
   const server = await registerRoutes(app);
 
   setupErrorHandler(app);
+
+  startGitVersionWatcher();
 
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(
