@@ -617,16 +617,33 @@ ${config.version}
         return res.status(404).json({ error: "Demo template not found" });
       }
 
-      // Use shell commands for better Replit IDE file sync
-      execSync(`rm -rf "${practaDir}"`, { stdio: "inherit" });
-      execSync(`cp -r "${demoDir}" "${practaDir}"`, { stdio: "inherit" });
+      // Overwrite files in-place instead of deleting folder (preserves IDE file handles)
+      // First, ensure the assets directory exists
+      const assetsDir = path.join(practaDir, "assets");
+      if (!fs.existsSync(assetsDir)) {
+        fs.mkdirSync(assetsDir, { recursive: true });
+      }
 
-      // Also reset practa.config.json using shell
-      const demoMetadataPath = path.join(demoDir, "metadata.json");
-      execSync(`cp "${demoMetadataPath}" "${configPath}"`, { stdio: "inherit" });
+      // Clear any extra files in assets that aren't in demo
+      const demoAssetsDir = path.join(demoDir, "assets");
+      if (fs.existsSync(assetsDir)) {
+        const currentAssets = fs.existsSync(assetsDir) ? fs.readdirSync(assetsDir) : [];
+        const demoAssets = fs.existsSync(demoAssetsDir) ? fs.readdirSync(demoAssetsDir) : [];
+        for (const file of currentAssets) {
+          if (!demoAssets.includes(file)) {
+            fs.unlinkSync(path.join(assetsDir, file));
+          }
+        }
+      }
 
-      // Touch files to ensure file watcher picks up changes
-      execSync(`touch "${practaDir}/metadata.json" "${practaDir}/index.tsx" "${configPath}"`, { stdio: "inherit" });
+      // Copy demo files using rsync for better sync (overwrites in place)
+      execSync(`rsync -av --delete "${demoDir}/" "${practaDir}/"`, { stdio: "inherit" });
+      
+      // Copy config
+      execSync(`cat "${demoDir}/metadata.json" > "${configPath}"`, { stdio: "inherit" });
+
+      // Force sync filesystem
+      execSync(`sync`, { stdio: "inherit" });
 
       res.json({ success: true, message: "Practa reset to demo state" });
 
