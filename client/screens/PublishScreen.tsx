@@ -142,7 +142,7 @@ export default function PublishScreen() {
     return `${diffMins} min`;
   };
 
-  const displayMetadata = metadata || codeMetadata;
+  const displayMetadata = (metadata || codeMetadata) as PractaMetadata;
   const canSubmit = !hasErrors && submitState !== "submitting";
 
   return (

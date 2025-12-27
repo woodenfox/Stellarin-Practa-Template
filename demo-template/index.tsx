@@ -8,9 +8,21 @@ import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { PractaContext, PractaCompleteHandler } from "@/types/flow";
+import { PractaContext, PractaCompleteHandler, PractaMetadata } from "@/types/flow";
 
 const zenCircleImage = require("./assets/zen-circle.png");
+
+export const metadata: PractaMetadata = {
+  id: "hello-world",
+  type: "hello-world",
+  name: "Hello World",
+  description: "A simple interactive Practa that counts taps",
+  author: "Stellarin",
+  version: "1.0.0",
+  estimatedDuration: 15,
+  category: "starter",
+  tags: ["interactive", "demo"],
+};
 
 interface MyPractaProps {
   context: PractaContext;
