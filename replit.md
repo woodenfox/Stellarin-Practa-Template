@@ -2,7 +2,9 @@
 
 ## Overview
 
-This is a minimal starter template for building Practa - interactive wellbeing experiences that can be submitted to the Stellarin app. Fork this template to create your own Practa, test it locally, and submit it for review.
+This is a Replit-powered development environment for creating Practa - interactive wellbeing experiences for the Stellarin app. Use Replit's AI to describe what you want to build, iterate on your design, preview it in real-time, and submit it for review.
+
+**No coding experience required.** Just describe your idea to Replit AI and it will build your Practa for you.
 
 ## What is a Practa?
 
@@ -14,17 +16,39 @@ A Practa is a self-contained React Native component that:
 
 ## Important Note for AI Agents
 
-Only files within `client/my-practa/` are included when submitting a Practa. Changes to any other files (components, screens, navigation, server, etc.) will NOT be included in the submission and will NOT affect the final Practa.
+**Only files within `client/my-practa/` are submitted to Stellarin.** All other files (components, screens, navigation, server, etc.) exist only for local development and preview - they will NOT be included in the final submission.
 
-Before modifying any files outside `client/my-practa/`, confirm with the user that they understand these changes are for local development/preview only and won't be part of their submitted Practa.
+When building a Practa:
+- Focus all implementation work in `client/my-practa/index.tsx`
+- Update metadata in `client/my-practa/metadata.json`
+- Place any assets in `client/my-practa/assets/`
+- Use the Preview tab to test changes in real-time
+- Do not modify files outside `client/my-practa/` unless explicitly requested for local preview purposes
 
 ## Getting Started
 
-### 1. Edit Your Practa
-Open `client/my-practa/index.tsx` and modify the example to create your own experience.
+### 1. Describe Your Idea
+Tell Replit AI what kind of wellbeing experience you want to create. Be specific about:
+- The core interaction (breathing exercise, gratitude prompt, meditation timer, etc.)
+- The visual style and mood
+- How long the experience should take
+- What the user should feel or accomplish
 
-### 2. Configure Metadata
-Edit `client/my-practa/metadata.json` with your Practa details:
+### 2. Iterate and Refine
+Review the AI's implementation in the Preview tab. Ask for changes:
+- "Make the animations smoother"
+- "Add haptic feedback when the user taps"
+- "Change the color scheme to be more calming"
+- "Add a skip button for users who want to exit early"
+
+### 3. Test Your Practa
+Use the Preview tab to run through your Practa multiple times. Test on your phone using Expo Go by scanning the QR code. Make sure:
+- All interactions work as expected
+- The experience feels polished
+- The completion flow works correctly
+
+### 4. Configure Metadata
+Update `client/my-practa/metadata.json` with your Practa details:
 ```json
 {
   "id": "my-unique-practa",
@@ -38,14 +62,8 @@ Edit `client/my-practa/metadata.json` with your Practa details:
 }
 ```
 
-### 3. Validate Your Practa
-The Preview screen shows real-time validation status. You can also run the CLI validator:
-```bash
-npx tsx validate-practa.ts
-```
-
-### 4. Preview Your Practa
-Run the app and tap "Preview Practa" to see your changes in action.
+### 5. Submit for Review
+Once your Practa passes validation, use the Publish tab to submit it to Stellarin for review.
 
 ## Automatic Version Bumping
 
