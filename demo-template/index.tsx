@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, Pressable, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -10,6 +10,50 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { PractaContext, PractaCompleteHandler, PractaMetadata } from "@/types/flow";
 import { assets } from "./assets";
+
+/**
+ * ============================================
+ * ASSET USAGE EXAMPLES
+ * ============================================
+ * 
+ * This demo shows how to use the asset resolver.
+ * NEVER use require() directly in your component code!
+ * 
+ * 1. IMAGES (sync):
+ *    const source = assets.getImageSource("zen-circle");
+ *    <Image source={source || undefined} />
+ * 
+ * 2. AUDIO (async - use in useEffect or event handler):
+ *    const playSound = async () => {
+ *      const uri = await assets.getAudioUri("chime");
+ *      if (uri) {
+ *        const { sound } = await Audio.Sound.createAsync({ uri });
+ *        await sound.playAsync();
+ *      }
+ *    };
+ * 
+ * 3. VIDEO (async):
+ *    const [videoSource, setVideoSource] = useState<{ uri: string } | null>(null);
+ *    useEffect(() => {
+ *      assets.getVideoSource("intro").then(setVideoSource);
+ *    }, []);
+ *    {videoSource && <Video source={videoSource} />}
+ * 
+ * 4. LOTTIE ANIMATIONS (sync):
+ *    const animation = assets.getLottieSource("loading");
+ *    {animation && <LottieView source={animation} autoPlay loop />}
+ * 
+ * 5. JSON DATA (sync):
+ *    interface Config { theme: string; levels: number[] }
+ *    const config = assets.getData<Config>("config");
+ * 
+ * 6. CHECK IF EXISTS:
+ *    if (assets.has("background")) { ... }
+ * 
+ * 7. LIST ALL KEYS:
+ *    const allAssets = assets.keys(); // ["zen-circle", ...]
+ * ============================================
+ */
 
 export const metadata: PractaMetadata = {
   id: "hello-world",

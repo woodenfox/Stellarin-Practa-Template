@@ -1,7 +1,7 @@
 {
   "id": "hello-world",
   "name": "Hello World",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "A simple interactive Practa that counts taps",
   "author": "Stellarin",
   "estimatedDuration": 15,
