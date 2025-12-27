@@ -209,7 +209,7 @@ export default function EditPractaScreen() {
 
         <Card style={styles.card}>
           <FormField
-            label="Type (unique identifier)"
+            label="ID (unique identifier)"
             value={type}
             onChangeText={handleFieldChange(setType)}
             placeholder="my-practa"
