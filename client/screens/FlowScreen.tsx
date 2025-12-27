@@ -12,7 +12,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useFlow, useCurrentPracta } from "@/context/FlowContext";
 import { FlowDefinition, FlowExecutionState, PractaOutput, PractaContext, PractaCompleteHandler } from "@/types/flow";
-import { MyPracta } from "@/my-practa";
+import MyPracta from "@/my-practa";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 interface PractaComponentProps {

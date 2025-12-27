@@ -1,8 +1,9 @@
 {
-  "type": "hello-world",
   "name": "Hello World",
-  "description": "A minimal Practa starter template with interactive tap counter",
-  "author": "Your Name",
+  "description": "A simple interactive Practa that counts taps",
+  "author": "Stellarin",
   "version": "1.0.0",
-  "estimatedDuration": 15
+  "estimatedDuration": 15,
+  "category": "starter",
+  "tags": ["interactive", "demo"]
 }

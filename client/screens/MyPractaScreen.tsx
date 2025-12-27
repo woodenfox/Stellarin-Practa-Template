@@ -14,17 +14,19 @@ import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
-import MyPracta, { metadata as codeMetadata } from "@/my-practa";
+import MyPracta from "@/my-practa";
+import practaMetadataJson from "@/my-practa/metadata.json";
 import { validatePracta, ValidationResult } from "@/lib/practa-validator";
 import { apiRequest } from "@/lib/query-client";
 
 interface PractaMetadata {
-  type: string;
   name: string;
   description: string;
   author: string;
   version: string;
   estimatedDuration?: number;
+  category?: string;
+  tags?: string[];
 }
 
 interface SyncStatus {
@@ -111,10 +113,10 @@ export default function MyPractaScreen() {
     }, [queryClient])
   );
 
-  const metadata = savedMetadata || codeMetadata;
+  const metadata = savedMetadata || practaMetadataJson;
 
   const validationReport = useMemo(() => {
-    return validatePracta(MyPracta, codeMetadata);
+    return validatePracta(MyPracta, practaMetadataJson);
   }, []);
 
   const handlePreview = () => {

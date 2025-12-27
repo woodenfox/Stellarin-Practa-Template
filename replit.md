@@ -23,27 +23,32 @@ Before modifying any files outside `client/my-practa/`, confirm with the user th
 ### 1. Edit Your Practa
 Open `client/my-practa/index.tsx` and modify the example to create your own experience.
 
-### 2. Validate Your Practa
+### 2. Configure Metadata
+Edit `client/my-practa/metadata.json` with your Practa details:
+```json
+{
+  "name": "My Practa Name",
+  "description": "What this Practa does",
+  "author": "Your Name",
+  "version": "1.0.0",
+  "estimatedDuration": 60,
+  "category": "wellness",
+  "tags": ["meditation", "calm"]
+}
+```
+
+### 3. Validate Your Practa
 The Preview screen shows real-time validation status. You can also run the CLI validator:
 ```bash
 npx tsx validate-practa.ts
 ```
 
-### 3. Preview Your Practa
+### 4. Preview Your Practa
 Run the app and tap "Preview Practa" to see your changes in action.
 
-### 4. Update Metadata
-Export a `metadata` object with your Practa details:
-```typescript
-export const metadata = {
-  type: "my-unique-type",
-  name: "My Practa Name",
-  description: "What this Practa does",
-  author: "Your Name",
-  version: "1.0.0",
-  estimatedDuration: 60, // seconds
-};
-```
+## Practa ID
+
+The Practa ID is automatically derived from the folder name (`my-practa`). To change your Practa ID, rename the `client/my-practa/` folder to your desired ID (lowercase with hyphens, e.g., `gratitude-reflection`).
 
 ## Practa Requirements
 
@@ -51,9 +56,14 @@ For complete requirements documentation, see [Practa Requirements](docs/practa-r
 
 ### Required Exports
 
-Your `client/my-practa/index.tsx` must export:
+Your `client/my-practa/index.tsx` must have:
 1. **Default export**: Your Practa component
-2. **Named export `metadata`**: Object with Practa details
+
+### Required Files
+
+Your `client/my-practa/` folder must contain:
+1. **index.tsx**: Your Practa component (default export)
+2. **metadata.json**: Practa metadata configuration
 
 ### Component Props
 
@@ -81,33 +91,31 @@ interface PractaOutput {
 }
 ```
 
-### Metadata Schema
+### Metadata Schema (metadata.json)
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `type` | Yes | Unique ID for your Practa (lowercase, hyphens) |
 | `name` | Yes | Display name |
 | `description` | Yes | Brief explanation |
 | `author` | Yes | Your name |
 | `version` | Yes | Semantic version (e.g., "1.0.0") |
 | `estimatedDuration` | No | Time in seconds |
-| `assets` | No | Object mapping asset names to filenames in assets/ folder |
+| `category` | No | Category for discovery (e.g., "wellness", "mindfulness") |
+| `tags` | No | Array of tags for search/filtering |
 
-#### Assets Example
+#### Example metadata.json
 
-```typescript
-export const metadata = {
-  type: "gratitude-reflection",
-  name: "Gratitude Reflection",
-  // ... other fields
-  assets: {
-    background: "forest.png",
-    chime: "bell.mp3",
-  },
-};
+```json
+{
+  "name": "Gratitude Reflection",
+  "description": "A guided gratitude journaling experience",
+  "author": "Your Name",
+  "version": "1.0.0",
+  "estimatedDuration": 120,
+  "category": "mindfulness",
+  "tags": ["gratitude", "journaling", "reflection"]
+}
 ```
-
-Asset URLs are resolved at runtime by the Stellarin app. Use filenames only (no paths) - all assets must be in the flat `assets/` folder.
 
 ## Validation
 
@@ -116,10 +124,9 @@ The template includes automatic validation that checks:
 **Required (Errors)**:
 - File exists at `client/my-practa/index.tsx`
 - Default export (component) exists
-- Metadata export exists
-- All required metadata fields are present
-- Type uses valid format (lowercase, hyphens)
-- Version uses semver format
+- metadata.json exists and is valid JSON
+- All required metadata fields are present (name, description, author, version)
+- Version uses semver format (X.Y.Z)
 - Component calls `onComplete`
 
 **Recommended (Warnings)**:
@@ -143,12 +150,12 @@ Your Practa has full access to:
 Your Practa submission will be packaged as a ZIP with this structure (files at root, no wrapper folder):
 
 ```
-index.tsx         # Main component + exported metadata (required)
+index.tsx         # Main component (default export required)
+metadata.json     # Practa metadata (required)
 assets/           # Local assets folder (optional)
 ├── hero.png
 ├── background.jpg
 └── chime.mp3
-metadata.json     # Auto-generated from exported metadata
 README.md         # Auto-generated on submission
 ```
 
@@ -171,14 +178,15 @@ Asset URLs are resolved at runtime by the Stellarin app.
 - **Helper files allowed**: For complex Practa, additional `.tsx` files are permitted
 - **Use allowed APIs**: Expo SDK modules (haptics, audio, sensors, etc.) are available
 - **Stay self-contained**: Do not make external network requests - use provided context/API
-- **Export requirements**: Default component export + named `metadata` export
+- **Export requirements**: Default component export only (metadata in separate JSON file)
 
 ## Project Structure (Full Template)
 
 ```
 client/
   my-practa/          # YOUR PRACTA - EDIT THIS
-    index.tsx         # Your Practa component + metadata
+    index.tsx         # Your Practa component (default export)
+    metadata.json     # Your Practa metadata
     assets/           # Your local assets
   
   components/         # Shared UI components
@@ -197,6 +205,7 @@ docs/                 # Architecture documentation
   practa-flow-system.md
 
 validate-practa.ts    # CLI validator script
+practa.config.json    # Synced copy of metadata (for editor)
 
 server/               # Express backend (minimal for preview)
 ```
@@ -211,9 +220,11 @@ server/               # Express backend (minimal for preview)
 | File | Purpose |
 |------|---------|
 | `client/my-practa/index.tsx` | Your Practa implementation |
+| `client/my-practa/metadata.json` | Your Practa metadata |
 | `client/types/flow.ts` | TypeScript types for Practa |
 | `client/lib/practa-validator.ts` | Validation logic |
 | `validate-practa.ts` | CLI validator |
+| `practa.config.json` | Synced metadata for editor UI |
 | `docs/practa-requirements.md` | Full requirements spec |
 | `docs/practa-plugin-architecture.md` | Architecture docs |
 
@@ -237,10 +248,11 @@ server/               # Express backend (minimal for preview)
 ## Development Workflow
 
 1. **Edit** `client/my-practa/index.tsx`
-2. **Validate** using the Preview screen or `npx tsx validate-practa.ts`
-3. **Preview** using the app's Preview button
-4. **Iterate** until your Practa feels polished
-5. **Submit** for review (coming soon)
+2. **Configure** `client/my-practa/metadata.json`
+3. **Validate** using the Preview screen or `npx tsx validate-practa.ts`
+4. **Preview** using the app's Preview button
+5. **Iterate** until your Practa feels polished
+6. **Submit** for review via the Submit tab
 
 ## Resources
 
