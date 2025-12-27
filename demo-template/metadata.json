@@ -1,13 +1,15 @@
 {
-  "id": "hello-world",
-  "name": "Hello World",
+  "id": "breathing-pause",
+  "name": "Breathing Pause",
   "version": "1.0.0",
-  "description": "A simple interactive Practa that counts taps",
+  "description": "A guided breathing exercise to help you find calm and center yourself",
   "author": "Stellarin",
-  "estimatedDuration": 15,
-  "category": "starter",
+  "estimatedDuration": 30,
+  "category": "mindfulness",
   "tags": [
-    "interactive",
-    "demo"
+    "breathing",
+    "meditation",
+    "calm",
+    "wellness"
   ]
 }

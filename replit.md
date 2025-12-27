@@ -257,7 +257,8 @@ const allKeys = assets.keys();
 | Method | Returns | Async | Use Case |
 |--------|---------|-------|----------|
 | `getImageSource(key)` | ImageSourcePropType \| null | No | `<Image source={...} />` |
-| `getAudioUri(key)` | Promise<string \| null> | Yes | expo-audio playback |
+| `getAudioSource(key)` | number \| { uri } \| null | No | useAudioPlayer hook |
+| `getAudioUri(key)` | Promise<string \| null> | Yes | expo-av Audio.Sound |
 | `getVideoSource(key)` | Promise<{ uri } \| null> | Yes | expo-video playback |
 | `getLottieSource(key)` | object \| null | No | lottie-react-native |
 | `getData<T>(key)` | T \| null | No | JSON config files |
