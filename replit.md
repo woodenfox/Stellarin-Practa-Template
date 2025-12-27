@@ -47,6 +47,18 @@ npx tsx validate-practa.ts
 ### 4. Preview Your Practa
 Run the app and tap "Preview Practa" to see your changes in action.
 
+## Automatic Version Bumping
+
+The template automatically increments your Practa's patch version (e.g., 1.0.0 → 1.0.1) whenever a new git commit is detected. This happens automatically when the server starts - no setup required after forking.
+
+**How it works:**
+- The server watches for new git commits
+- When a new commit is detected, the patch version is incremented
+- Both `client/my-practa/metadata.json` and `practa.config.json` are updated
+- A cache file (`.cache/last-version-commit.json`) tracks the last processed commit to prevent duplicate bumps
+
+**Note:** On first run after forking, the system initializes without bumping - versions only increment after your first commit.
+
 ## Practa ID
 
 The Practa ID is defined in `metadata.json` using the `id` field. This is a unique identifier for your Practa (lowercase kebab-case, 3-50 characters, e.g., `gratitude-reflection`). The folder name always stays `my-practa`.
