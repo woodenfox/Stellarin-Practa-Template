@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -6,6 +6,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getApiUrl } from "@/lib/query-client";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -125,6 +126,10 @@ export default function MetadataEditorScreen() {
   const [category, setCategory] = useState("");
   const [tags, setTags] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [idStatus, setIdStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
+  const [idStatusMessage, setIdStatusMessage] = useState<string | null>(null);
+  const originalId = useRef<string>("");
+  const checkIdTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const { data: metadata, isLoading } = useQuery<PractaMetadata>({
     queryKey: ["/api/practa/metadata"],
@@ -133,6 +138,7 @@ export default function MetadataEditorScreen() {
   useEffect(() => {
     if (metadata) {
       setId(metadata.id || "");
+      originalId.current = metadata.id || "";
       setName(metadata.name || "");
       setDescription(metadata.description || "");
       setAuthor(metadata.author || "");
@@ -145,9 +151,80 @@ export default function MetadataEditorScreen() {
     }
   }, [metadata]);
 
+  const checkIdAvailability = useCallback(async (idToCheck: string) => {
+    const idPattern = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+    
+    if (!idToCheck || idToCheck.length < 3) {
+      setIdStatus("idle");
+      setIdStatusMessage(null);
+      return;
+    }
+    
+    if (!idPattern.test(idToCheck)) {
+      setIdStatus("invalid");
+      setIdStatusMessage("Invalid format");
+      return;
+    }
+    
+    // Skip check if ID hasn't changed
+    if (idToCheck === originalId.current) {
+      setIdStatus("available");
+      setIdStatusMessage("Current ID");
+      return;
+    }
+    
+    setIdStatus("checking");
+    setIdStatusMessage("Checking...");
+    
+    try {
+      const url = new URL("/api/practa/check-name", getApiUrl());
+      url.searchParams.set("name", idToCheck);
+      const res = await fetch(url.toString());
+      
+      if (res.ok) {
+        const result = await res.json();
+        if (result.available) {
+          setIdStatus("available");
+          setIdStatusMessage("Available");
+        } else {
+          setIdStatus("taken");
+          setIdStatusMessage("Already taken");
+        }
+      } else {
+        setIdStatus("idle");
+        setIdStatusMessage(null);
+      }
+    } catch {
+      setIdStatus("idle");
+      setIdStatusMessage(null);
+    }
+  }, []);
+
+  const handleIdChange = useCallback((text: string) => {
+    const sanitized = text.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    setId(sanitized);
+    setErrors(prev => ({ ...prev, id: "" }));
+    
+    // Clear previous timeout
+    if (checkIdTimeout.current) {
+      clearTimeout(checkIdTimeout.current);
+    }
+    
+    // Debounce the check
+    checkIdTimeout.current = setTimeout(() => {
+      checkIdAvailability(sanitized);
+    }, 500);
+  }, [checkIdAvailability]);
+
   const saveMutation = useMutation({
     mutationFn: async (data: PractaMetadata) => {
       const res = await apiRequest("PUT", "/api/practa/metadata", data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        const error = new Error(errorData.error || "Failed to save") as Error & { fieldErrors?: Record<string, string> };
+        error.fieldErrors = errorData.fieldErrors;
+        throw error;
+      }
       return res.json() as Promise<PractaMetadata>;
     },
     onSuccess: (savedData) => {
@@ -155,10 +232,13 @@ export default function MetadataEditorScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();
     },
-    onError: (error: Error & { errors?: string[] }) => {
+    onError: (error: Error & { fieldErrors?: Record<string, string> }) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      const message = error.errors?.join("\n") || error.message || "Failed to save";
-      Alert.alert("Save Failed", message);
+      if (error.fieldErrors) {
+        setErrors(prev => ({ ...prev, ...error.fieldErrors }));
+      } else {
+        Alert.alert("Save Failed", error.message || "Failed to save");
+      }
     },
   });
 
@@ -262,9 +342,11 @@ export default function MetadataEditorScreen() {
           <FormField
             label="Practa ID"
             value={id}
-            onChangeText={(text) => setId(text.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+            onChangeText={handleIdChange}
             placeholder="my-practa-id"
             error={errors.id}
+            status={idStatus}
+            statusMessage={idStatusMessage}
           />
 
           <FormField

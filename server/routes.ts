@@ -214,7 +214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/practa/metadata", (req, res) => {
+  app.put("/api/practa/metadata", async (req, res) => {
     const validation = validateMetadata(req.body);
     
     if (!validation.valid) {
@@ -222,6 +222,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: "Validation failed", 
         errors: validation.errors 
       });
+    }
+    
+    const newId = req.body.id;
+    const currentConfig = readConfig();
+    const idChanged = !currentConfig || currentConfig.id !== newId;
+    
+    // Check ID uniqueness only if it changed
+    if (idChanged && newId) {
+      try {
+        const checkUrl = `https://stellarin-practa-verification.replit.app/api/practa/check-name?name=${encodeURIComponent(newId)}`;
+        const checkResponse = await fetch(checkUrl);
+        
+        if (!checkResponse.ok) {
+          console.error("ID uniqueness check returned non-OK status:", checkResponse.status);
+          return res.status(503).json({
+            error: "Unable to verify ID availability. Please try again."
+          });
+        }
+        
+        const checkResult = await checkResponse.json();
+        if (!checkResult.available) {
+          return res.status(409).json({
+            error: "Practa ID is already taken",
+            fieldErrors: { id: "This Practa ID is already in use. Please choose a different one." }
+          });
+        }
+      } catch (error) {
+        console.error("ID uniqueness check failed:", error);
+        return res.status(503).json({
+          error: "Unable to verify ID availability. Please try again."
+        });
+      }
     }
     
     const metadata: PractaMetadata = {
