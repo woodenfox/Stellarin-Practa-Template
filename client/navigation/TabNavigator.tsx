@@ -9,12 +9,14 @@ import MyPractaScreen from "@/screens/MyPractaScreen";
 import EditPractaScreen from "@/screens/EditPractaScreen";
 import HowToScreen from "@/screens/HowToScreen";
 import PublishScreen from "@/screens/PublishScreen";
+import DevScreen from "@/screens/DevScreen";
 
 export type TabParamList = {
   MyPracta: undefined;
   EditPracta: undefined;
   HowTo: undefined;
   Publish: undefined;
+  Dev: undefined;
 };
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -76,6 +78,16 @@ export default function TabNavigator() {
           tabBarLabel: "Publish",
           tabBarIcon: ({ color, size }) => (
             <Feather name="upload-cloud" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Dev"
+        component={DevScreen}
+        options={{
+          tabBarLabel: "Dev",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="code" size={size} color={color} />
           ),
         }}
       />

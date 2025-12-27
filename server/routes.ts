@@ -606,6 +606,55 @@ ${config.version}
     }
   });
 
+  app.post("/api/practa/reset-to-demo", async (req, res) => {
+    try {
+      const demoDir = path.resolve(process.cwd(), "demo-template");
+      const practaDir = path.resolve(process.cwd(), "client/my-practa");
+
+      if (!fs.existsSync(demoDir)) {
+        return res.status(404).json({ error: "Demo template not found" });
+      }
+
+      function copyDirRecursive(src: string, dest: string) {
+        if (!fs.existsSync(dest)) {
+          fs.mkdirSync(dest, { recursive: true });
+        }
+
+        const entries = fs.readdirSync(src, { withFileTypes: true });
+        for (const entry of entries) {
+          const srcPath = path.join(src, entry.name);
+          const destPath = path.join(dest, entry.name);
+
+          if (entry.isDirectory()) {
+            copyDirRecursive(srcPath, destPath);
+          } else {
+            fs.copyFileSync(srcPath, destPath);
+          }
+        }
+      }
+
+      if (fs.existsSync(practaDir)) {
+        fs.rmSync(practaDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(practaDir, { recursive: true });
+
+      copyDirRecursive(demoDir, practaDir);
+
+      const demoMetadata = JSON.parse(
+        fs.readFileSync(path.join(demoDir, "metadata.json"), "utf-8")
+      );
+      writeConfig(demoMetadata);
+
+      res.json({ success: true, message: "Practa reset to demo state" });
+    } catch (error) {
+      console.error("Reset error:", error);
+      res.status(500).json({
+        error: "Failed to reset Practa",
+        details: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   app.post("/api/template/update", async (req, res) => {
     try {
       const repoResponse = await fetch(
