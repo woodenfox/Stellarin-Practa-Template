@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, StyleSheet, Pressable, ActivityIndicator, Modal, Platform } from "react-native";
+import { reloadAppAsync } from "expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
@@ -72,11 +73,13 @@ function AlertModal({
   title,
   message,
   onClose,
+  buttonText = "OK",
 }: {
   visible: boolean;
   title: string;
   message: string;
   onClose: () => void;
+  buttonText?: string;
 }) {
   const { theme } = useTheme();
 
@@ -93,7 +96,7 @@ function AlertModal({
               onPress={onClose}
               style={[styles.modalButton, { backgroundColor: theme.primary, flex: 1 }]}
             >
-              <ThemedText style={[styles.modalButtonText, { color: "white" }]}>OK</ThemedText>
+              <ThemedText style={[styles.modalButtonText, { color: "white" }]}>{buttonText}</ThemedText>
             </Pressable>
           </View>
         </View>
@@ -109,14 +112,14 @@ export default function DevScreen() {
   const queryClient = useQueryClient();
   const [isResetting, setIsResetting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [alertModal, setAlertModal] = useState<{ visible: boolean; title: string; message: string }>({
+  const [alertModal, setAlertModal] = useState<{ visible: boolean; title: string; message: string; onClose?: () => void; buttonText?: string }>({
     visible: false,
     title: "",
     message: "",
   });
 
-  const showAlert = (title: string, message: string) => {
-    setAlertModal({ visible: true, title, message });
+  const showAlert = (title: string, message: string, options?: { onClose?: () => void; buttonText?: string }) => {
+    setAlertModal({ visible: true, title, message, onClose: options?.onClose, buttonText: options?.buttonText });
   };
 
   const resetMutation = useMutation({
@@ -131,7 +134,17 @@ export default function DevScreen() {
       queryClient.invalidateQueries({ queryKey: ["/api/practa/metadata"] });
       showAlert(
         "Reset Complete",
-        "Your Practa has been reset to the demo state. The app will restart shortly."
+        "Your Practa has been reset to the demo state. Tap to reload the app.",
+        {
+          buttonText: "Reload App",
+          onClose: async () => {
+            if (Platform.OS === "web") {
+              window.location.reload();
+            } else {
+              await reloadAppAsync();
+            }
+          },
+        }
       );
     },
     onError: (error: Error) => {
@@ -244,7 +257,13 @@ export default function DevScreen() {
         visible={alertModal.visible}
         title={alertModal.title}
         message={alertModal.message}
-        onClose={() => setAlertModal({ ...alertModal, visible: false })}
+        buttonText={alertModal.buttonText}
+        onClose={() => {
+          setAlertModal({ ...alertModal, visible: false });
+          if (alertModal.onClose) {
+            alertModal.onClose();
+          }
+        }}
       />
     </ThemedView>
   );
