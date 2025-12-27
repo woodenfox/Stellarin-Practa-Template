@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, StyleSheet, Pressable, Alert, ActivityIndicator } from "react-native";
+import { View, StyleSheet, Pressable, ActivityIndicator, Modal, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
@@ -13,12 +13,111 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
+function ConfirmModal({
+  visible,
+  title,
+  message,
+  confirmText,
+  cancelText,
+  onConfirm,
+  onCancel,
+  isDestructive,
+}: {
+  visible: boolean;
+  title: string;
+  message: string;
+  confirmText: string;
+  cancelText: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isDestructive?: boolean;
+}) {
+  const { theme } = useTheme();
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContent, { backgroundColor: theme.backgroundRoot }]}>
+          <ThemedText style={styles.modalTitle}>{title}</ThemedText>
+          <ThemedText style={[styles.modalMessage, { color: theme.textSecondary }]}>
+            {message}
+          </ThemedText>
+          <View style={styles.modalButtons}>
+            <Pressable
+              onPress={onCancel}
+              style={[styles.modalButton, { backgroundColor: theme.backgroundSecondary }]}
+            >
+              <ThemedText style={styles.modalButtonText}>{cancelText}</ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={onConfirm}
+              style={[
+                styles.modalButton,
+                { backgroundColor: isDestructive ? "#EF4444" : theme.primary },
+              ]}
+            >
+              <ThemedText style={[styles.modalButtonText, { color: "white" }]}>
+                {confirmText}
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function AlertModal({
+  visible,
+  title,
+  message,
+  onClose,
+}: {
+  visible: boolean;
+  title: string;
+  message: string;
+  onClose: () => void;
+}) {
+  const { theme } = useTheme();
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContent, { backgroundColor: theme.backgroundRoot }]}>
+          <ThemedText style={styles.modalTitle}>{title}</ThemedText>
+          <ThemedText style={[styles.modalMessage, { color: theme.textSecondary }]}>
+            {message}
+          </ThemedText>
+          <View style={styles.modalButtons}>
+            <Pressable
+              onPress={onClose}
+              style={[styles.modalButton, { backgroundColor: theme.primary, flex: 1 }]}
+            >
+              <ThemedText style={[styles.modalButtonText, { color: "white" }]}>OK</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function DevScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const queryClient = useQueryClient();
   const [isResetting, setIsResetting] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [alertModal, setAlertModal] = useState<{ visible: boolean; title: string; message: string }>({
+    visible: false,
+    title: "",
+    message: "",
+  });
+
+  const showAlert = (title: string, message: string) => {
+    setAlertModal({ visible: true, title, message });
+  };
 
   const resetMutation = useMutation({
     mutationFn: async () => {
@@ -26,17 +125,20 @@ export default function DevScreen() {
       return response.json();
     },
     onSuccess: () => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/practa/metadata"] });
-      Alert.alert(
+      showAlert(
         "Reset Complete",
-        "Your Practa has been reset to the demo state. Restart the app to see the changes.",
-        [{ text: "OK" }]
+        "Your Practa has been reset to the demo state. Restart the app to see the changes."
       );
     },
     onError: (error: Error) => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Reset Failed", error.message || "Failed to reset Practa");
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+      showAlert("Reset Failed", error.message || "Failed to reset Practa");
     },
     onSettled: () => {
       setIsResetting(false);
@@ -44,22 +146,16 @@ export default function DevScreen() {
   });
 
   const handleResetToDemo = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(
-      "Reset to Demo",
-      "This will replace your current Practa files with the demo template. Your changes will be lost. Are you sure?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Reset",
-          style: "destructive",
-          onPress: () => {
-            setIsResetting(true);
-            resetMutation.mutate();
-          },
-        },
-      ]
-    );
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmReset = () => {
+    setShowConfirmModal(false);
+    setIsResetting(true);
+    resetMutation.mutate();
   };
 
   return (
@@ -132,6 +228,24 @@ export default function DevScreen() {
           Warning: Resetting will overwrite all files in the my-practa folder.
         </ThemedText>
       </View>
+
+      <ConfirmModal
+        visible={showConfirmModal}
+        title="Reset to Demo"
+        message="This will replace your current Practa files with the demo template. Your changes will be lost. Are you sure?"
+        confirmText="Reset"
+        cancelText="Cancel"
+        onConfirm={handleConfirmReset}
+        onCancel={() => setShowConfirmModal(false)}
+        isDestructive
+      />
+
+      <AlertModal
+        visible={alertModal.visible}
+        title={alertModal.title}
+        message={alertModal.message}
+        onClose={() => setAlertModal({ ...alertModal, visible: false })}
+      />
     </ThemedView>
   );
 }
@@ -200,5 +314,44 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: "center",
     fontStyle: "italic",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.xl,
+  },
+  modalContent: {
+    width: "100%",
+    maxWidth: 340,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.xl,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: Spacing.sm,
+  },
+  modalMessage: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: Spacing.xl,
+    lineHeight: 20,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  modalButton: {
+    flex: 1,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
