@@ -130,7 +130,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing["2xl"],
   },
   tapPressable: {
-    // Container for tap animation
   },
   tapCard: {
     padding: Spacing.xl,
