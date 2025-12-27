@@ -9,8 +9,7 @@ import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { PractaContext, PractaCompleteHandler, PractaMetadata } from "@/types/flow";
-
-const zenCircleImage = require("./assets/zen-circle.png");
+import { assets } from "./assets";
 
 export const metadata: PractaMetadata = {
   id: "hello-world",
@@ -58,7 +57,7 @@ export function MyPracta({ context, onComplete, onSkip }: MyPractaProps) {
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top + Spacing.xl }]}>
       <View style={styles.content}>
-        <Image source={zenCircleImage} style={styles.heroImage} />
+        <Image source={assets.getImageSource("zen-circle") || undefined} style={styles.heroImage} />
         
         <ThemedText style={styles.title}>Hello World</ThemedText>
         <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>

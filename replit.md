@@ -161,6 +161,7 @@ The template includes automatic validation that checks:
 - All required metadata fields are present (id, name, description, author, version)
 - Version uses semver format (X.Y.Z)
 - Component calls `onComplete`
+- No direct `require()` for assets - must use `assets.ts` resolver
 
 **Recommended (Warnings)**:
 - Uses `useTheme()` for colors
@@ -185,6 +186,7 @@ Your Practa submission will be packaged as a ZIP with this structure (files at r
 ```
 index.tsx         # Main component (default export required)
 metadata.json     # Practa metadata (required)
+assets.ts         # Asset resolver (required if using assets)
 assets/           # Local assets folder (optional)
 ├── hero.png
 ├── background.jpg
@@ -197,13 +199,39 @@ This allows you to extract and rename the folder to whatever you prefer.
 ## Asset Rules
 
 - All assets go in a flat `assets/` folder
-- Use relative paths only - NEVER use absolute URLs or external links
-- Reference assets by filename in your component
 - **Per-file limit**: 5MB maximum per asset
 - **Total package limit**: 25MB maximum for entire Practa
 - **Supported formats**: Images (png, jpg, jpeg, gif, webp, svg), Audio (mp3, wav, m4a, ogg), Video (mp4, webm), Data (json, txt)
 
-Asset URLs are resolved at runtime by the Stellarin app.
+### Using Assets (IMPORTANT)
+
+**ALWAYS** use the `assets.ts` resolver to load assets. **NEVER** use `require()` directly in component code.
+
+```typescript
+// In assets.ts - register your assets here
+const localAssets: Record<string, AssetSource> = {
+  "zen-circle": require("./assets/zen-circle.png"),
+  "background": require("./assets/background.jpg"),
+  "chime": require("./assets/chime.mp3"),
+};
+
+// In index.tsx - use the resolver
+import { assets } from "./assets";
+
+// For images
+<Image source={assets.getImageSource("zen-circle") || undefined} />
+
+// For audio/video URIs
+const audioUri = assets.getAudioUri("chime");
+
+// Check if asset exists
+if (assets.has("background")) { ... }
+```
+
+**Why this pattern?**
+- Component code stays the same across local dev, publish, and Stellarin
+- The `assets.ts` file is replaced with CDN URLs during publish
+- Direct `require()` in components will break after publish
 
 ## Code Rules
 
@@ -220,6 +248,7 @@ client/
   my-practa/          # YOUR PRACTA - EDIT THIS
     index.tsx         # Your Practa component (default export)
     metadata.json     # Your Practa metadata
+    assets.ts         # Asset resolver (use this to load assets)
     assets/           # Your local assets
   
   components/         # Shared UI components
