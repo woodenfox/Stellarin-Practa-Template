@@ -209,10 +209,16 @@ This allows you to extract and rename the folder to whatever you prefer.
 
 ```typescript
 // In assets.ts - register your assets here
-const localAssets: Record<string, AssetSource> = {
+// Step 1: Add key to AssetKey type
+export type AssetKey = "zen-circle" | "background" | "chime" | "intro-video" | "loading-animation";
+
+// Step 2: Register in localAssets
+const localAssets: Record<AssetKey, AssetSource> = {
   "zen-circle": require("./assets/zen-circle.png"),
   "background": require("./assets/background.jpg"),
   "chime": require("./assets/chime.mp3"),
+  "intro-video": require("./assets/intro.mp4"),
+  "loading-animation": require("./assets/loading.json"),
 };
 
 // In index.tsx - use the resolver
@@ -221,17 +227,50 @@ import { assets } from "./assets";
 // For images
 <Image source={assets.getImageSource("zen-circle") || undefined} />
 
-// For audio/video URIs
-const audioUri = assets.getAudioUri("chime");
+// For audio (async - returns Promise)
+const playSound = async () => {
+  const uri = await assets.getAudioUri("chime");
+  if (uri) { /* use with expo-audio */ }
+};
+
+// For video (async - returns Promise)
+const videoSource = await assets.getVideoSource("intro-video");
+if (videoSource) { <Video source={videoSource} /> }
+
+// For Lottie animations (sync)
+const animation = assets.getLottieSource("loading-animation");
+if (animation) { <LottieView source={animation} autoPlay loop /> }
+
+// For JSON data (sync)
+interface Config { theme: string }
+const config = assets.getData<Config>("config"); // Returns null if not found
 
 // Check if asset exists
 if (assets.has("background")) { ... }
+
+// Get all available keys
+const allKeys = assets.keys();
 ```
+
+### Asset Methods Reference
+
+| Method | Returns | Async | Use Case |
+|--------|---------|-------|----------|
+| `getImageSource(key)` | ImageSourcePropType \| null | No | `<Image source={...} />` |
+| `getAudioUri(key)` | Promise<string \| null> | Yes | expo-audio playback |
+| `getVideoSource(key)` | Promise<{ uri } \| null> | Yes | expo-video playback |
+| `getLottieSource(key)` | object \| null | No | lottie-react-native |
+| `getData<T>(key)` | T \| null | No | JSON config files |
+| `getUri(key)` | Promise<string \| null> | Yes | Generic URI access |
+| `has(key)` | boolean | No | Check if asset exists |
+| `keys()` | AssetKey[] | No | List all assets |
 
 **Why this pattern?**
 - Component code stays the same across local dev, publish, and Stellarin
 - The `assets.ts` file is replaced with CDN URLs during publish
 - Direct `require()` in components will break after publish
+- TypeScript catches typos in asset keys at compile time
+- Console warnings help debug missing assets
 
 ## Code Rules
 
