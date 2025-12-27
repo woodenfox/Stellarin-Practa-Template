@@ -20,6 +20,7 @@ const ALLOWED_ASSET_EXTENSIONS = [
 ];
 
 interface PractaMetadata {
+  id: string;
   name: string;
   description: string;
   author: string;
@@ -37,6 +38,16 @@ function validateMetadata(data: unknown): { valid: boolean; errors: string[] } {
   }
   
   const metadata = data as Record<string, unknown>;
+  
+  // Validate id field (required, lowercase kebab-case)
+  const idPattern = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+  if (!metadata.id || typeof metadata.id !== "string") {
+    errors.push("id is required and must be a string");
+  } else if (metadata.id.length < 3 || metadata.id.length > 50) {
+    errors.push("id must be 3-50 characters");
+  } else if (!idPattern.test(metadata.id)) {
+    errors.push("id must be lowercase kebab-case (e.g., 'my-practa')");
+  }
   
   if (!metadata.name || typeof metadata.name !== "string") {
     errors.push("name is required and must be a string");
@@ -214,6 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     const metadata: PractaMetadata = {
+      id: req.body.id,
       name: req.body.name,
       description: req.body.description,
       author: req.body.author,
@@ -238,15 +250,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const config = readConfig();
-    const practaId = "my-practa"; // Derived from folder name
+    const practaId = config?.id || "my-practa";
     const filename = config ? `${practaId}-${config.version}.zip` : "practa.zip";
 
     const componentName = config ? config.name.replace(/[^a-zA-Z0-9]/g, "") : "MyPracta";
     
     const manifest = config ? {
-      name: practaId,
+      id: practaId,
+      name: config.name,
       version: config.version,
-      displayName: config.name,
       description: config.description,
       author: config.author,
       type: "widget",
@@ -364,12 +376,12 @@ ${config.version}
       }
 
       const componentName = config.name.replace(/[^a-zA-Z0-9]/g, "");
-      const practaIdSubmit = "my-practa"; // Derived from folder name
+      const practaIdSubmit = config.id;
 
       const manifest = {
-        name: practaIdSubmit,
+        id: practaIdSubmit,
+        name: config.name,
         version: config.version,
-        displayName: config.name,
         description: config.description,
         author: config.author,
         type: "widget",

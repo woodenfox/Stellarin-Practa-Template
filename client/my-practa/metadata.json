@@ -1,4 +1,5 @@
 {
+  "id": "hello-world",
   "name": "Hello World",
   "version": "1.0.0",
   "description": "A simple interactive Practa that counts taps",

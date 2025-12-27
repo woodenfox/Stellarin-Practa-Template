@@ -27,6 +27,7 @@ Open `client/my-practa/index.tsx` and modify the example to create your own expe
 Edit `client/my-practa/metadata.json` with your Practa details:
 ```json
 {
+  "id": "my-unique-practa",
   "name": "My Practa Name",
   "description": "What this Practa does",
   "author": "Your Name",
@@ -48,7 +49,7 @@ Run the app and tap "Preview Practa" to see your changes in action.
 
 ## Practa ID
 
-The Practa ID is automatically derived from the folder name (`my-practa`). To change your Practa ID, rename the `client/my-practa/` folder to your desired ID (lowercase with hyphens, e.g., `gratitude-reflection`).
+The Practa ID is defined in `metadata.json` using the `id` field. This is a unique identifier for your Practa (lowercase kebab-case, 3-50 characters, e.g., `gratitude-reflection`). The folder name always stays `my-practa`.
 
 ## Practa Requirements
 
@@ -95,6 +96,7 @@ interface PractaOutput {
 
 | Field | Required | Description |
 |-------|----------|-------------|
+| `id` | Yes | Unique Practa ID (lowercase kebab-case, 3-50 chars) |
 | `name` | Yes | Display name |
 | `description` | Yes | Brief explanation |
 | `author` | Yes | Your name |
@@ -107,6 +109,7 @@ interface PractaOutput {
 
 ```json
 {
+  "id": "gratitude-reflection",
   "name": "Gratitude Reflection",
   "description": "A guided gratitude journaling experience",
   "author": "Your Name",
@@ -125,7 +128,7 @@ The template includes automatic validation that checks:
 - File exists at `client/my-practa/index.tsx`
 - Default export (component) exists
 - metadata.json exists and is valid JSON
-- All required metadata fields are present (name, description, author, version)
+- All required metadata fields are present (id, name, description, author, version)
 - Version uses semver format (X.Y.Z)
 - Component calls `onComplete`
 

@@ -19,6 +19,7 @@ import { apiRequest } from "@/lib/query-client";
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface PractaMetadata {
+  id: string;
   name: string;
   description: string;
   author: string;
@@ -115,6 +116,7 @@ export default function MetadataEditorScreen() {
   const navigation = useNavigation<NavigationProp>();
   const queryClient = useQueryClient();
 
+  const [id, setId] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [author, setAuthor] = useState("");
@@ -130,6 +132,7 @@ export default function MetadataEditorScreen() {
 
   useEffect(() => {
     if (metadata) {
+      setId(metadata.id || "");
       setName(metadata.name || "");
       setDescription(metadata.description || "");
       setAuthor(metadata.author || "");
@@ -161,6 +164,15 @@ export default function MetadataEditorScreen() {
 
   const validateFields = (): boolean => {
     const newErrors: Record<string, string> = {};
+    const idPattern = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+    if (!id.trim()) {
+      newErrors.id = "Practa ID is required";
+    } else if (id.length < 3 || id.length > 50) {
+      newErrors.id = "Must be 3-50 characters";
+    } else if (!idPattern.test(id)) {
+      newErrors.id = "Use lowercase letters, numbers, hyphens only";
+    }
 
     if (!name.trim()) {
       newErrors.name = "Name is required";
@@ -199,6 +211,7 @@ export default function MetadataEditorScreen() {
       : undefined;
 
     const data: PractaMetadata = {
+      id: id.trim(),
       name: name.trim(),
       description: description.trim(),
       author: author.trim(),
@@ -247,7 +260,15 @@ export default function MetadataEditorScreen() {
 
         <Card style={styles.card}>
           <FormField
-            label="Name"
+            label="Practa ID"
+            value={id}
+            onChangeText={(text) => setId(text.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+            placeholder="my-practa-id"
+            error={errors.id}
+          />
+
+          <FormField
+            label="Display Name"
             value={name}
             onChangeText={setName}
             placeholder="My Practa"

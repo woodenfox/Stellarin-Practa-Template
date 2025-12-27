@@ -32,10 +32,10 @@ export interface ValidationReport {
 /**
  * Validates metadata object against required schema
  * 
- * Required fields: name, version, description, author
+ * Required fields: id, name, version, description, author
  * Optional fields: estimatedDuration, category, tags
  * 
- * Note: The practa "type" (ID) is derived from the folder name, not metadata.
+ * The `id` field is the unique Practa identifier (lowercase kebab-case).
  */
 export function validateMetadata(metadata: unknown): ValidationResult[] {
   const results: ValidationResult[] = [];
@@ -52,7 +52,41 @@ export function validateMetadata(metadata: unknown): ValidationResult[] {
 
   const meta = metadata as Record<string, unknown>;
 
-  // Required fields (type is no longer required - derived from folder name)
+  // Validate id field first (required, kebab-case)
+  const idPattern = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+  if (!meta.id) {
+    results.push({
+      passed: false,
+      message: "Missing required field: Practa ID (id)",
+      severity: "error",
+    });
+  } else if (typeof meta.id !== "string") {
+    results.push({
+      passed: false,
+      message: "Practa ID must be a string",
+      severity: "error",
+    });
+  } else if (meta.id.length < 3 || meta.id.length > 50) {
+    results.push({
+      passed: false,
+      message: "Practa ID must be 3-50 characters",
+      severity: "error",
+    });
+  } else if (!idPattern.test(meta.id)) {
+    results.push({
+      passed: false,
+      message: "Practa ID must be lowercase kebab-case (e.g., 'my-practa')",
+      severity: "error",
+    });
+  } else {
+    results.push({
+      passed: true,
+      message: "Practa ID is valid",
+      severity: "success",
+    });
+  }
+
+  // Required fields
   const requiredFields = [
     { field: "name", label: "Display name" },
     { field: "description", label: "Description" },
