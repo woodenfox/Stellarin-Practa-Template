@@ -159,7 +159,21 @@ export default function FlowScreen() {
           if (!PractaComponent) {
             return (
               <ThemedView style={styles.errorContainer}>
-                <ThemedText>Unknown Practa type: {practa.type}</ThemedText>
+                <View style={[styles.errorCircle, { backgroundColor: "#FEE2E2" }]}>
+                  <Feather name="alert-triangle" size={32} color="#EF4444" />
+                </View>
+                <ThemedText style={styles.errorTitle}>Component Not Found</ThemedText>
+                <ThemedText style={[styles.errorMessage, { color: theme.textSecondary }]}>
+                  Unable to load Practa: {practa.type}
+                </ThemedText>
+                <Pressable
+                  onPress={handleClose}
+                  style={[styles.errorButton, { borderColor: theme.primary }]}
+                >
+                  <ThemedText style={[styles.errorButtonText, { color: theme.primary }]}>
+                    Go Back
+                  </ThemedText>
+                </Pressable>
               </ThemedView>
             );
           }
@@ -210,6 +224,36 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: Spacing.xl,
+  },
+  errorCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.lg,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginBottom: Spacing.sm,
+    textAlign: "center",
+  },
+  errorMessage: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: Spacing.xl,
+  },
+  errorButton: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+  },
+  errorButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
   },
   completionContainer: {
     flex: 1,

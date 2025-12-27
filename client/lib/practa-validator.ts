@@ -31,6 +31,11 @@ export interface ValidationReport {
 
 /**
  * Validates metadata object against required schema
+ * 
+ * Required fields: name, version, description, author
+ * Optional fields: estimatedDuration, category, tags
+ * 
+ * Note: The practa "type" (ID) is derived from the folder name, not metadata.
  */
 export function validateMetadata(metadata: unknown): ValidationResult[] {
   const results: ValidationResult[] = [];
@@ -39,7 +44,7 @@ export function validateMetadata(metadata: unknown): ValidationResult[] {
   if (!metadata || typeof metadata !== "object") {
     results.push({
       passed: false,
-      message: "Metadata export is missing or not an object",
+      message: "metadata.json is missing or not valid JSON",
       severity: "error",
     });
     return results;
@@ -47,9 +52,8 @@ export function validateMetadata(metadata: unknown): ValidationResult[] {
 
   const meta = metadata as Record<string, unknown>;
 
-  // Required fields
+  // Required fields (type is no longer required - derived from folder name)
   const requiredFields = [
-    { field: "type", label: "Type identifier" },
     { field: "name", label: "Display name" },
     { field: "description", label: "Description" },
     { field: "author", label: "Author name" },
@@ -84,18 +88,6 @@ export function validateMetadata(metadata: unknown): ValidationResult[] {
     }
   }
 
-  // Validate type format (lowercase, hyphens, numbers only)
-  if (typeof meta.type === "string" && meta.type.trim() !== "") {
-    const typePattern = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-    if (!typePattern.test(meta.type)) {
-      results.push({
-        passed: false,
-        message: "Type must be lowercase with hyphens (e.g., 'my-practa')",
-        severity: "error",
-      });
-    }
-  }
-
   // Validate version format (semver-like)
   if (typeof meta.version === "string" && meta.version.trim() !== "") {
     const versionPattern = /^\d+\.\d+\.\d+$/;
@@ -108,7 +100,7 @@ export function validateMetadata(metadata: unknown): ValidationResult[] {
     }
   }
 
-  // Optional field warnings
+  // Optional field info
   if (!meta.estimatedDuration) {
     results.push({
       passed: true,
@@ -121,6 +113,32 @@ export function validateMetadata(metadata: unknown): ValidationResult[] {
       message: "Estimated duration provided",
       severity: "success",
     });
+  }
+
+  // Validate optional category field
+  if (meta.category && typeof meta.category !== "string") {
+    results.push({
+      passed: false,
+      message: "category must be a string",
+      severity: "error",
+    });
+  }
+
+  // Validate optional tags field
+  if (meta.tags) {
+    if (!Array.isArray(meta.tags)) {
+      results.push({
+        passed: false,
+        message: "tags must be an array of strings",
+        severity: "error",
+      });
+    } else if (!meta.tags.every((t: unknown) => typeof t === "string")) {
+      results.push({
+        passed: false,
+        message: "All tags must be strings",
+        severity: "error",
+      });
+    }
   }
 
   return results;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -14,23 +14,18 @@ import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollV
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
-import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { apiRequest } from "@/lib/query-client";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface PractaMetadata {
-  type: string;
   name: string;
   description: string;
   author: string;
   version: string;
   estimatedDuration?: number;
-}
-
-interface NameCheckResult {
-  available: boolean;
-  slug: string;
-  reason?: string;
+  category?: string;
+  tags?: string[];
 }
 
 function FormField({
@@ -120,46 +115,14 @@ export default function MetadataEditorScreen() {
   const navigation = useNavigation<NavigationProp>();
   const queryClient = useQueryClient();
 
-  const [type, setType] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [author, setAuthor] = useState("");
   const [version, setVersion] = useState("");
   const [estimatedDuration, setEstimatedDuration] = useState("");
+  const [category, setCategory] = useState("");
+  const [tags, setTags] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
-  const [nameCheckStatus, setNameCheckStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
-  const [nameCheckMessage, setNameCheckMessage] = useState<string | null>(null);
-  const [originalType, setOriginalType] = useState<string>("");
-  
-  const checkNameAvailability = useCallback(async (idValue: string) => {
-    if (!idValue.trim() || idValue === originalType) {
-      setNameCheckStatus("idle");
-      setNameCheckMessage(null);
-      return;
-    }
-    
-    setNameCheckStatus("checking");
-    setNameCheckMessage(null);
-    
-    try {
-      const url = new URL("/api/practa/check-name", getApiUrl());
-      url.searchParams.set("name", idValue);
-      const response = await fetch(url.toString());
-      const result: NameCheckResult = await response.json();
-      
-      if (result.available) {
-        setNameCheckStatus("available");
-        setNameCheckMessage("This ID is available");
-      } else {
-        setNameCheckStatus(result.reason?.includes("format") ? "invalid" : "taken");
-        setNameCheckMessage(result.reason || "This ID is not available");
-      }
-    } catch {
-      setNameCheckStatus("idle");
-      setNameCheckMessage(null);
-    }
-  }, [originalType]);
 
   const { data: metadata, isLoading } = useQuery<PractaMetadata>({
     queryKey: ["/api/practa/metadata"],
@@ -167,8 +130,6 @@ export default function MetadataEditorScreen() {
 
   useEffect(() => {
     if (metadata) {
-      setType(metadata.type || "");
-      setOriginalType(metadata.type || "");
       setName(metadata.name || "");
       setDescription(metadata.description || "");
       setAuthor(metadata.author || "");
@@ -176,6 +137,8 @@ export default function MetadataEditorScreen() {
       setEstimatedDuration(
         metadata.estimatedDuration ? String(metadata.estimatedDuration) : ""
       );
+      setCategory(metadata.category || "");
+      setTags(metadata.tags?.join(", ") || "");
     }
   }, [metadata]);
 
@@ -198,14 +161,6 @@ export default function MetadataEditorScreen() {
 
   const validateFields = (): boolean => {
     const newErrors: Record<string, string> = {};
-
-    if (!type.trim()) {
-      newErrors.type = "ID is required";
-    } else if (!/^[a-z][a-z0-9-]*$/.test(type)) {
-      newErrors.type = "Use lowercase letters and hyphens only";
-    } else if (nameCheckStatus === "taken") {
-      newErrors.type = "This ID is already taken";
-    }
 
     if (!name.trim()) {
       newErrors.name = "Name is required";
@@ -234,49 +189,16 @@ export default function MetadataEditorScreen() {
   };
 
   const handleSave = async () => {
-    if (type.trim() !== originalType && nameCheckStatus === "checking") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      Alert.alert("Please Wait", "Checking ID availability...");
-      return;
-    }
-    
-    if (type.trim() !== originalType && nameCheckStatus !== "available" && nameCheckStatus !== "idle") {
-      if (nameCheckStatus === "taken" || nameCheckStatus === "invalid") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert("Invalid ID", nameCheckMessage || "This ID is not available");
-        return;
-      }
-    }
-    
-    if (type.trim() !== originalType && nameCheckStatus === "idle") {
-      setNameCheckStatus("checking");
-      try {
-        const url = new URL("/api/practa/check-name", getApiUrl());
-        url.searchParams.set("name", type.trim());
-        const response = await fetch(url.toString());
-        const result: NameCheckResult = await response.json();
-        
-        if (!result.available) {
-          setNameCheckStatus(result.reason?.includes("format") ? "invalid" : "taken");
-          setNameCheckMessage(result.reason || "This ID is not available");
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          Alert.alert("Invalid ID", result.reason || "This ID is not available");
-          return;
-        }
-        setNameCheckStatus("available");
-        setNameCheckMessage("This ID is available");
-      } catch {
-        setNameCheckStatus("idle");
-      }
-    }
-    
     if (!validateFields()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
     }
 
+    const tagsArray = tags.trim() 
+      ? tags.split(",").map(t => t.trim()).filter(Boolean)
+      : undefined;
+
     const data: PractaMetadata = {
-      type: type.trim(),
       name: name.trim(),
       description: description.trim(),
       author: author.trim(),
@@ -284,6 +206,8 @@ export default function MetadataEditorScreen() {
       estimatedDuration: estimatedDuration
         ? Number(estimatedDuration)
         : undefined,
+      category: category.trim() || undefined,
+      tags: tagsArray,
     };
 
     saveMutation.mutate(data);
@@ -322,17 +246,6 @@ export default function MetadataEditorScreen() {
         </View>
 
         <Card style={styles.card}>
-          <FormField
-            label="ID (unique identifier)"
-            value={type}
-            onChangeText={setType}
-            placeholder="my-practa"
-            error={errors.type}
-            onBlur={() => checkNameAvailability(type)}
-            status={nameCheckStatus}
-            statusMessage={nameCheckMessage}
-          />
-
           <FormField
             label="Name"
             value={name}
@@ -374,11 +287,24 @@ export default function MetadataEditorScreen() {
             keyboardType="numeric"
             error={errors.estimatedDuration}
           />
+
+          <FormField
+            label="Category (optional)"
+            value={category}
+            onChangeText={setCategory}
+            placeholder="wellness"
+          />
+
+          <FormField
+            label="Tags (optional, comma-separated)"
+            value={tags}
+            onChangeText={setTags}
+            placeholder="meditation, calm, breathing"
+          />
         </Card>
 
         <ThemedText style={[styles.hint, { color: theme.textSecondary }]}>
-          Changes are saved to practa.config.json. Update the metadata export
-          in your component to match.
+          Changes are saved to practa.config.json and sync with metadata.json.
         </ThemedText>
 
         <Pressable

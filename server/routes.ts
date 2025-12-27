@@ -20,12 +20,13 @@ const ALLOWED_ASSET_EXTENSIONS = [
 ];
 
 interface PractaMetadata {
-  type: string;
   name: string;
   description: string;
   author: string;
   version: string;
   estimatedDuration?: number;
+  category?: string;
+  tags?: string[];
 }
 
 function validateMetadata(data: unknown): { valid: boolean; errors: string[] } {
@@ -36,12 +37,6 @@ function validateMetadata(data: unknown): { valid: boolean; errors: string[] } {
   }
   
   const metadata = data as Record<string, unknown>;
-  
-  if (!metadata.type || typeof metadata.type !== "string") {
-    errors.push("ID is required and must be a string");
-  } else if (!/^[a-z][a-z0-9-]*$/.test(metadata.type)) {
-    errors.push("ID must be lowercase with hyphens only (e.g., 'my-practa')");
-  }
   
   if (!metadata.name || typeof metadata.name !== "string") {
     errors.push("name is required and must be a string");
@@ -64,6 +59,18 @@ function validateMetadata(data: unknown): { valid: boolean; errors: string[] } {
   if (metadata.estimatedDuration !== undefined) {
     if (typeof metadata.estimatedDuration !== "number" || metadata.estimatedDuration < 0) {
       errors.push("estimatedDuration must be a positive number");
+    }
+  }
+  
+  if (metadata.category !== undefined && typeof metadata.category !== "string") {
+    errors.push("category must be a string");
+  }
+  
+  if (metadata.tags !== undefined) {
+    if (!Array.isArray(metadata.tags)) {
+      errors.push("tags must be an array");
+    } else if (!metadata.tags.every((t: unknown) => typeof t === "string")) {
+      errors.push("all tags must be strings");
     }
   }
   
@@ -207,12 +214,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     const metadata: PractaMetadata = {
-      type: req.body.type,
       name: req.body.name,
       description: req.body.description,
       author: req.body.author,
       version: req.body.version,
       estimatedDuration: req.body.estimatedDuration,
+      category: req.body.category,
+      tags: req.body.tags,
     };
     
     if (writeConfig(metadata)) {
@@ -230,19 +238,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const config = readConfig();
-    const filename = config ? `${config.type}-${config.version}.zip` : "practa.zip";
+    const practaId = "my-practa"; // Derived from folder name
+    const filename = config ? `${practaId}-${config.version}.zip` : "practa.zip";
 
     const componentName = config ? config.name.replace(/[^a-zA-Z0-9]/g, "") : "MyPracta";
     
     const manifest = config ? {
-      name: config.type,
+      name: practaId,
       version: config.version,
       displayName: config.name,
       description: config.description,
       author: config.author,
       type: "widget",
-      category: "wellbeing",
-      tags: ["practa", "meditation", "wellbeing"],
+      category: config.category || "wellbeing",
+      tags: config.tags || ["practa", "wellbeing"],
       estimatedDuration: config.estimatedDuration,
       requiredPermissions: [],
     } : null;
@@ -258,7 +267,7 @@ This Practa component is designed for the Stellarin app.
 ## Usage
 
 \`\`\`tsx
-import ${componentName} from "@stellarin/practa-${config.type}";
+import ${componentName} from "@stellarin/practa-${practaId}";
 
 function MyFlow() {
   return (
@@ -355,16 +364,17 @@ ${config.version}
       }
 
       const componentName = config.name.replace(/[^a-zA-Z0-9]/g, "");
+      const practaIdSubmit = "my-practa"; // Derived from folder name
 
       const manifest = {
-        name: config.type,
+        name: practaIdSubmit,
         version: config.version,
         displayName: config.name,
         description: config.description,
         author: config.author,
         type: "widget",
-        category: "wellbeing",
-        tags: ["practa", "meditation", "wellbeing"],
+        category: config.category || "wellbeing",
+        tags: config.tags || ["practa", "wellbeing"],
         estimatedDuration: config.estimatedDuration,
         requiredPermissions: [],
       };
@@ -380,7 +390,7 @@ This Practa component is designed for the Stellarin app.
 ## Usage
 
 \`\`\`tsx
-import ${componentName} from "@stellarin/practa-${config.type}";
+import ${componentName} from "@stellarin/practa-${practaIdSubmit}";
 
 function MyFlow() {
   return (
@@ -434,7 +444,7 @@ ${config.version}
       const blob = new Blob([zipBuffer], { type: "application/zip" });
       
       const formData = new FormData();
-      formData.append("file", blob, `${config.type}-${config.version}.zip`);
+      formData.append("file", blob, `${practaIdSubmit}-${config.version}.zip`);
 
       const response = await fetch(SUBMIT_URL, {
         method: "POST",

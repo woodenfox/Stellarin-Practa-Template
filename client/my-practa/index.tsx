@@ -102,18 +102,6 @@ export function MyPracta({ context, onComplete, onSkip }: MyPractaProps) {
 
 export default MyPracta;
 
-export const metadata = {
-  type: "hello-world",
-  name: "Hello World",
-  description: "A simple interactive Practa that counts taps",
-  author: "Stellarin",
-  version: "1.0.0",
-  estimatedDuration: 15,
-  assets: {
-    heroImage: "zen-circle.png",
-  },
-};
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
