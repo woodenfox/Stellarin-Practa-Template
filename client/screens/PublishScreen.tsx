@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { View, StyleSheet, Pressable, ScrollView, Linking, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -12,8 +12,8 @@ import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import MyPracta, { metadata as codeMetadata } from "@/my-practa";
-import { validatePracta, ValidationReport } from "@/lib/practa-validator";
+import codeMetadata from "@/my-practa/metadata.json";
+import { usePractaValidation, ValidationReport } from "@/hooks/usePractaValidation";
 import { getApiUrl } from "@/lib/query-client";
 
 const VERIFICATION_SERVICE_URL = "https://stellarin-practa-verification.replit.app";
@@ -62,9 +62,7 @@ export default function PublishScreen() {
     queryKey: ["/api/practa/metadata"],
   });
 
-  const validationReport = useMemo<ValidationReport>(() => {
-    return validatePracta(MyPracta, codeMetadata);
-  }, []);
+  const validationReport = usePractaValidation();
 
   const hasErrors = !validationReport.isValid;
   const errorCount = validationReport.errors.length;
