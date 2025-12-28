@@ -20,6 +20,7 @@ interface SyncStatus {
   latestVersion: string;
   localTemplateVersion?: string;
   latestTemplateVersion?: string;
+  hasNewerVersion?: boolean;
   repoUrl: string;
   isMasterTemplate?: boolean;
 }
@@ -269,11 +270,11 @@ export default function DevScreen() {
             {syncStatus ? (
               <View style={[
                 styles.versionBadge, 
-                { backgroundColor: syncStatus.isInSync ? theme.primary + "20" : "#D97706" + "20" }
+                { backgroundColor: (syncStatus.isInSync || !syncStatus.hasNewerVersion) ? theme.primary + "20" : "#D97706" + "20" }
               ]}>
                 <ThemedText style={[
                   styles.versionBadgeText, 
-                  { color: syncStatus.isInSync ? theme.primary : "#D97706" }
+                  { color: (syncStatus.isInSync || !syncStatus.hasNewerVersion) ? theme.primary : "#D97706" }
                 ]}>
                   v{syncStatus.localTemplateVersion || "?"}
                 </ThemedText>
@@ -281,7 +282,7 @@ export default function DevScreen() {
             ) : null}
           </View>
 
-          {syncStatus && !syncStatus.isInSync && !syncStatus.isMasterTemplate ? (
+          {syncStatus && !syncStatus.isInSync && !syncStatus.isMasterTemplate && syncStatus.hasNewerVersion ? (
             <View style={styles.updateBanner}>
               <Feather name="download-cloud" size={16} color="#D97706" />
               <ThemedText style={styles.updateBannerText}>
@@ -320,7 +321,7 @@ export default function DevScreen() {
                 <ThemedText
                   style={[styles.optionDescription, { color: theme.textSecondary }]}
                 >
-                  {syncStatus && !syncStatus.isInSync && !syncStatus.isMasterTemplate
+                  {syncStatus && !syncStatus.isInSync && !syncStatus.isMasterTemplate && syncStatus.hasNewerVersion
                     ? `Update from v${syncStatus.localTemplateVersion} to v${syncStatus.latestTemplateVersion}`
                     : "Download and update to the latest Practa template"}
                 </ThemedText>

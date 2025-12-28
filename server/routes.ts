@@ -669,12 +669,26 @@ ${config.version}
         ? (gitHeadSha === latestSha)
         : (localSha === latestSha);
       
+      // Compare semantic versions to determine if update is actually newer
+      const compareVersions = (a: string, b: string): number => {
+        const pa = a.split('.').map(Number);
+        const pb = b.split('.').map(Number);
+        for (let i = 0; i < 3; i++) {
+          if ((pa[i] || 0) > (pb[i] || 0)) return 1;
+          if ((pa[i] || 0) < (pb[i] || 0)) return -1;
+        }
+        return 0;
+      };
+      
+      const hasNewerVersion = compareVersions(latestTemplateVersion, localTemplateVersion) > 0;
+      
       res.json({
         isInSync,
         localVersion: isMasterTemplate ? gitHeadSha : (localSha || null),
         latestVersion: latestSha,
         localTemplateVersion,
         latestTemplateVersion,
+        hasNewerVersion,
         repoUrl: `https://github.com/${TEMPLATE_REPO}`,
         repoAvailable: true,
         isMasterTemplate,
@@ -698,6 +712,7 @@ ${config.version}
         latestVersion: null,
         localTemplateVersion,
         latestTemplateVersion: localTemplateVersion,
+        hasNewerVersion: false,
         repoUrl: `https://github.com/${TEMPLATE_REPO}`,
         repoAvailable: false,
         isMasterTemplate: false,
