@@ -15,7 +15,8 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import MyPracta from "@/my-practa";
 import practaMetadataJson from "@/my-practa/metadata.json";
-import { validatePracta, ValidationResult } from "@/lib/practa-validator";
+import { ValidationResult } from "@/lib/practa-validator";
+import { usePractaValidation } from "@/hooks/usePractaValidation";
 import { apiRequest } from "@/lib/query-client";
 
 interface PractaMetadata {
@@ -113,9 +114,7 @@ export default function PreviewScreen() {
 
   const metadata = savedMetadata || practaMetadataJson;
 
-  const validationReport = useMemo(() => {
-    return validatePracta(MyPracta, practaMetadataJson);
-  }, []);
+  const validationReport = usePractaValidation();
 
   const handlePreview = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
