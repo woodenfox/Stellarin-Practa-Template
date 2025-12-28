@@ -67,9 +67,7 @@ export default function SubmitScreen() {
   });
 
   const validationReport = useMemo<ValidationReport>(() => {
-    const report = validatePracta(MyPracta, codeMetadata);
-    console.log("Validation errors:", report.errors);
-    return report;
+    return validatePracta(MyPracta, codeMetadata);
   }, []);
 
   const hasErrors = !validationReport.isValid;

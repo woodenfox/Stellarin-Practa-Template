@@ -16,6 +16,7 @@ interface ValidationResult {
 }
 
 const PRACTA_PATH = "client/my-practa/index.tsx";
+const METADATA_PATH = "client/my-practa/metadata.json";
 
 function log(result: ValidationResult) {
   const icon = result.severity === "error" 
@@ -26,11 +27,22 @@ function log(result: ValidationResult) {
   console.log(`  ${icon} ${result.message}`);
 }
 
-function validateFileExists(): ValidationResult {
+function validateFileExists(): ValidationResult[] {
+  const results: ValidationResult[] = [];
+  
   if (fs.existsSync(PRACTA_PATH)) {
-    return { passed: true, message: "File exists at client/my-practa/index.tsx", severity: "success" };
+    results.push({ passed: true, message: "File exists at client/my-practa/index.tsx", severity: "success" });
+  } else {
+    results.push({ passed: false, message: "File not found: client/my-practa/index.tsx", severity: "error" });
   }
-  return { passed: false, message: "File not found: client/my-practa/index.tsx", severity: "error" };
+  
+  if (fs.existsSync(METADATA_PATH)) {
+    results.push({ passed: true, message: "File exists at client/my-practa/metadata.json", severity: "success" });
+  } else {
+    results.push({ passed: false, message: "File not found: client/my-practa/metadata.json", severity: "error" });
+  }
+  
+  return results;
 }
 
 function validateExports(source: string): ValidationResult[] {
@@ -43,79 +55,82 @@ function validateExports(source: string): ValidationResult[] {
     results.push({ passed: false, message: "Missing default export (component)", severity: "error" });
   }
 
-  // Check for metadata export
-  if (source.includes("export const metadata") || source.includes("export { metadata }")) {
-    results.push({ passed: true, message: "Has metadata export", severity: "success" });
-  } else {
-    results.push({ passed: false, message: "Missing metadata export", severity: "error" });
-  }
-
   return results;
 }
 
-function validateMetadataContent(source: string): ValidationResult[] {
+function validateMetadataContent(): ValidationResult[] {
   const results: ValidationResult[] = [];
 
-  // Extract metadata object from source
-  const metadataMatch = source.match(/export const metadata\s*=\s*\{([\s\S]*?)\};/);
-  if (!metadataMatch) {
-    results.push({ passed: false, message: "Could not parse metadata object", severity: "error" });
+  // Read and parse metadata.json
+  if (!fs.existsSync(METADATA_PATH)) {
+    results.push({ passed: false, message: "metadata.json not found", severity: "error" });
     return results;
   }
 
-  const metadataContent = metadataMatch[1];
+  let metadata: Record<string, unknown>;
+  try {
+    const content = fs.readFileSync(METADATA_PATH, "utf-8");
+    metadata = JSON.parse(content);
+  } catch (e) {
+    results.push({ passed: false, message: "metadata.json is not valid JSON", severity: "error" });
+    return results;
+  }
 
   // Check required fields
   const requiredFields = [
-    { field: "type", pattern: /type:\s*["']([^"']+)["']/ },
-    { field: "name", pattern: /name:\s*["']([^"']+)["']/ },
-    { field: "description", pattern: /description:\s*["']([^"']+)["']/ },
-    { field: "author", pattern: /author:\s*["']([^"']+)["']/ },
-    { field: "version", pattern: /version:\s*["']([^"']+)["']/ },
+    { field: "id", label: "Practa ID" },
+    { field: "name", label: "Display name" },
+    { field: "description", label: "Description" },
+    { field: "author", label: "Author" },
+    { field: "version", label: "Version" },
   ];
 
-  for (const { field, pattern } of requiredFields) {
-    const match = metadataContent.match(pattern);
-    if (match && match[1].trim()) {
-      results.push({ passed: true, message: `metadata.${field} is present`, severity: "success" });
+  for (const { field, label } of requiredFields) {
+    const value = metadata[field];
+    if (value && typeof value === "string" && value.trim() !== "") {
+      results.push({ passed: true, message: `${label} is present`, severity: "success" });
     } else {
-      results.push({ passed: false, message: `metadata.${field} is missing or empty`, severity: "error" });
+      results.push({ passed: false, message: `${label} (${field}) is missing or empty`, severity: "error" });
     }
   }
 
-  // Validate type format
-  const typeMatch = metadataContent.match(/type:\s*["']([^"']+)["']/);
-  if (typeMatch) {
-    const typeValue = typeMatch[1];
+  // Validate id format (kebab-case)
+  const idValue = metadata.id;
+  if (typeof idValue === "string") {
     const validPattern = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-    if (!validPattern.test(typeValue)) {
+    if (idValue.length < 3 || idValue.length > 50) {
       results.push({ 
         passed: false, 
-        message: `metadata.type "${typeValue}" must be lowercase with hyphens (e.g., "my-practa")`, 
+        message: `Practa ID must be 3-50 characters`, 
+        severity: "error" 
+      });
+    } else if (!validPattern.test(idValue)) {
+      results.push({ 
+        passed: false, 
+        message: `Practa ID "${idValue}" must be lowercase kebab-case (e.g., "my-practa")`, 
         severity: "error" 
       });
     }
   }
 
   // Validate version format
-  const versionMatch = metadataContent.match(/version:\s*["']([^"']+)["']/);
-  if (versionMatch) {
-    const versionValue = versionMatch[1];
+  const versionValue = metadata.version;
+  if (typeof versionValue === "string") {
     const validPattern = /^\d+\.\d+\.\d+$/;
     if (!validPattern.test(versionValue)) {
       results.push({ 
         passed: false, 
-        message: `metadata.version "${versionValue}" must be semver format (e.g., "1.0.0")`, 
+        message: `Version "${versionValue}" must be semver format (e.g., "1.0.0")`, 
         severity: "error" 
       });
     }
   }
 
   // Check optional fields
-  if (metadataContent.includes("estimatedDuration")) {
-    results.push({ passed: true, message: "metadata.estimatedDuration is present", severity: "success" });
+  if (metadata.estimatedDuration) {
+    results.push({ passed: true, message: "estimatedDuration is present", severity: "success" });
   } else {
-    results.push({ passed: true, message: "Consider adding metadata.estimatedDuration", severity: "warning" });
+    results.push({ passed: true, message: "Consider adding estimatedDuration (in seconds)", severity: "warning" });
   }
 
   return results;
@@ -173,10 +188,20 @@ function validateBestPractices(source: string): ValidationResult[] {
   }
 
   // Check for TypeScript types
-  if (source.includes("PractaContext") && source.includes("PractaOutput")) {
+  if (source.includes("PractaContext") || source.includes("PractaCompleteHandler")) {
     results.push({ passed: true, message: "Uses proper TypeScript types", severity: "success" });
   } else {
-    results.push({ passed: true, message: "Consider importing PractaContext and PractaOutput types", severity: "warning" });
+    results.push({ passed: true, message: "Consider importing PractaContext and PractaCompleteHandler types", severity: "warning" });
+  }
+
+  // Check for direct require() usage in component code
+  const requirePattern = /require\s*\(\s*["']\.\/assets\//;
+  if (requirePattern.test(source)) {
+    results.push({ 
+      passed: false, 
+      message: "Do not use require() directly for assets. Use assets.getImageSource() from ./assets.ts", 
+      severity: "error" 
+    });
   }
 
   return results;
@@ -187,14 +212,15 @@ function main() {
 
   const allResults: ValidationResult[] = [];
 
-  // Step 1: File exists
+  // Step 1: Files exist
   console.log("\x1b[1mFile Structure\x1b[0m");
-  const fileResult = validateFileExists();
-  log(fileResult);
-  allResults.push(fileResult);
+  const fileResults = validateFileExists();
+  fileResults.forEach(log);
+  allResults.push(...fileResults);
 
-  if (!fileResult.passed) {
-    console.log("\n\x1b[31m✗ Validation failed: Practa file not found\x1b[0m\n");
+  const hasFileErrors = fileResults.some(r => !r.passed);
+  if (hasFileErrors) {
+    console.log("\n\x1b[31m✗ Validation failed: Required files not found\x1b[0m\n");
     process.exit(1);
   }
 
@@ -209,7 +235,7 @@ function main() {
 
   // Step 3: Metadata
   console.log("\n\x1b[1mMetadata Schema\x1b[0m");
-  const metadataResults = validateMetadataContent(source);
+  const metadataResults = validateMetadataContent();
   metadataResults.forEach(log);
   allResults.push(...metadataResults);
 
