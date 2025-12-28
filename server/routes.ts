@@ -145,6 +145,36 @@ interface AssetValidationResult {
   fileCount: number;
 }
 
+function extractDeclaredAssets(practaDir: string): { key: string; path: string }[] {
+  const assetsPath = path.join(practaDir, "assets.ts");
+  if (!fs.existsSync(assetsPath)) {
+    return [];
+  }
+
+  const content = fs.readFileSync(assetsPath, "utf-8");
+  const declared: { key: string; path: string }[] = [];
+
+  // Match patterns like: "key": require("./assets/file.png")
+  // Also match: 'key': require('./assets/file.png')
+  const requirePattern = /["']([^"']+)["']\s*:\s*require\s*\(\s*["']([^"']+)["']\s*\)/g;
+  let match;
+
+  while ((match = requirePattern.exec(content)) !== null) {
+    const key = match[1];
+    const assetPath = match[2];
+    
+    // Only process paths that start with ./assets/
+    if (assetPath.startsWith("./assets/")) {
+      declared.push({
+        key,
+        path: assetPath.replace("./assets/", ""),
+      });
+    }
+  }
+
+  return declared;
+}
+
 function validateAssets(practaDir: string): AssetValidationResult {
   const result: AssetValidationResult = {
     valid: true,
@@ -156,7 +186,20 @@ function validateAssets(practaDir: string): AssetValidationResult {
 
   const assetsDir = path.join(practaDir, "assets");
   
+  // Check for declared assets that don't exist
+  const declaredAssets = extractDeclaredAssets(practaDir);
+  for (const asset of declaredAssets) {
+    const assetFullPath = path.join(assetsDir, asset.path);
+    if (!fs.existsSync(assetFullPath)) {
+      result.errors.push(
+        `Asset "${asset.key}" is declared but file not found: ./assets/${asset.path}`
+      );
+      result.valid = false;
+    }
+  }
+
   if (!fs.existsSync(assetsDir)) {
+    // If there are declared assets but no assets folder, that's already caught above
     return result;
   }
 

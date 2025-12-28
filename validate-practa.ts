@@ -15,8 +15,11 @@ interface ValidationResult {
   severity: "error" | "warning" | "success";
 }
 
+const PRACTA_DIR = "client/my-practa";
 const PRACTA_PATH = "client/my-practa/index.tsx";
 const METADATA_PATH = "client/my-practa/metadata.json";
+const ASSETS_TS_PATH = "client/my-practa/assets.ts";
+const ASSETS_DIR = "client/my-practa/assets";
 
 function log(result: ValidationResult) {
   const icon = result.severity === "error" 
@@ -199,9 +202,60 @@ function validateBestPractices(source: string): ValidationResult[] {
   if (requirePattern.test(source)) {
     results.push({ 
       passed: false, 
-      message: "Do not use require() directly for assets. Use assets.getImageSource() from ./assets.ts", 
+      message: "Do not use require() directly for assets. Use assets() from ./assets.ts", 
       severity: "error" 
     });
+  }
+
+  return results;
+}
+
+function validateDeclaredAssets(): ValidationResult[] {
+  const results: ValidationResult[] = [];
+
+  if (!fs.existsSync(ASSETS_TS_PATH)) {
+    results.push({ passed: true, message: "No assets.ts file (no assets declared)", severity: "success" });
+    return results;
+  }
+
+  const content = fs.readFileSync(ASSETS_TS_PATH, "utf-8");
+  
+  // Match patterns like: "key": require("./assets/file.png")
+  const requirePattern = /["']([^"']+)["']\s*:\s*require\s*\(\s*["']([^"']+)["']\s*\)/g;
+  const declaredAssets: { key: string; filePath: string }[] = [];
+  let match;
+
+  while ((match = requirePattern.exec(content)) !== null) {
+    const key = match[1];
+    const assetPath = match[2];
+    
+    if (assetPath.startsWith("./assets/")) {
+      declaredAssets.push({
+        key,
+        filePath: assetPath.replace("./assets/", ""),
+      });
+    }
+  }
+
+  if (declaredAssets.length === 0) {
+    results.push({ passed: true, message: "No assets declared in assets.ts", severity: "success" });
+    return results;
+  }
+
+  results.push({ passed: true, message: `Found ${declaredAssets.length} declared asset(s)`, severity: "success" });
+
+  // Check each declared asset exists
+  for (const asset of declaredAssets) {
+    const fullPath = path.join(ASSETS_DIR, asset.filePath);
+    if (fs.existsSync(fullPath)) {
+      results.push({ passed: true, message: `Asset "${asset.key}" exists: ./assets/${asset.filePath}`, severity: "success" });
+    } else {
+      results.push({ 
+        passed: false, 
+        message: `Asset "${asset.key}" declared but file not found: ./assets/${asset.filePath}`, 
+        severity: "error" 
+      });
+    }
   }
 
   return results;
@@ -250,6 +304,12 @@ function main() {
   const practiceResults = validateBestPractices(source);
   practiceResults.forEach(log);
   allResults.push(...practiceResults);
+
+  // Step 6: Asset Validation
+  console.log("\n\x1b[1mAssets\x1b[0m");
+  const assetResults = validateDeclaredAssets();
+  assetResults.forEach(log);
+  allResults.push(...assetResults);
 
   // Summary
   const errors = allResults.filter(r => r.severity === "error" && !r.passed);
