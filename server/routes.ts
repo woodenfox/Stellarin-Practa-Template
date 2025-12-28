@@ -597,6 +597,27 @@ ${config.version}
       const branchData = await branchResponse.json();
       const latestSha = branchData.commit.sha;
       
+      // Get local template version from app.json
+      let localTemplateVersion = "1.0.0";
+      const appJsonPath = path.resolve(process.cwd(), "app.json");
+      try {
+        if (fs.existsSync(appJsonPath)) {
+          const appJson = JSON.parse(fs.readFileSync(appJsonPath, "utf-8"));
+          localTemplateVersion = appJson.expo?.version || "1.0.0";
+        }
+      } catch {}
+      
+      // Get latest template version from GitHub
+      let latestTemplateVersion = localTemplateVersion;
+      try {
+        const appJsonUrl = `https://raw.githubusercontent.com/${TEMPLATE_REPO}/${defaultBranch}/app.json`;
+        const appJsonResponse = await fetch(appJsonUrl);
+        if (appJsonResponse.ok) {
+          const remoteAppJson = await appJsonResponse.json();
+          latestTemplateVersion = remoteAppJson.expo?.version || localTemplateVersion;
+        }
+      } catch {}
+      
       const syncFilePath = path.resolve(process.cwd(), ".template-sync");
       let localSha = "";
       let isFirstRun = false;
@@ -652,6 +673,8 @@ ${config.version}
         isInSync,
         localVersion: isMasterTemplate ? gitHeadSha : (localSha || null),
         latestVersion: latestSha,
+        localTemplateVersion,
+        latestTemplateVersion,
         repoUrl: `https://github.com/${TEMPLATE_REPO}`,
         repoAvailable: true,
         isMasterTemplate,

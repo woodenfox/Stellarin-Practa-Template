@@ -33,6 +33,8 @@ interface SyncStatus {
   isInSync: boolean;
   localVersion: string | null;
   latestVersion: string;
+  localTemplateVersion?: string;
+  latestTemplateVersion?: string;
   repoUrl: string;
   isMasterTemplate?: boolean;
 }
@@ -165,7 +167,7 @@ export default function MyPractaScreen() {
           ]}>
             <View style={styles.syncBannerContent}>
               <Feather 
-                name={syncStatus.isMasterTemplate ? "git-commit" : "alert-triangle"} 
+                name={syncStatus.isMasterTemplate ? "git-commit" : "download-cloud"} 
                 size={20} 
                 color={syncStatus.isMasterTemplate ? "#3B82F6" : "#D97706"} 
               />
@@ -173,7 +175,7 @@ export default function MyPractaScreen() {
                 <ThemedText style={styles.syncBannerTitle}>
                   {syncStatus.isMasterTemplate 
                     ? "Unpublished Changes" 
-                    : "Template Out of Sync"}
+                    : `Update Available: ${syncStatus.localTemplateVersion || "?"} → ${syncStatus.latestTemplateVersion || "?"}`}
                 </ThemedText>
                 <ThemedText style={[
                   styles.syncBannerMessage,
@@ -181,7 +183,7 @@ export default function MyPractaScreen() {
                 ]}>
                   {syncStatus.isMasterTemplate
                     ? "Push your changes to GitHub to publish the template."
-                    : "The underlying Stellarin Practa Template has changed."}
+                    : "A new version of the Practa template is available."}
                 </ThemedText>
               </View>
             </View>
@@ -201,7 +203,7 @@ export default function MyPractaScreen() {
                   <ActivityIndicator size="small" color="white" />
                 ) : (
                   <ThemedText style={styles.syncButtonText}>
-                    Update to Latest
+                    Update Now
                   </ThemedText>
                 )}
               </Pressable>

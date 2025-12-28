@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, Pressable, ActivityIndicator, Modal, Platform } from "react-native";
 import { reloadAppAsync } from "expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -13,6 +13,16 @@ import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+
+interface SyncStatus {
+  isInSync: boolean;
+  localVersion: string | null;
+  latestVersion: string;
+  localTemplateVersion?: string;
+  latestTemplateVersion?: string;
+  repoUrl: string;
+  isMasterTemplate?: boolean;
+}
 
 function ConfirmModal({
   visible,
@@ -114,10 +124,22 @@ export default function DevScreen() {
   const [isUpdatingTemplate, setIsUpdatingTemplate] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [enableSyncCheck, setEnableSyncCheck] = useState(false);
   const [alertModal, setAlertModal] = useState<{ visible: boolean; title: string; message: string; onClose?: () => void; buttonText?: string }>({
     visible: false,
     title: "",
     message: "",
+  });
+
+  useEffect(() => {
+    const timer = setTimeout(() => setEnableSyncCheck(true), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const { data: syncStatus } = useQuery<SyncStatus>({
+    queryKey: ["/api/template/sync-status"],
+    staleTime: 1000 * 60 * 5,
+    enabled: enableSyncCheck,
   });
 
   const showAlert = (title: string, message: string, options?: { onClose?: () => void; buttonText?: string }) => {
@@ -244,7 +266,29 @@ export default function DevScreen() {
           <View style={styles.sectionHeader}>
             <Feather name="download" size={20} color={theme.primary} />
             <ThemedText style={styles.sectionTitle}>Template</ThemedText>
+            {syncStatus ? (
+              <View style={[
+                styles.versionBadge, 
+                { backgroundColor: syncStatus.isInSync ? theme.primary + "20" : "#D97706" + "20" }
+              ]}>
+                <ThemedText style={[
+                  styles.versionBadgeText, 
+                  { color: syncStatus.isInSync ? theme.primary : "#D97706" }
+                ]}>
+                  v{syncStatus.localTemplateVersion || "?"}
+                </ThemedText>
+              </View>
+            ) : null}
           </View>
+
+          {syncStatus && !syncStatus.isInSync && !syncStatus.isMasterTemplate ? (
+            <View style={styles.updateBanner}>
+              <Feather name="download-cloud" size={16} color="#D97706" />
+              <ThemedText style={styles.updateBannerText}>
+                Update available: {syncStatus.localTemplateVersion} → {syncStatus.latestTemplateVersion}
+              </ThemedText>
+            </View>
+          ) : null}
 
           <Pressable
             onPress={handleUpdateTemplate}
@@ -276,7 +320,9 @@ export default function DevScreen() {
                 <ThemedText
                   style={[styles.optionDescription, { color: theme.textSecondary }]}
                 >
-                  Download and update to the latest Practa template
+                  {syncStatus && !syncStatus.isInSync && !syncStatus.isMasterTemplate
+                    ? `Update from v${syncStatus.localTemplateVersion} to v${syncStatus.latestTemplateVersion}`
+                    : "Download and update to the latest Practa template"}
                 </ThemedText>
               </View>
             </View>
@@ -413,6 +459,31 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
+    flex: 1,
+  },
+  versionBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+  },
+  versionBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  updateBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    backgroundColor: "#D97706" + "15",
+    borderRadius: BorderRadius.sm,
+    marginBottom: Spacing.sm,
+  },
+  updateBannerText: {
+    fontSize: 13,
+    color: "#D97706",
+    fontWeight: "500",
   },
   optionButton: {
     flexDirection: "row",
