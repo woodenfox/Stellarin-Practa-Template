@@ -8,7 +8,7 @@ import AdmZip from "adm-zip";
 
 const CONFIG_PATH = path.resolve(process.cwd(), "practa.config.json");
 const METADATA_PATH = path.resolve(process.cwd(), "client/my-practa/metadata.json");
-const TEMPLATE_REPO = "woodenfox/Stellarin-Practa-Template";
+const TEMPLATE_REPO = "stellarin-org/practa-template";
 const PROTECTED_PATHS = ["client/my-practa", "practa.config.json"];
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB per file
