@@ -882,6 +882,95 @@ ${config.version}
     }
   });
 
+  // Publish to Git: reset to demo + commit + push
+  app.post("/api/template/publish", async (req, res) => {
+    try {
+      // Check if this is the master template
+      const masterKey = process.env.MASTER_TEMPLATE_KEY;
+      const isMasterTemplate = typeof masterKey === "string" && masterKey.length > 0;
+      
+      if (!isMasterTemplate) {
+        return res.status(403).json({ 
+          error: "Publishing is only available for the master template" 
+        });
+      }
+
+      // Step 1: Reset Practa to demo
+      const myPractaDir = path.resolve(process.cwd(), MY_PRACTA_PATH);
+      const demoDir = path.resolve(process.cwd(), DEMO_TEMPLATE_PATH);
+
+      if (!fs.existsSync(demoDir)) {
+        return res.status(404).json({ error: "Demo template not found" });
+      }
+
+      // Clear my-practa directory
+      if (fs.existsSync(myPractaDir)) {
+        const files = fs.readdirSync(myPractaDir);
+        for (const file of files) {
+          const filePath = path.join(myPractaDir, file);
+          fs.rmSync(filePath, { recursive: true, force: true });
+        }
+      } else {
+        fs.mkdirSync(myPractaDir, { recursive: true });
+      }
+
+      // Copy demo template
+      const copyRecursive = (src: string, dest: string) => {
+        if (!fs.existsSync(dest)) {
+          fs.mkdirSync(dest, { recursive: true });
+        }
+        const entries = fs.readdirSync(src, { withFileTypes: true });
+        for (const entry of entries) {
+          const srcPath = path.join(src, entry.name);
+          const destPath = path.join(dest, entry.name);
+          if (entry.isDirectory()) {
+            copyRecursive(srcPath, destPath);
+          } else {
+            fs.copyFileSync(srcPath, destPath);
+          }
+        }
+      };
+      copyRecursive(demoDir, myPractaDir);
+
+      // Step 2: Git add, commit, push
+      const { execSync } = await import("child_process");
+      const projectRoot = process.cwd();
+      
+      try {
+        // Stage all changes
+        execSync("git add -A", { cwd: projectRoot, stdio: "pipe" });
+        
+        // Create commit with timestamp
+        const timestamp = new Date().toISOString().split("T")[0];
+        const commitMessage = `Publish template ${timestamp}`;
+        execSync(`git commit -m "${commitMessage}" --allow-empty`, { 
+          cwd: projectRoot, 
+          stdio: "pipe" 
+        });
+        
+        // Push to remote
+        execSync("git push", { cwd: projectRoot, stdio: "pipe", timeout: 30000 });
+        
+        res.json({
+          success: true,
+          message: "Successfully reset to demo and published to Git"
+        });
+      } catch (gitError) {
+        console.error("Git operation failed:", gitError);
+        res.status(500).json({
+          error: "Reset completed but Git push failed. You may need to push manually.",
+          details: gitError instanceof Error ? gitError.message : "Unknown git error"
+        });
+      }
+    } catch (error) {
+      console.error("Publish error:", error);
+      res.status(500).json({
+        error: "Failed to publish",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
