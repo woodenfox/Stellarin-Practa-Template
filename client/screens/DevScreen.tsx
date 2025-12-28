@@ -111,7 +111,9 @@ export default function DevScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const queryClient = useQueryClient();
   const [isResetting, setIsResetting] = useState(false);
+  const [isUpdatingTemplate, setIsUpdatingTemplate] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [alertModal, setAlertModal] = useState<{ visible: boolean; title: string; message: string; onClose?: () => void; buttonText?: string }>({
     visible: false,
     title: "",
@@ -120,6 +122,55 @@ export default function DevScreen() {
 
   const showAlert = (title: string, message: string, options?: { onClose?: () => void; buttonText?: string }) => {
     setAlertModal({ visible: true, title, message, onClose: options?.onClose, buttonText: options?.buttonText });
+  };
+
+  const updateTemplateMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/template/update");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      queryClient.invalidateQueries();
+      showAlert(
+        "Template Updated",
+        `Successfully updated to the latest template (${data.filesUpdated || 0} files). Tap to reload the app.`,
+        {
+          buttonText: "Reload App",
+          onClose: async () => {
+            if (Platform.OS === "web") {
+              window.location.reload();
+            } else {
+              await reloadAppAsync();
+            }
+          },
+        }
+      );
+    },
+    onError: (error: Error) => {
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+      showAlert("Update Failed", error.message || "Failed to update template");
+    },
+    onSettled: () => {
+      setIsUpdatingTemplate(false);
+    },
+  });
+
+  const handleUpdateTemplate = () => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    setShowUpdateModal(true);
+  };
+
+  const handleConfirmUpdate = () => {
+    setShowUpdateModal(false);
+    setIsUpdatingTemplate(true);
+    updateTemplateMutation.mutate();
   };
 
   const resetMutation = useMutation({
@@ -191,6 +242,54 @@ export default function DevScreen() {
       <View style={styles.content}>
         <Card style={styles.section}>
           <View style={styles.sectionHeader}>
+            <Feather name="download" size={20} color={theme.primary} />
+            <ThemedText style={styles.sectionTitle}>Template</ThemedText>
+          </View>
+
+          <Pressable
+            onPress={handleUpdateTemplate}
+            disabled={isUpdatingTemplate}
+            style={({ pressed }) => [
+              styles.optionButton,
+              {
+                backgroundColor: pressed
+                  ? theme.backgroundSecondary
+                  : "transparent",
+              },
+            ]}
+          >
+            <View style={styles.optionContent}>
+              <Feather
+                name="download-cloud"
+                size={20}
+                color={isUpdatingTemplate ? theme.textSecondary : theme.primary}
+              />
+              <View style={styles.optionText}>
+                <ThemedText
+                  style={[
+                    styles.optionTitle,
+                    { color: isUpdatingTemplate ? theme.textSecondary : theme.text },
+                  ]}
+                >
+                  Get Latest Template
+                </ThemedText>
+                <ThemedText
+                  style={[styles.optionDescription, { color: theme.textSecondary }]}
+                >
+                  Download and update to the latest Practa template
+                </ThemedText>
+              </View>
+            </View>
+            {isUpdatingTemplate ? (
+              <ActivityIndicator size="small" color={theme.textSecondary} />
+            ) : (
+              <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+            )}
+          </Pressable>
+        </Card>
+
+        <Card style={styles.section}>
+          <View style={styles.sectionHeader}>
             <Feather name="refresh-cw" size={20} color={theme.primary} />
             <ThemedText style={styles.sectionTitle}>Reset</ThemedText>
           </View>
@@ -238,9 +337,19 @@ export default function DevScreen() {
         </Card>
 
         <ThemedText style={[styles.warningText, { color: theme.textSecondary }]}>
-          Warning: Resetting will overwrite all files in the my-practa folder.
+          Note: Your Practa files (my-practa folder) are preserved during updates.
         </ThemedText>
       </View>
+
+      <ConfirmModal
+        visible={showUpdateModal}
+        title="Update Template"
+        message="This will download and overwrite template files from GitHub. Your Practa (my-practa folder) will be preserved. Continue?"
+        confirmText="Update"
+        cancelText="Cancel"
+        onConfirm={handleConfirmUpdate}
+        onCancel={() => setShowUpdateModal(false)}
+      />
 
       <ConfirmModal
         visible={showConfirmModal}
