@@ -5,7 +5,6 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as WebBrowser from "expo-web-browser";
 import { useQuery } from "@tanstack/react-query";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -108,16 +107,12 @@ export default function SubmitScreen() {
     }
   };
 
-  const handleClaimSubmission = async () => {
+  const handleClaimSubmission = () => {
     if (!submitResult?.token) return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const submitUrl = `${VERIFICATION_SERVICE_URL}/submit?token=${submitResult.token}`;
-    try {
-      await WebBrowser.openBrowserAsync(submitUrl);
-    } catch {
-      Linking.openURL(submitUrl);
-    }
+    Linking.openURL(submitUrl);
   };
 
   const handleClose = () => {
