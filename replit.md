@@ -162,6 +162,7 @@ The template includes automatic validation that checks:
 - Version uses semver format (X.Y.Z)
 - Component calls `onComplete`
 - No direct `require()` for assets - must use `assets.ts` resolver
+- All declared assets in `assets.ts` must exist in `./assets/` folder
 
 **Recommended (Warnings)**:
 - Uses `useTheme()` for colors
@@ -212,7 +213,7 @@ This allows you to extract and rename the folder to whatever you prefer.
 const localAssets = {
   "background": require("./assets/background.png"),
   "icon": require("./assets/icon.svg"),
-  "click-sound": require("./assets/sounds/click.mp3"),
+  "click-sound": require("./assets/click.mp3"),
 } as const;
 
 export type AssetKey = keyof typeof localAssets;
