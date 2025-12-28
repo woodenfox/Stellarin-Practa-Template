@@ -7,10 +7,7 @@
 
 type AssetSource = number | { uri: string };
 
-const localAssets = {
-  // Add your assets here, for example:
-  // "background": require("./assets/background.png"),
-} as const;
+const localAssets = {} as const;
 
 export type AssetKey = keyof typeof localAssets;
 
