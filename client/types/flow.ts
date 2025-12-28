@@ -25,10 +25,30 @@ export interface PreviousPractaContext {
   metadata?: PractaMetadata;
 }
 
+/**
+ * Storage interface for persisting practa state across sessions.
+ * See docs/practa-storage-system.md for full documentation.
+ */
+export interface PractaStorage {
+  get<T = unknown>(key: string): Promise<T | null>;
+  set<T = unknown>(key: string, value: T): Promise<void>;
+  remove(key: string): Promise<void>;
+  clear(): Promise<void>;
+}
+
+/**
+ * Context passed to every practa component.
+ * Includes flow information and optional storage for persistence.
+ */
 export interface PractaContext {
   flowId: string;
   practaIndex: number;
   previous?: PreviousPractaContext;
+  /** 
+   * Optional storage for persisting state across sessions.
+   * See docs/practa-storage-system.md for usage examples.
+   */
+  storage?: PractaStorage;
 }
 
 export interface PractaOutput {

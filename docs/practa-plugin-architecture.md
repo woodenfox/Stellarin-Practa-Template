@@ -63,6 +63,15 @@ interface PractaContext {
     content?: PractaContent;
     metadata?: PractaMetadata;
   };
+  storage?: PractaStorage; // For persisting state across sessions
+}
+
+// See docs/practa-storage-system.md for full storage documentation
+interface PractaStorage {
+  get<T>(key: string): Promise<T | null>;
+  set<T>(key: string, value: T): Promise<void>;
+  remove(key: string): Promise<void>;
+  clear(): Promise<void>;
 }
 
 interface PractaContent {
@@ -472,3 +481,4 @@ Approved Practa appear in the Practa library. Users can browse, try them out, an
 - Example community practa in `community/`
 - Stellarin design guidelines in `design_guidelines.md`
 - Flow system documentation in `docs/practa-flow-system.md`
+- Storage system documentation in `docs/practa-storage-system.md`

@@ -1,3 +1,20 @@
+/**
+ * Practa Starter Template
+ * 
+ * This is a minimal template for building your own Practa.
+ * 
+ * Key concepts:
+ * - `context`: Contains flow info and optional `storage` for persistence
+ * - `onComplete`: Call when the user finishes the experience
+ * - `onSkip`: Optional callback if the user can skip
+ * 
+ * For persistent state (user preferences, progress), use context.storage:
+ *   await context.storage?.get<string>("key")
+ *   await context.storage?.set("key", value)
+ * 
+ * See docs/practa-storage-system.md for full storage documentation.
+ */
+
 import React, { useState } from "react";
 import { View, StyleSheet, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
