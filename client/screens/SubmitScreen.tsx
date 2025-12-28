@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { View, StyleSheet, Pressable, ScrollView, Linking, ActivityIndicator, Modal, Platform } from "react-native";
+import { View, StyleSheet, Pressable, ScrollView, Linking, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { WebView } from "react-native-webview";
+import * as WebBrowser from "expo-web-browser";
 import { useQuery } from "@tanstack/react-query";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -60,8 +60,6 @@ export default function SubmitScreen() {
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [submitResult, setSubmitResult] = useState<UploadPreviewResult | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [showWebView, setShowWebView] = useState(false);
-  const [webViewLoading, setWebViewLoading] = useState(true);
 
   const { data: metadata } = useQuery<PractaMetadata>({
     queryKey: ["/api/practa/metadata"],
@@ -110,22 +108,17 @@ export default function SubmitScreen() {
     }
   };
 
-  const handleClaimSubmission = () => {
+  const handleClaimSubmission = async () => {
     if (!submitResult?.token) return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setWebViewLoading(true);
-    setShowWebView(true);
+    const submitUrl = `${VERIFICATION_SERVICE_URL}/submit?token=${submitResult.token}`;
+    try {
+      await WebBrowser.openBrowserAsync(submitUrl);
+    } catch {
+      Linking.openURL(submitUrl);
+    }
   };
-
-  const handleCloseWebView = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowWebView(false);
-  };
-
-  const claimUrl = submitResult?.token 
-    ? `${VERIFICATION_SERVICE_URL}/submit?token=${submitResult.token}` 
-    : "";
 
   const handleClose = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -338,42 +331,6 @@ export default function SubmitScreen() {
           </ThemedText>
         ) : null}
       </ScrollView>
-
-      <Modal
-        visible={showWebView}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={handleCloseWebView}
-      >
-        <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
-          <View style={[styles.modalHeader, { paddingTop: Platform.OS === "ios" ? Spacing.xl : insets.top + Spacing.md }]}>
-            <ThemedText style={styles.modalTitle}>Complete Submission</ThemedText>
-            <Pressable onPress={handleCloseWebView} style={styles.modalCloseButton}>
-              <Feather name="x" size={24} color={theme.text} />
-            </Pressable>
-          </View>
-          {webViewLoading ? (
-            <View style={styles.webViewLoading}>
-              <ActivityIndicator size="large" color={theme.primary} />
-              <ThemedText style={[styles.loadingText, { color: theme.textSecondary }]}>
-                Loading Stellarin...
-              </ThemedText>
-            </View>
-          ) : null}
-          {claimUrl ? (
-            <WebView
-              source={{ uri: claimUrl }}
-              style={[styles.webView, webViewLoading ? styles.webViewHidden : null]}
-              onLoadEnd={() => setWebViewLoading(false)}
-              onError={() => setWebViewLoading(false)}
-              javaScriptEnabled
-              domStorageEnabled
-              startInLoadingState={false}
-              sharedCookiesEnabled
-            />
-          ) : null}
-        </View>
-      </Modal>
     </ThemedView>
   );
 }
@@ -575,37 +532,5 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     lineHeight: 18,
-  },
-  modalContainer: {
-    flex: 1,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
-  },
-  modalTitle: {
-    fontSize: 17,
-    fontWeight: "600",
-  },
-  modalCloseButton: {
-    padding: Spacing.sm,
-  },
-  webView: {
-    flex: 1,
-  },
-  webViewHidden: {
-    opacity: 0,
-  },
-  webViewLoading: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.md,
-  },
-  loadingText: {
-    fontSize: 14,
   },
 });
