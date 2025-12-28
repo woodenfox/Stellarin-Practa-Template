@@ -1,463 +1,233 @@
 # Community Practa Asset Resolution
 
-This document outlines how assets are handled across the three phases of community Practa development and publishing.
+This document describes how assets work across the entire Practa ecosystem: local development, Practa Manager validation/publishing, and the Stellarin app.
 
 ## Overview
 
-Practa components use a unified pattern for loading assets through an `assets.ts` resolver:
+The asset system provides a unified interface that works identically in all environments:
+- **Local development**: Assets loaded via bundler (Vite/webpack `require()`)
+- **Practa Manager**: Assets uploaded to Replit Object Storage during publish
+- **Stellarin app**: Assets resolved from storage URLs at runtime
 
-```tsx
-import { assets } from "./assets";
+## ZIP Structure (Flat, Files at Root)
 
-// Images (sync)
-<Image source={assets.getImageSource("zen-circle") || undefined} />
-
-// Audio with useAudioPlayer hook (sync)
-const player = useAudioPlayer(assets.getAudioSource("chime"));
-
-// Audio with expo-av (async)
-const uri = await assets.getAudioUri("chime");
-
-// Video (async)
-const videoSource = await assets.getVideoSource("intro-video");
-
-// Lottie animations (sync)
-<LottieView source={assets.getLottieSource("loading")} autoPlay loop />
-
-// JSON data (sync)
-const config = assets.getData<ConfigType>("settings");
+```
+my-practa.zip
+├── index.tsx          # Main component (required)
+├── metadata.json      # Practa metadata (required)
+├── README.md          # Documentation (required)
+├── assets.ts          # Asset declarations (optional)
+└── assets/            # Asset files folder (optional)
+    ├── background.png
+    ├── icon.svg
+    └── sounds/
+        └── click.mp3
 ```
 
-The `assets.ts` file is **different in each phase**, but the component code stays the same. This eliminates the need for any conditional logic or runtime branching.
+## Asset Declaration (assets.ts)
 
----
+### Local Development Version
 
-## Asset Resolver Interface
-
-The resolver provides a comprehensive API for all asset types:
-
-```typescript
-export interface AssetResolver {
-  // Images - returns ImageSourcePropType for <Image source={...} />
-  getImageSource: (key: AssetKey) => ImageSourcePropType | null;
-  
-  // Audio - sync version for useAudioPlayer hook
-  getAudioSource: (key: AssetKey) => number | { uri: string } | null;
-  
-  // Audio - async version for expo-av Audio.Sound
-  getAudioUri: (key: AssetKey) => Promise<string | null>;
-  
-  // Video - async, returns source object for expo-video
-  getVideoSource: (key: AssetKey) => Promise<{ uri: string } | null>;
-  
-  // Lottie animations - sync, returns animation JSON object
-  getLottieSource: (key: AssetKey) => object | null;
-  
-  // Generic JSON data - sync, typed
-  getData: <T = unknown>(key: AssetKey) => T | null;
-  
-  // Generic URI access - async
-  getUri: (key: AssetKey) => Promise<string | null>;
-  
-  // Utility methods
-  has: (key: string) => boolean;
-  keys: () => AssetKey[];
-}
-```
-
-### Method Reference
-
-| Method | Returns | Async | Use Case |
-|--------|---------|-------|----------|
-| `getImageSource(key)` | ImageSourcePropType \| null | No | `<Image source={...} />` |
-| `getAudioSource(key)` | number \| { uri } \| null | No | useAudioPlayer hook |
-| `getAudioUri(key)` | Promise<string \| null> | Yes | expo-av Audio.Sound |
-| `getVideoSource(key)` | Promise<{ uri } \| null> | Yes | expo-video playback |
-| `getLottieSource(key)` | object \| null | No | lottie-react-native |
-| `getData<T>(key)` | T \| null | No | JSON config files |
-| `getUri(key)` | Promise<string \| null> | Yes | Generic URI access |
-| `has(key)` | boolean | No | Check if asset exists |
-| `keys()` | AssetKey[] | No | List all assets |
-
----
-
-## Phase 1: Template (Local Development)
-
-### Developer Experience
-
-Developers create Practa using the template. They place assets in an `./assets/` folder and register them in `assets.ts`.
-
-### Template `assets.ts` Implementation
+In your Practa Template, declare assets using `require()`:
 
 ```typescript
 // assets.ts - LOCAL DEVELOPMENT VERSION
+// This file is transformed by Practa Manager during publish
 
-import { ImageSourcePropType } from "react-native";
-import { Asset } from "expo-asset";
+const localAssets = {
+  "background": require("./assets/background.png"),
+  "icon": require("./assets/icon.svg"),
+  "click-sound": require("./assets/sounds/click.mp3"),
+} as const;
 
-type AssetSource = number | { uri: string } | object;
+export type AssetKey = keyof typeof localAssets;
 
-/**
- * Asset keys - add your asset keys here for type safety and autocomplete.
- * This prevents typos and helps AI agents discover available assets.
- */
-export type AssetKey = "zen-circle" | "background" | "chime" | "intro-video" | "loading-animation";
-
-/**
- * Register your assets here.
- * 
- * Supported asset types:
- * - Images: png, jpg, jpeg, gif, webp, svg
- * - Audio: mp3, wav, m4a, ogg
- * - Video: mp4, webm
- * - Data: json, txt
- * - Lottie: json (animation files)
- */
-const localAssets: Record<AssetKey, AssetSource> = {
-  "zen-circle": require("./assets/zen-circle.png"),
-  "background": require("./assets/background.jpg"),
-  "chime": require("./assets/chime.mp3"),
-  "intro-video": require("./assets/intro.mp4"),
-  "loading-animation": require("./assets/loading.json"),
-};
-
-function warnMissingAsset(key: string, method: string): void {
-  console.warn(
-    `[Practa Assets] Asset "${key}" not found. ` +
-    `Called ${method}("${key}"). ` +
-    `Available keys: ${Object.keys(localAssets).join(", ") || "(none)"}`
-  );
-}
-
-export const assets: AssetResolver = {
-  getImageSource: (key: AssetKey): ImageSourcePropType | null => {
-    const asset = localAssets[key];
-    if (asset === undefined) {
-      warnMissingAsset(key, "getImageSource");
-      return null;
-    }
-    return asset as ImageSourcePropType;
-  },
-
-  getAudioSource: (key: AssetKey): number | { uri: string } | null => {
-    const asset = localAssets[key];
-    if (asset === undefined) {
-      warnMissingAsset(key, "getAudioSource");
-      return null;
-    }
-    return asset as number | { uri: string };
-  },
-
-  getAudioUri: async (key: AssetKey): Promise<string | null> => {
-    const asset = localAssets[key];
-    if (asset === undefined) {
-      warnMissingAsset(key, "getAudioUri");
-      return null;
-    }
-    if (typeof asset === "object" && "uri" in asset) {
-      return (asset as { uri: string }).uri;
-    }
-    if (typeof asset === "number") {
-      try {
-        const resolved = Asset.fromModule(asset);
-        await resolved.downloadAsync();
-        return resolved.localUri || resolved.uri;
-      } catch (error) {
-        console.warn(`[Practa Assets] Failed to resolve audio "${key}":`, error);
-        return null;
-      }
-    }
-    return null;
-  },
-
-  getVideoSource: async (key: AssetKey): Promise<{ uri: string } | null> => {
-    const uri = await assets.getAudioUri(key);
-    return uri ? { uri } : null;
-  },
-
-  getLottieSource: (key: AssetKey): object | null => {
-    const asset = localAssets[key];
-    if (asset === undefined) {
-      warnMissingAsset(key, "getLottieSource");
-      return null;
-    }
-    if (typeof asset === "object" && !("uri" in asset)) {
-      return asset;
-    }
-    return null;
-  },
-
-  getData: <T = unknown>(key: AssetKey): T | null => {
-    const asset = localAssets[key];
-    if (asset === undefined) {
-      warnMissingAsset(key, "getData");
-      return null;
-    }
-    return asset as T;
-  },
-
-  getUri: async (key: AssetKey): Promise<string | null> => {
-    const asset = localAssets[key];
-    if (asset === undefined) {
-      warnMissingAsset(key, "getUri");
-      return null;
-    }
-    if (typeof asset === "object" && "uri" in asset) {
-      return (asset as { uri: string }).uri;
-    }
-    if (typeof asset === "number") {
-      try {
-        const resolved = Asset.fromModule(asset);
-        await resolved.downloadAsync();
-        return resolved.localUri || resolved.uri;
-      } catch (error) {
-        return null;
-      }
-    }
-    return null;
-  },
-
-  has: (key: string): boolean => {
-    return key in localAssets;
-  },
-
-  keys: (): AssetKey[] => {
-    return Object.keys(localAssets) as AssetKey[];
-  },
-};
+export const assets = (key: AssetKey): string => localAssets[key] as string;
 ```
 
-### Developer Instructions
+### Published Version (Auto-Generated)
 
-1. Place asset files in the `./assets/` folder
-2. Add the key to the `AssetKey` type for autocomplete
-3. Add an entry to `localAssets` with a kebab-case key
-4. Use the appropriate resolver method in your component:
-   - `assets.getImageSource("key")` for images
-   - `assets.getAudioSource("key")` for audio with useAudioPlayer
-   - `await assets.getAudioUri("key")` for audio with expo-av
-   - `await assets.getVideoSource("key")` for video
-   - `assets.getLottieSource("key")` for Lottie animations
-   - `assets.getData<T>("key")` for JSON data
-5. **Never use `require()` directly in component code**
-
----
-
-## Phase 2: Practa Manager (Publishing)
-
-### What Happens During Publish
-
-When a developer submits their Practa to the Practa Manager:
-
-1. **Upload Assets**: All files from `./assets/` are uploaded to CDN object storage
-2. **Generate `build.json`**: Contains metadata and full CDN URLs for each asset
-3. **Generate CDN `assets.ts`**: Replaces the local version with a CDN-based resolver
-4. **Remove Local Assets**: The `./assets/` folder is not committed to the repo
-5. **Commit**: Only the code files, `build.json`, and CDN `assets.ts` are committed
-
-### `build.json` Format
-
-```json
-{
-  "buildId": "abc123",
-  "createdAt": "2025-01-15T10:30:00Z",
-  "assets": {
-    "zen-circle": "https://replit-objstore.example.com/public/practa/hello-world/abc123/zen-circle.png",
-    "background": "https://replit-objstore.example.com/public/practa/hello-world/abc123/background.jpg",
-    "chime": "https://replit-objstore.example.com/public/practa/hello-world/abc123/chime.mp3",
-    "intro-video": "https://replit-objstore.example.com/public/practa/hello-world/abc123/intro.mp4",
-    "loading-animation": "https://replit-objstore.example.com/public/practa/hello-world/abc123/loading.json"
-  }
-}
-```
-
-**Important**: The `assets` map contains **full CDN URLs**, not relative paths. The Stellarin app does not construct URLs - it uses them directly from this map.
-
-### Generated CDN `assets.ts`
-
-The Practa Manager generates this file to replace the local version:
+When published, Practa Manager generates a version with full URLs:
 
 ```typescript
-// assets.ts - CDN VERSION (auto-generated by Practa Manager)
+// assets.ts - PUBLISHED VERSION (auto-generated by Practa Manager)
 // DO NOT EDIT - This file is regenerated on each publish
 
 import { createAssetResolver } from "@stellarin/practa-runtime";
 
-export type AssetKey = "zen-circle" | "background" | "chime" | "intro-video" | "loading-animation";
+export type AssetKey = "background" | "icon" | "click-sound";
 
 const assetUrls: Record<AssetKey, string> = {
-  "zen-circle": "https://replit-objstore.example.com/public/practa/hello-world/abc123/zen-circle.png",
-  "background": "https://replit-objstore.example.com/public/practa/hello-world/abc123/background.jpg",
-  "chime": "https://replit-objstore.example.com/public/practa/hello-world/abc123/chime.mp3",
-  "intro-video": "https://replit-objstore.example.com/public/practa/hello-world/abc123/intro.mp4",
-  "loading-animation": "https://replit-objstore.example.com/public/practa/hello-world/abc123/loading.json",
+  "background": "https://storage.googleapis.com/replit-objstore-xxx/public/practa/my-practa/abc123/background.png",
+  "icon": "https://storage.googleapis.com/replit-objstore-xxx/public/practa/my-practa/abc123/icon.svg",
+  "click-sound": "https://storage.googleapis.com/replit-objstore-xxx/public/practa/my-practa/abc123/sounds/click.mp3",
 };
 
 export const assets = createAssetResolver(assetUrls);
 ```
 
-### Practa Manager Implementation Notes
+## Using Assets in Components
 
-The publish pipeline should:
+The `assets()` function returns a string URL. Usage varies slightly by platform:
 
-1. Parse the local `assets.ts` to extract the `AssetKey` type and `localAssets` entries
-2. Upload each asset to CDN: `public/practa/{slug}/{buildId}/{filename}`
-3. Generate `build.json` with full URLs in the `assets` map
-4. Generate the CDN `assets.ts` preserving the `AssetKey` type
-5. Validate that no `require()` statements remain in component code
-6. Commit only: `index.tsx`, `assets.ts`, `build.json`, `metadata.json`
+### Web Usage
 
----
+```tsx
+import { assets } from "./assets";
 
-## Phase 3: Stellarin App (Import)
-
-### What Happens at Build Time
-
-The Stellarin fetch script (`scripts/fetch-community-practa.js`):
-
-1. Clones/pulls the `stellarin-practa` GitHub repo
-2. For each Practa, reads `build.json`
-3. Generates `assets.ts` from the URLs in `build.json`
-4. Validates that no `require()` statements exist in component code (fails build if found)
-
-### Generated `assets.ts`
-
-```typescript
-// assets.ts - Generated by fetch-community-practa.js
-// DO NOT EDIT MANUALLY
-
-import { createAssetResolver } from "@stellarin/practa-runtime";
-
-export type AssetKey = "zen-circle" | "background" | "chime" | "intro-video" | "loading-animation";
-
-const assetUrls: Record<AssetKey, string> = {
-  "zen-circle": "https://replit-objstore.example.com/public/practa/hello-world/abc123/zen-circle.png",
-  "background": "https://replit-objstore.example.com/public/practa/hello-world/abc123/background.jpg",
-  "chime": "https://replit-objstore.example.com/public/practa/hello-world/abc123/chime.mp3",
-  "intro-video": "https://replit-objstore.example.com/public/practa/hello-world/abc123/intro.mp4",
-  "loading-animation": "https://replit-objstore.example.com/public/practa/hello-world/abc123/loading.json",
-};
-
-export const assets = createAssetResolver(assetUrls);
-```
-
-### CDN Asset Resolver Implementation
-
-```typescript
-// @stellarin/practa-runtime/asset-resolver.ts
-
-import { ImageSourcePropType } from "react-native";
-
-export interface AssetResolver {
-  getImageSource: (key: string) => ImageSourcePropType | null;
-  getAudioSource: (key: string) => { uri: string } | null;
-  getAudioUri: (key: string) => Promise<string | null>;
-  getVideoSource: (key: string) => Promise<{ uri: string } | null>;
-  getLottieSource: (key: string) => Promise<object | null>;
-  getData: <T = unknown>(key: string) => Promise<T | null>;
-  getUri: (key: string) => Promise<string | null>;
-  has: (key: string) => boolean;
-  keys: () => string[];
+export default function MyPracta() {
+  return (
+    <div style={{ backgroundImage: `url(${assets("background")})` }}>
+      <img src={assets("icon")} alt="Icon" />
+      <audio src={assets("click-sound")} />
+    </div>
+  );
 }
+```
 
-export function createAssetResolver(urls: Record<string, string>): AssetResolver {
-  return {
-    getImageSource: (key: string): ImageSourcePropType | null => {
-      const url = urls[key];
-      return url ? { uri: url } : null;
-    },
+### React Native Usage (Stellarin App)
 
-    getAudioSource: (key: string): { uri: string } | null => {
-      const url = urls[key];
-      return url ? { uri: url } : null;
-    },
+```tsx
+import { Image, ImageBackground } from "react-native";
+import { assets } from "./assets";
 
-    getAudioUri: async (key: string): Promise<string | null> => {
-      return urls[key] || null;
-    },
+export default function MyPracta() {
+  return (
+    <ImageBackground source={{ uri: assets("background") }} style={styles.container}>
+      <Image source={{ uri: assets("icon") }} style={styles.icon} />
+    </ImageBackground>
+  );
+}
+```
 
-    getVideoSource: async (key: string): Promise<{ uri: string } | null> => {
-      const url = urls[key];
-      return url ? { uri: url } : null;
-    },
+The API is identical across platforms - `assets(key)` always returns a string URL. Only the component usage differs (React Native requires the `{ uri: ... }` wrapper).
 
-    getLottieSource: async (key: string): Promise<object | null> => {
-      const url = urls[key];
-      if (!url) return null;
-      try {
-        const response = await fetch(url);
-        return await response.json();
-      } catch {
-        console.warn(`[Practa Assets] Failed to load Lottie animation "${key}"`);
-        return null;
-      }
-    },
+## Asset Keys
 
-    getData: async <T = unknown>(key: string): Promise<T | null> => {
-      const url = urls[key];
-      if (!url) return null;
-      try {
-        const response = await fetch(url);
-        return await response.json();
-      } catch {
-        console.warn(`[Practa Assets] Failed to load data "${key}"`);
-        return null;
-      }
-    },
+Asset keys are derived from your `assets.ts` declarations:
 
-    getUri: async (key: string): Promise<string | null> => {
-      return urls[key] || null;
-    },
+| Declaration | Key |
+|-------------|-----|
+| `"background": require("./assets/bg.png")` | `background` |
+| `"click-sound": require("./assets/audio/click.mp3")` | `click-sound` |
 
-    has: (key: string): boolean => {
-      return key in urls;
-    },
+If assets exist in `./assets/` but aren't declared in `assets.ts`, keys are auto-generated from filenames:
+- `assets/my-image.png` → `my-image`
+- `assets/sounds/click.mp3` → `click`
 
-    keys: (): string[] => {
-      return Object.keys(urls);
-    },
+## Supported Asset Formats
+
+| Type | Extensions | Max Size |
+|------|------------|----------|
+| Images | `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`, `.ico` | 5 MB (1 MB for SVG/ICO) |
+| Audio | `.mp3`, `.wav`, `.m4a`, `.ogg` | 10 MB |
+| Video | `.mp4`, `.webm` | 50 MB |
+| Fonts | `.woff`, `.woff2`, `.ttf`, `.eot` | 2 MB |
+| Documents | `.pdf`, `.zip` | 10 MB |
+
+## Validation
+
+Practa Manager validates assets during submission:
+
+1. **File Existence**: All files declared in `assets.ts` must exist in `./assets/`
+2. **Size Limits**: Files must be under their type-specific limits
+3. **Orphaned Files**: Warning if files exist but aren't declared (still uploaded)
+
+## build.json
+
+Published practas include a `build.json` with asset metadata:
+
+```json
+{
+  "buildId": "abc123",
+  "createdAt": "2025-01-15T10:30:00.000Z",
+  "assets": {
+    "background": "https://storage.googleapis.com/replit-objstore-xxx/public/practa/my-practa/abc123/background.png",
+    "icon": "https://storage.googleapis.com/replit-objstore-xxx/public/practa/my-practa/abc123/icon.svg",
+    "click-sound": "https://storage.googleapis.com/replit-objstore-xxx/public/practa/my-practa/abc123/sounds/click.mp3"
+  }
+}
+```
+
+## Storage URL Pattern
+
+```
+https://storage.googleapis.com/replit-objstore-xxx/public/practa/{slug}/{buildId}/{assetPath}
+```
+
+- `{slug}`: Derived from `metadata.id` (lowercase, alphanumeric + hyphens)
+- `{buildId}`: Submission ID (unique per publish)
+- `{assetPath}`: Path relative to `assets/` folder
+
+## Stellarin App Integration
+
+The Stellarin app should:
+
+1. Fetch `build.json` for each installed practa
+2. Use `createAssetResolver` from `@stellarin/practa-runtime` to resolve assets
+3. The resolver returns storage URLs for use in components
+
+### Example Runtime Implementation
+
+```typescript
+// @stellarin/practa-runtime
+export function createAssetResolver<T extends string>(
+  assetUrls: Record<T, string>
+): (key: T) => string {
+  return (key: T) => {
+    const url = assetUrls[key];
+    if (!url) {
+      console.warn(`Asset "${key}" not found`);
+      return "";
+    }
+    return url;
   };
 }
 ```
 
-**Note**: In the CDN version, `getLottieSource` and `getData` become async because they need to fetch JSON from the CDN. Component code should handle this with `useEffect` or similar patterns.
+## Template Recommendations
 
----
+For the Practa Template:
 
-## Summary of Changes Needed
+1. **Include a sample `assets.ts`** with the local development pattern
+2. **Add `.gitignore` for build artifacts** (the published `assets.ts` should never be committed)
+3. **Document the asset key naming convention** (use kebab-case)
+4. **Provide example assets** to demonstrate the workflow
 
-| App | Required Changes |
-|-----|------------------|
-| **Template** | Ship with local `assets.ts` that uses `require()`. Include `AssetKey` type for autocomplete. Document all resolver methods. |
-| **Practa Manager** | Generate CDN `assets.ts` during publish. Preserve `AssetKey` type. Store full URLs in `build.json`. Strip `./assets/` folder before commit. Validate no `require()` in component code. |
-| **Stellarin** | Fetch script generates `assets.ts` from `build.json`. Provide `createAssetResolver` in runtime. Add validation to fail if `require()` is detected. |
+### Sample Template Structure
 
----
+```
+practa-template/
+├── index.tsx
+├── metadata.json
+├── README.md
+├── assets.ts              # Local dev version with require()
+├── assets/
+│   └── .gitkeep           # Placeholder, users add their assets here
+└── .replit                # Replit configuration
+```
 
-## Key Design Decisions
+### Sample assets.ts for Template
 
-1. **Full URLs in `build.json`**: The Stellarin app does not construct CDN URLs. The `assets` map contains complete URLs, making the system simpler and more flexible (CDN can change without app updates).
+```typescript
+// assets.ts
+// Declare your assets here using require() for local development
+// Practa Manager will transform this to full URLs when published
 
-2. **No `buildId` in URL construction**: Since URLs are stored in full, the `buildId` is only metadata. The app just reads URLs directly from the map.
+const localAssets = {
+  // Example: "my-image": require("./assets/my-image.png"),
+} as const;
 
-3. **`assets.ts` is the boundary**: This single file is the only thing that changes between phases. Component code is identical everywhere.
+export type AssetKey = keyof typeof localAssets;
 
-4. **Validation at boundaries**: Both the Practa Manager (on publish) and Stellarin (on fetch) validate that no `require()` statements exist in component code.
+export const assets = (key: AssetKey): string => localAssets[key] as string;
+```
 
-5. **TypeScript-first with `AssetKey`**: The typed `AssetKey` union provides autocomplete and prevents typos. It's preserved across all phases.
+## Migration Notes
 
-6. **Comprehensive resolver API**: The resolver supports all common asset types (images, audio, video, Lottie, JSON data) with both sync and async methods as appropriate.
+If updating from an older asset system:
 
-7. **Console warnings for debugging**: Missing assets log helpful warnings with the available keys, making it easier to debug typos or missing registrations.
-
----
-
-## Asset Limits
-
-- **Per-file limit**: 5MB maximum per asset
-- **Total package limit**: 25MB maximum for entire Practa
-- **Supported formats**: 
-  - Images: png, jpg, jpeg, gif, webp, svg
-  - Audio: mp3, wav, m4a, ogg
-  - Video: mp4, webm
-  - Data: json, txt
+1. Move all assets to `./assets/` folder (flat structure at ZIP root)
+2. Create `assets.ts` with `require()` declarations
+3. Update component imports to use the `assets()` function
+4. Test locally before submitting

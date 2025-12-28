@@ -209,62 +209,28 @@ This allows you to extract and rename the folder to whatever you prefer.
 
 ```typescript
 // In assets.ts - register your assets here
-// Step 1: Add key to AssetKey type
-export type AssetKey = "zen-circle" | "background" | "chime" | "intro-video" | "loading-animation";
+const localAssets = {
+  "background": require("./assets/background.png"),
+  "icon": require("./assets/icon.svg"),
+  "click-sound": require("./assets/sounds/click.mp3"),
+} as const;
 
-// Step 2: Register in localAssets
-const localAssets: Record<AssetKey, AssetSource> = {
-  "zen-circle": require("./assets/zen-circle.png"),
-  "background": require("./assets/background.jpg"),
-  "chime": require("./assets/chime.mp3"),
-  "intro-video": require("./assets/intro.mp4"),
-  "loading-animation": require("./assets/loading.json"),
-};
+export type AssetKey = keyof typeof localAssets;
+
+export const assets = (key: AssetKey): string => localAssets[key] as string;
 
 // In index.tsx - use the resolver
 import { assets } from "./assets";
 
-// For images
-<Image source={assets.getImageSource("zen-circle") || undefined} />
+// For images (React Native)
+<Image source={{ uri: assets("background") }} />
 
-// For audio (async - returns Promise)
-const playSound = async () => {
-  const uri = await assets.getAudioUri("chime");
-  if (uri) { /* use with expo-audio */ }
-};
+// For images (Web)
+<img src={assets("icon")} alt="Icon" />
 
-// For video (async - returns Promise)
-const videoSource = await assets.getVideoSource("intro-video");
-if (videoSource) { <Video source={videoSource} /> }
-
-// For Lottie animations (sync)
-const animation = assets.getLottieSource("loading-animation");
-if (animation) { <LottieView source={animation} autoPlay loop /> }
-
-// For JSON data (sync)
-interface Config { theme: string }
-const config = assets.getData<Config>("config"); // Returns null if not found
-
-// Check if asset exists
-if (assets.has("background")) { ... }
-
-// Get all available keys
-const allKeys = assets.keys();
+// For audio
+<audio src={assets("click-sound")} />
 ```
-
-### Asset Methods Reference
-
-| Method | Returns | Async | Use Case |
-|--------|---------|-------|----------|
-| `getImageSource(key)` | ImageSourcePropType \| null | No | `<Image source={...} />` |
-| `getAudioSource(key)` | number \| { uri } \| null | No | useAudioPlayer hook |
-| `getAudioUri(key)` | Promise<string \| null> | Yes | expo-av Audio.Sound |
-| `getVideoSource(key)` | Promise<{ uri } \| null> | Yes | expo-video playback |
-| `getLottieSource(key)` | object \| null | No | lottie-react-native |
-| `getData<T>(key)` | T \| null | No | JSON config files |
-| `getUri(key)` | Promise<string \| null> | Yes | Generic URI access |
-| `has(key)` | boolean | No | Check if asset exists |
-| `keys()` | AssetKey[] | No | List all assets |
 
 **Why this pattern?**
 - Component code stays the same across local dev, publish, and Stellarin
