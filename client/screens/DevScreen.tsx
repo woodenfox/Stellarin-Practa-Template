@@ -282,6 +282,47 @@ export default function DevScreen() {
             ) : null}
           </View>
 
+          {syncStatus ? (
+            <View style={styles.versionInfo}>
+              <View style={styles.versionRow}>
+                <ThemedText style={[styles.versionLabel, { color: theme.textSecondary }]}>
+                  Your Template
+                </ThemedText>
+                <ThemedText style={styles.versionValue}>
+                  v{syncStatus.localTemplateVersion || "?"}
+                </ThemedText>
+              </View>
+              <View style={styles.versionRow}>
+                <ThemedText style={[styles.versionLabel, { color: theme.textSecondary }]}>
+                  Latest Template
+                </ThemedText>
+                <ThemedText style={[
+                  styles.versionValue,
+                  syncStatus.hasNewerVersion && { color: "#D97706" }
+                ]}>
+                  v{syncStatus.latestTemplateVersion || "?"}
+                  {syncStatus.hasNewerVersion ? " (newer)" : ""}
+                </ThemedText>
+              </View>
+              <View style={styles.versionRow}>
+                <ThemedText style={[styles.versionLabel, { color: theme.textSecondary }]}>
+                  Your Git
+                </ThemedText>
+                <ThemedText style={[styles.versionValue, { fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 12 }]}>
+                  {syncStatus.localVersion ? syncStatus.localVersion.substring(0, 7) : "—"}
+                </ThemedText>
+              </View>
+              <View style={styles.versionRow}>
+                <ThemedText style={[styles.versionLabel, { color: theme.textSecondary }]}>
+                  Latest Git
+                </ThemedText>
+                <ThemedText style={[styles.versionValue, { fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 12 }]}>
+                  {syncStatus.latestVersion ? syncStatus.latestVersion.substring(0, 7) : "—"}
+                </ThemedText>
+              </View>
+            </View>
+          ) : null}
+
           {syncStatus && !syncStatus.isInSync && !syncStatus.isMasterTemplate && syncStatus.hasNewerVersion ? (
             <View style={styles.updateBanner}>
               <Feather name="download-cloud" size={16} color="#D97706" />
@@ -470,6 +511,23 @@ const styles = StyleSheet.create({
   versionBadgeText: {
     fontSize: 12,
     fontWeight: "600",
+  },
+  versionInfo: {
+    marginBottom: Spacing.md,
+    paddingHorizontal: Spacing.sm,
+  },
+  versionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  versionLabel: {
+    fontSize: 13,
+  },
+  versionValue: {
+    fontSize: 13,
+    fontWeight: "500",
   },
   updateBanner: {
     flexDirection: "row",
