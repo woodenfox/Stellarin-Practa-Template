@@ -14,7 +14,8 @@ import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
-import MyPracta, { metadata as codeMetadata } from "@/my-practa";
+import MyPracta from "@/my-practa";
+import codeMetadata from "@/my-practa/metadata.json";
 import { validatePracta, ValidationReport } from "@/lib/practa-validator";
 import { getApiUrl } from "@/lib/query-client";
 
@@ -23,7 +24,7 @@ const VERIFICATION_SERVICE_URL = "https://stellarin-practa-verification.replit.a
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface PractaMetadata {
-  type: string;
+  id: string;
   name: string;
   description: string;
   author: string;
@@ -150,7 +151,7 @@ export default function SubmitScreen() {
         <Card style={styles.card}>
           <ThemedText style={styles.cardTitle}>{displayMetadata.name}</ThemedText>
           <ThemedText style={styles.cardSubtitle}>
-            {displayMetadata.type} v{displayMetadata.version}
+            {displayMetadata.id} v{displayMetadata.version}
           </ThemedText>
           <ThemedText style={[styles.cardDescription, { color: theme.textSecondary }]}>
             by {displayMetadata.author}
@@ -192,6 +193,19 @@ export default function SubmitScreen() {
               </View>
             ) : null}
           </View>
+
+          {validationReport.errors.length > 0 ? (
+            <View style={styles.errorList}>
+              {validationReport.errors.map((error, index) => (
+                <View key={index} style={styles.errorItem}>
+                  <Feather name="x-circle" size={14} color={theme.error} />
+                  <ThemedText style={[styles.errorMessage, { color: theme.error }]}>
+                    {error.message}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </Card>
 
         <Card style={styles.card}>
@@ -495,5 +509,22 @@ const styles = StyleSheet.create({
   warningText: {
     fontSize: 13,
     textAlign: "center",
+  },
+  errorList: {
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(128, 128, 128, 0.2)",
+  },
+  errorItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  errorMessage: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });
