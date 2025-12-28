@@ -554,7 +554,10 @@ ${config.version}
 
   app.get("/api/template/sync-status", async (req, res) => {
     try {
-      const isMasterTemplate = !!process.env.MASTER_TEMPLATE_KEY;
+      // Check if this is the master template by looking for the MASTER_TEMPLATE_KEY secret
+      // Forks/copies of this template will NOT have this secret
+      const masterKey = process.env.MASTER_TEMPLATE_KEY;
+      const isMasterTemplate = typeof masterKey === "string" && masterKey.length > 0;
       
       const repoResponse = await fetch(
         `https://api.github.com/repos/${TEMPLATE_REPO}`,
@@ -568,6 +571,7 @@ ${config.version}
           latestVersion: null,
           repoUrl: `https://github.com/${TEMPLATE_REPO}`,
           repoAvailable: false,
+          isMasterTemplate,
         });
       }
       
@@ -586,6 +590,7 @@ ${config.version}
           latestVersion: null,
           repoUrl: `https://github.com/${TEMPLATE_REPO}`,
           repoAvailable: false,
+          isMasterTemplate,
         });
       }
       
@@ -594,9 +599,13 @@ ${config.version}
       
       const syncFilePath = path.resolve(process.cwd(), ".template-sync");
       let localSha = "";
+      let isFirstRun = false;
       
       if (fs.existsSync(syncFilePath)) {
         localSha = fs.readFileSync(syncFilePath, "utf-8").trim();
+      } else {
+        // First run for a fork - mark as first run
+        isFirstRun = true;
       }
       
       let gitHeadSha = "";
@@ -616,11 +625,21 @@ ${config.version}
       } catch {
       }
       
-      if (gitHeadSha && gitHeadSha === latestSha) {
-        if (localSha !== latestSha) {
-          fs.writeFileSync(syncFilePath, latestSha);
-          localSha = latestSha;
+      // For master template: sync file tracks what's been pushed
+      // For forks: sync file tracks what version of template they're on
+      if (isMasterTemplate) {
+        // Master template: update sync file when git HEAD matches latest
+        if (gitHeadSha && gitHeadSha === latestSha) {
+          if (localSha !== latestSha) {
+            fs.writeFileSync(syncFilePath, latestSha);
+            localSha = latestSha;
+          }
         }
+      } else if (isFirstRun) {
+        // Fork's first run: assume they're starting fresh with latest template
+        // Create sync file with latest SHA so they start in sync
+        fs.writeFileSync(syncFilePath, latestSha);
+        localSha = latestSha;
       }
       
       // For master template: check if local git HEAD differs from remote (unpushed changes)
@@ -645,6 +664,7 @@ ${config.version}
         latestVersion: null,
         repoUrl: `https://github.com/${TEMPLATE_REPO}`,
         repoAvailable: false,
+        isMasterTemplate: false,
       });
     }
   });
