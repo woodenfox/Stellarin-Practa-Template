@@ -93,19 +93,28 @@ export default function PublishScreen() {
       setSubmitState("success");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Submission failed");
+      const errorMessage = error instanceof Error ? error.message : "Submission failed";
+      const isNetworkError = errorMessage.includes("fetch") || errorMessage.includes("network") || errorMessage.includes("Network");
+      setSubmitError(
+        isNetworkError 
+          ? "Unable to reach Stellarin. Please check your connection and try again." 
+          : errorMessage
+      );
       setSubmitState("error");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };
 
   const handleClaimSubmission = async () => {
+    if (!submitResult?.token) return;
+    
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const submitUrl = `${VERIFICATION_SERVICE_URL}/submit?token=${submitResult.token}`;
     try {
-      await WebBrowser.openBrowserAsync(`${VERIFICATION_SERVICE_URL}/api/login`);
+      await WebBrowser.openBrowserAsync(submitUrl);
       setClaimAttempted(true);
     } catch {
-      Linking.openURL(`${VERIFICATION_SERVICE_URL}/api/login`);
+      Linking.openURL(submitUrl);
       setClaimAttempted(true);
     }
   };
