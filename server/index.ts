@@ -5,8 +5,11 @@ import * as fs from "fs";
 import * as path from "path";
 import {
   bumpMetadataPatch,
+  bumpTemplateVersion,
   getLastProcessedCommit,
   setLastProcessedCommit,
+  getLastProcessedTemplateCommit,
+  setLastProcessedTemplateCommit,
   getCurrentCommitSha,
 } from "../scripts/bump-version";
 
@@ -232,14 +235,18 @@ function startGitVersionWatcher() {
     return;
   }
 
-  const checkAndBump = () => {
+  // Check if this is the master template
+  const masterKey = process.env.MASTER_TEMPLATE_KEY;
+  const isMasterTemplate = typeof masterKey === "string" && masterKey.length > 0;
+
+  const checkAndBumpPracta = () => {
     const currentSha = getCurrentCommitSha();
     if (!currentSha) return;
 
     const lastProcessed = getLastProcessedCommit();
     
     if (!lastProcessed) {
-      log(`[Version Watcher] Initializing commit tracking at ${currentSha.slice(0, 7)}`);
+      log(`[Version Watcher] Initializing Practa commit tracking at ${currentSha.slice(0, 7)}`);
       setLastProcessedCommit(currentSha);
       return;
     }
@@ -252,8 +259,38 @@ function startGitVersionWatcher() {
     if (result.success) {
       setLastProcessedCommit(currentSha);
     } else if (result.error) {
-      log(`[Version Watcher] Bump failed: ${result.error}`);
+      log(`[Version Watcher] Practa bump failed: ${result.error}`);
     }
+  };
+
+  const checkAndBumpTemplate = () => {
+    if (!isMasterTemplate) return;
+
+    const currentSha = getCurrentCommitSha();
+    if (!currentSha) return;
+
+    const lastProcessed = getLastProcessedTemplateCommit();
+    
+    if (!lastProcessed) {
+      log(`[Version Watcher] Initializing Template commit tracking at ${currentSha.slice(0, 7)}`);
+      setLastProcessedTemplateCommit(currentSha);
+      return;
+    }
+    
+    if (currentSha === lastProcessed) return;
+
+    const result = bumpTemplateVersion();
+    
+    if (result.success) {
+      setLastProcessedTemplateCommit(currentSha);
+    } else if (result.error) {
+      log(`[Version Watcher] Template bump failed: ${result.error}`);
+    }
+  };
+
+  const checkAndBump = () => {
+    checkAndBumpPracta();
+    checkAndBumpTemplate();
   };
 
   checkAndBump();
@@ -266,7 +303,8 @@ function startGitVersionWatcher() {
         setTimeout(checkAndBump, 100);
       }
     });
-    log("[Version Watcher] Watching for commits to auto-increment version");
+    const watchTypes = isMasterTemplate ? "Practa + Template versions" : "Practa version";
+    log(`[Version Watcher] Watching for commits to auto-increment ${watchTypes}`);
   } catch (error) {
     log("[Version Watcher] Could not start watcher:", error);
   }

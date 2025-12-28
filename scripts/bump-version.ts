@@ -3,7 +3,9 @@ import * as path from "node:path";
 
 const METADATA_PATH = path.resolve(process.cwd(), "client/my-practa/metadata.json");
 const CONFIG_PATH = path.resolve(process.cwd(), "practa.config.json");
+const APP_JSON_PATH = path.resolve(process.cwd(), "app.json");
 const CACHE_PATH = path.resolve(process.cwd(), ".cache/last-version-commit.json");
+const TEMPLATE_CACHE_PATH = path.resolve(process.cwd(), ".cache/last-template-version-commit.json");
 
 interface PractaMetadata {
   id: string;
@@ -109,5 +111,56 @@ export function getCurrentCommitSha(): string | null {
     return headContent;
   } catch {
     return null;
+  }
+}
+
+export function bumpTemplateVersion(): { success: boolean; newVersion?: string; error?: string } {
+  try {
+    if (!fs.existsSync(APP_JSON_PATH)) {
+      return { success: false, error: "app.json not found" };
+    }
+
+    const content = fs.readFileSync(APP_JSON_PATH, "utf-8");
+    const appJson = JSON.parse(content);
+    
+    if (!appJson.expo?.version) {
+      return { success: false, error: "No version field in app.json" };
+    }
+
+    const oldVersion = appJson.expo.version;
+    const newVersion = bumpPatchVersion(oldVersion);
+    appJson.expo.version = newVersion;
+
+    fs.writeFileSync(APP_JSON_PATH, JSON.stringify(appJson, null, 2) + "\n");
+
+    console.log(`[Template Version Bump] ${oldVersion} -> ${newVersion}`);
+    return { success: true, newVersion };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { success: false, error: message };
+  }
+}
+
+export function getLastProcessedTemplateCommit(): string | null {
+  try {
+    if (fs.existsSync(TEMPLATE_CACHE_PATH)) {
+      const data = JSON.parse(fs.readFileSync(TEMPLATE_CACHE_PATH, "utf-8"));
+      return data.lastCommit || null;
+    }
+  } catch {
+    // Ignore errors
+  }
+  return null;
+}
+
+export function setLastProcessedTemplateCommit(commitSha: string): void {
+  try {
+    const cacheDir = path.dirname(TEMPLATE_CACHE_PATH);
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+    fs.writeFileSync(TEMPLATE_CACHE_PATH, JSON.stringify({ lastCommit: commitSha }, null, 2) + "\n");
+  } catch (error) {
+    console.error("[Template Version Bump] Failed to save commit cache:", error);
   }
 }
