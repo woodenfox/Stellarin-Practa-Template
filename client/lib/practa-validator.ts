@@ -224,14 +224,6 @@ export function validateComponent(component: unknown): ValidationResult[] {
     });
   }
 
-  // Note: Full contract validation (onComplete calls, context usage) requires 
-  // source code analysis which is done by the CLI validator (npx tsx validate-practa.ts)
-  results.push({
-    passed: true,
-    message: "Run CLI validator for full contract check: npx tsx validate-practa.ts",
-    severity: "warning",
-  });
-
   return results;
 }
 
@@ -354,10 +346,6 @@ export function validateSourceCode(source: string): ValidationResult[] {
 
 /**
  * Run full validation and return a report
- * 
- * Note: Runtime validation can only check component existence and metadata.
- * For full contract validation (onComplete calls, context usage, best practices),
- * use the CLI validator: npx tsx validate-practa.ts
  */
 export function validatePracta(
   component: unknown,

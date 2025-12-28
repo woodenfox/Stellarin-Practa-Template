@@ -293,7 +293,6 @@ docs/                 # Architecture documentation
   practa-plugin-architecture.md
   practa-flow-system.md
 
-validate-practa.ts    # CLI validator script
 practa.config.json    # Synced copy of metadata (for editor)
 
 server/               # Express backend (minimal for preview)
@@ -313,7 +312,6 @@ server/               # Express backend (minimal for preview)
 | `client/demo-practa/` | Example Practas for reference |
 | `client/types/flow.ts` | TypeScript types for Practa |
 | `client/lib/practa-validator.ts` | Validation logic |
-| `validate-practa.ts` | CLI validator |
 | `practa.config.json` | Synced metadata for editor UI |
 | `docs/practa-requirements.md` | Full requirements spec |
 | `docs/practa-plugin-architecture.md` | Architecture docs |
@@ -339,7 +337,7 @@ server/               # Express backend (minimal for preview)
 
 1. **Edit** `client/my-practa/index.tsx`
 2. **Configure** `client/my-practa/metadata.json`
-3. **Validate** using the Preview screen or `npx tsx validate-practa.ts`
+3. **Validate** using the Preview screen (validation runs automatically)
 4. **Preview** using the app's Preview button
 5. **Iterate** until your Practa feels polished
 6. **Submit** for review via the Submit tab
