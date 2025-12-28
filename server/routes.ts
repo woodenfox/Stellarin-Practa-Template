@@ -681,10 +681,23 @@ ${config.version}
       });
     } catch (error) {
       console.error("Sync check error:", error);
+      
+      // Still try to read local version from app.json even on error
+      let localTemplateVersion = "1.0.0";
+      try {
+        const appJsonPath = path.resolve(process.cwd(), "app.json");
+        if (fs.existsSync(appJsonPath)) {
+          const appJson = JSON.parse(fs.readFileSync(appJsonPath, "utf-8"));
+          localTemplateVersion = appJson.expo?.version || "1.0.0";
+        }
+      } catch {}
+      
       res.json({
         isInSync: true,
         localVersion: null,
         latestVersion: null,
+        localTemplateVersion,
+        latestTemplateVersion: localTemplateVersion,
         repoUrl: `https://github.com/${TEMPLATE_REPO}`,
         repoAvailable: false,
         isMasterTemplate: false,
